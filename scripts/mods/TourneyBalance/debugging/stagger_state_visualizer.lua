@@ -128,10 +128,7 @@ end
 local UPDATE_INTERVAL = 0.15
 local next_update_t = 0
 
--- Note: this claims mod.update directly, which is normally owned by
--- performance_logging.lua (mod:hook_safe(IngameHud, "update", ...) did not fire
--- reliably here) - performance logging's own update loop no longer runs as a result.
-mod.update = function (dt)
+mod:add_update_function(function (dt)
 	if not mod:get("stagger_state_visualizer") then
 		if next(outlined_units) then
 			clear_all_outlines()
@@ -186,4 +183,4 @@ mod.update = function (dt)
 			end
 		end
 	end
-end
+end)

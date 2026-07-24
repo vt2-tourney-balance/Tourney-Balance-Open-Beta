@@ -2312,22 +2312,61 @@ do
 	color[4] = mod:get("tb_ping_color_b")
 end
 
--- Claims mod.on_setting_changed; if another file in this mod ever needs it too, merge the bodies instead of overwriting.
-mod.on_setting_changed = function (setting_id)
-	if setting_id == "tb_ping_color_r" or setting_id == "tb_ping_color_g" or setting_id == "tb_ping_color_b" then
+-- mod.on_setting_changed never fired reliably here, so tag colors are polled instead (like
+-- stagger_state_visualizer's approach) via the shared mod:add_update_function dispatcher.
+local TAG_COLOR_UPDATE_INTERVAL = 0.5
+local tag_color_update_timer = 0
+local last_ping_color = {
+	r = mod:get("tb_ping_color_r"),
+	g = mod:get("tb_ping_color_g"),
+	b = mod:get("tb_ping_color_b"),
+}
+local last_special_color = {
+	r = mod:get("tb_special_tag_color_r"),
+	g = mod:get("tb_special_tag_color_g"),
+	b = mod:get("tb_special_tag_color_b"),
+}
+
+mod:add_update_function(function (dt)
+	tag_color_update_timer = tag_color_update_timer + dt
+
+	if tag_color_update_timer < TAG_COLOR_UPDATE_INTERVAL then
+		return
+	end
+
+	tag_color_update_timer = 0
+
+	local ping_r, ping_g, ping_b = mod:get("tb_ping_color_r"), mod:get("tb_ping_color_g"), mod:get("tb_ping_color_b")
+
+	if last_ping_color.r ~= ping_r or last_ping_color.g ~= ping_g or last_ping_color.b ~= ping_b then
+		last_ping_color.r, last_ping_color.g, last_ping_color.b = ping_r, ping_g, ping_b
+
 		local color = OutlineSettings.colors.player_attention.color
 
-		color[2] = mod:get("tb_ping_color_r")
-		color[3] = mod:get("tb_ping_color_g")
-		color[4] = mod:get("tb_ping_color_b")
-	elseif setting_id == "tb_special_tag_color_r" or setting_id == "tb_special_tag_color_g" or setting_id == "tb_special_tag_color_b" then
+		color[2], color[3], color[4] = ping_r, ping_g, ping_b
+	end
+
+	local special_r, special_g, special_b = mod:get("tb_special_tag_color_r"), mod:get("tb_special_tag_color_g"), mod:get("tb_special_tag_color_b")
+
+	if last_special_color.r ~= special_r or last_special_color.g ~= special_g or last_special_color.b ~= special_b then
+		last_special_color.r, last_special_color.g, last_special_color.b = special_r, special_g, special_b
+
 		local color = OutlineSettings.colors.tb_judged_special.color
 
-		color[2] = mod:get("tb_special_tag_color_r")
-		color[3] = mod:get("tb_special_tag_color_g")
-		color[4] = mod:get("tb_special_tag_color_b")
+		color[2], color[3], color[4] = special_r, special_g, special_b
+
+		-- Force already-tagged specials to redraw immediately with the new color, not just future tags
+		for enemy_unit, data in pairs(marked_enemies) do
+			if ALIVE[enemy_unit] and data.outline_id then
+				local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
+
+				if outline_extension then
+					outline_extension:reapply_outline()
+				end
+			end
+		end
 	end
-end
+end)
 
 mod:hook_safe(DamageUtils, "create_explosion", function (world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, is_husk, damaging_unit, attacker_power_level, is_critical_strike, source_attacker_unit)
 	if damage_source ~= "career_ability" or not ALIVE[attacker_unit] then

@@ -84,6 +84,19 @@ mod:hook(InteractionDefinitions.pickup_object.client, "can_interact", function(f
     return func(interactor_unit, interactable_unit, data, config, world)
 end)
 
+-- mod.update is a single field VMF calls once per frame - only one file can assign it directly.
+-- Any feature needing a per-frame tick should register through mod:add_update_function(fn) instead
+-- of assigning mod.update itself, so multiple features can coexist without silently clobbering each other.
+local _update_functions = {}
+function mod.add_update_function(self, func)
+    _update_functions[#_update_functions + 1] = func
+end
+mod.update = function (dt)
+    for i = 1, #_update_functions do
+        _update_functions[i](dt)
+    end
+end
+
 -- THP & Stagger Talent Functions & Changes
 mod:dofile("scripts/mods/TourneyBalance/changes/thp_stagger_changes")
 
