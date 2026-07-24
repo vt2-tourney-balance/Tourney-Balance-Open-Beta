@@ -404,6 +404,53 @@ local localization = {
 			.. "\n이 옵션은 이벤트 중 자동으로 활성화됩니다.",
 	},
 
+	-- Accessibility
+	accessibility = {
+		en = "Accessibility",
+	},
+	tb_ping_outline_color_group = {
+		en = "Ping Outline Color",
+	},
+	tb_isjya_ping_outline_color_group = {
+		en = "WHC - I Shall Judge You All - Ping Outline Color",
+	},
+	tb_ping_color_r_title = {
+		en = "Regular Ping Color - Red",
+	},
+	tb_ping_color_r_description = {
+		en = "Red channel (0-255) of the default game-wide ping outline color. Affects every normal ping in the game, not just specials tagged by I Shall Judge You All.",
+	},
+	tb_ping_color_g_title = {
+		en = "Regular Ping Color - Green",
+	},
+	tb_ping_color_g_description = {
+		en = "Green channel (0-255) of the default game-wide ping outline color. Affects every normal ping in the game, not just specials tagged by I Shall Judge You All.",
+	},
+	tb_ping_color_b_title = {
+		en = "Regular Ping Color - Blue",
+	},
+	tb_ping_color_b_description = {
+		en = "Blue channel (0-255) of the default game-wide ping outline color. Affects every normal ping in the game, not just specials tagged by I Shall Judge You All.",
+	},
+	tb_special_tag_color_r_title = {
+		en = "Special Tag Color - Red",
+	},
+	tb_special_tag_color_r_description = {
+		en = "Red channel (0-255) of the outline color used to permanently tag specials via I Shall Judge You All.",
+	},
+	tb_special_tag_color_g_title = {
+		en = "Special Tag Color - Green",
+	},
+	tb_special_tag_color_g_description = {
+		en = "Green channel (0-255) of the outline color used to permanently tag specials via I Shall Judge You All.",
+	},
+	tb_special_tag_color_b_title = {
+		en = "Special Tag Color - Blue",
+	},
+	tb_special_tag_color_b_description = {
+		en = "Blue channel (0-255) of the outline color used to permanently tag specials via I Shall Judge You All.",
+	},
+
 	-- Debugging
 	debugging = {
 		en = "Debugging",
