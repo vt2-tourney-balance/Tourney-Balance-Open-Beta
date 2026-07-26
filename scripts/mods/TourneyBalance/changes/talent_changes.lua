@@ -1096,17 +1096,17 @@ end)
 
 -- Vengeance Buff
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_stacking_buff_gromril", {
-    update_frequency = 2 --7, 3
+    update_frequency = 0,
 })
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_attack_speed", {
-    multiplier = 0.048, -- 0.08, 0.06
-    duration = 15 -- 10, 12
+    multiplier = 0.03,
+    duration = 20,
 })
 mod:modify_talent("dr_ironbreaker", 4, 1, {
     description = "bardin_ironbreaker_rising_attack_speed_desc",
     description_values = {},
 })
-mod:add_text("bardin_ironbreaker_rising_attack_speed_desc", "Periodically generate stacks (up to 5 max) of Rising Anger every 2 seconds while Gromril is active. When Gromril is lost, gain 4.8% attack speed per stack of Rising Anger for 15 seconds.")
+mod:add_text("bardin_ironbreaker_rising_attack_speed_desc", "When Gromril is lost, gain 15% attack speed for 20 seconds.")
 
 -- Under Pressure Buff
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_increased_ranged_power", {
