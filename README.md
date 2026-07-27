@@ -14,9 +14,9 @@ If you would also like to join the modded scene - be it for tourneys, regular ga
 
 ## Tourney-Balance-Open-Beta
 
-This [repository](https://github.com/exquilibrium/Tourney-Balance-Open-Beta) contains the source code for public testing of new features for the Tourney Balance mod. ([Steam workshop page](https://github.com/exquilibrium/Tourney-Balance-Open-Beta))
+This [repository](https://github.com/vt2-tourney-balance/Tourney-Balance-Open-Beta) contains the source code for public testing of new features for the Tourney Balance mod. ([Steam workshop page](https://github.com/vt2-tourney-balance/Tourney-Balance-Open-Beta))
 
-If you would like to contribute to this mod, you can create a pull request on the [Tourney-Balance-Open-Beta](https://github.com/exquilibrium/Tourney-Balance-Open-Beta) fork. **Please take note of our workflow for building and uploading the mod explained below.**
+If you would like to contribute to this mod, you can create a pull request on the [Tourney-Balance-Open-Beta](https://github.com/vt2-tourney-balance/Tourney-Balance-Open-Beta) fork. **Please take note of our workflow for building and uploading the mod explained below.**
 
 ### Important Notes for Contributors
 #### Cloning the Repository
@@ -25,7 +25,7 @@ If you would like to contribute to this mod, you can create a pull request on th
 - Please rename/remove any old TourneyBalance folder in your `vermintide-mod-builder/mods` folder
 - Clone this repo into `Vermintide-Mod-Setup-master\vermintide-mod-builder\mods` using
 ```
-git clone https://github.com/exquilibrium/Tourney-Balance-Open-Beta.git
+git clone https://github.com/vt2-tourney-balance/Tourney-Balance-Open-Beta.git
 ```
 
 #### Building the Mod
