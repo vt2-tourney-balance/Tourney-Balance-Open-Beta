@@ -1,0 +1,145 @@
+---
+const base = import.meta.env.BASE_URL;
+const caslonBold = `${base}fonts/CaslonAntique/CaslonAntique-Bold.ttf`;
+const tiepolo = `${base}fonts/Tiepolo/Tiepolo.ttf`;
+const tiepoloItalic = `${base}fonts/Tiepolo/Tiepolo-Italic.ttf`;
+const tiepoloBold = `${base}fonts/Tiepolo/Tiepolo-Bold.ttf`;
+const freightBook = `${base}fonts/FreightSansPro/FreightSansPro-Book.ttf`;
+const logo = `${base}logo_tb_default.png`;
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href={`${base}favicon.ico`} />
+    <title>{title} — Tourney Balance</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href={base} class="logo-link">
+        <img src={logo} alt="Tourney Balance" class="logo" />
+      </a>
+      <nav class="site-nav">
+        <a href={`${base}changes/`}>Balance Changes</a>
+        <a href={`${base}patch-notes/`}>Patch Notes</a>
+        <a href={`${base}documentation/`}>Documentation</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>Tourney Balance — a competitive balance mod for Warhammer: Vermintide 2.</p>
+    </footer>
+  </body>
+</html>
+
+<style define:vars={{ caslonBold, tiepolo, tiepoloItalic, tiepoloBold, freightBook }}>
+  @font-face {
+    font-family: 'Caslon Antique Bold';
+    src: url(var(--caslonBold)) format('truetype');
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Tiepolo';
+    src: url(var(--tiepolo)) format('truetype');
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Tiepolo';
+    src: url(var(--tiepoloItalic)) format('truetype');
+    font-style: italic;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Tiepolo';
+    src: url(var(--tiepoloBold)) format('truetype');
+    font-weight: bold;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'FreightSansPro Book';
+    src: url(var(--freightBook)) format('truetype');
+    font-display: swap;
+  }
+
+  :global(:root) {
+    --color-bg: #121212;
+    --color-text: #dfdfdf;
+    --color-accent: #e69e00;
+  }
+
+  :global(body) {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Tiepolo', serif;
+    line-height: 1.6;
+  }
+
+  :global(h1),
+  :global(h2),
+  :global(h3) {
+    font-family: 'Caslon Antique Bold', serif;
+    color: var(--color-accent);
+  }
+
+  :global(a) {
+    color: var(--color-accent);
+  }
+
+  :global(details summary) {
+    cursor: pointer;
+    font-family: 'FreightSansPro Book', sans-serif;
+    color: var(--color-accent);
+  }
+
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 2px solid var(--color-accent);
+  }
+
+  .logo {
+    height: 64px;
+    display: block;
+  }
+
+  .site-nav {
+    display: flex;
+    gap: 1.5rem;
+    font-family: 'FreightSansPro Book', sans-serif;
+  }
+
+  .site-nav a {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+  .site-nav a:hover {
+    color: var(--color-accent);
+  }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    min-height: 60vh;
+  }
+
+  .site-footer {
+    text-align: center;
+    padding: 2rem;
+    font-family: 'FreightSansPro Book', sans-serif;
+    font-size: 0.85rem;
+    opacity: 0.7;
+  }
+</style>

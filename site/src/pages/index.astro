@@ -1,17 +1,16 @@
 ---
-
+import Layout from '../layouts/Layout.astro';
+const base = import.meta.env.BASE_URL;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="Home">
+  <h1>Welcome to Tourney Balance</h1>
+  <p>
+    Tourney Balance is a competitive balance mod for Warhammer: Vermintide 2,
+    maintained for the tournament and modded scene. This site documents the
+    mod's patch history and how its balance changes differ from official.
+  </p>
+  <p>
+    <a href={`${base}patch-notes/`}>Read the Patch Notes →</a>
+  </p>
+</Layout>
