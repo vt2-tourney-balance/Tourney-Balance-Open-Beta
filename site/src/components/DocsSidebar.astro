@@ -1,0 +1,191 @@
+---
+import { getSortedDocs } from '../lib/docs';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  activeSlug?: string;
+  activeHeadings?: Heading[];
+}
+const { activeSlug, activeHeadings = [] } = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const docs = await getSortedDocs();
+// Only show h2/h3 in the nested list — skip a stray h1 and anything deeper.
+const subHeadings = activeHeadings.filter((h) => h.depth >= 2 && h.depth <= 3);
+---
+
+<div class="docs-sidebar-wrapper">
+  <button
+    type="button"
+    id="docs-sidebar-toggle"
+    class="docs-sidebar-toggle"
+    aria-expanded="true"
+    aria-controls="docs-sidebar"
+  >
+    ☰
+  </button>
+  <aside id="docs-sidebar" class="docs-sidebar">
+    <input
+      type="search"
+      id="docs-sidebar-search"
+      class="docs-sidebar-search"
+      placeholder="Search documentation..."
+      aria-label="Search documentation"
+    />
+    <ul class="docs-sidebar-list" id="docs-sidebar-list">
+      {
+        docs.map(({ entry, slug }) => (
+          <li>
+            <a
+              href={`${base}documentation/${slug}/`}
+              class={slug === activeSlug ? 'active' : ''}
+              data-title={entry.data.title.toLowerCase()}
+              data-body={(entry.body ?? '').toLowerCase()}
+            >
+              {entry.data.title}
+            </a>
+            {slug === activeSlug && subHeadings.length > 0 && (
+              <ul class="docs-sidebar-subheadings">
+                {subHeadings.map((h) => (
+                  <li class={`depth-${h.depth}`}>
+                    <a href={`#${h.slug}`}>{h.text}</a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))
+      }
+    </ul>
+  </aside>
+</div>
+
+<script>
+  const toggle = document.getElementById('docs-sidebar-toggle');
+  const wrapper = toggle?.closest('.docs-sidebar-wrapper');
+
+  toggle?.addEventListener('click', () => {
+    const collapsed = wrapper?.classList.toggle('collapsed');
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  });
+
+  const search = document.getElementById('docs-sidebar-search') as HTMLInputElement | null;
+  const items = document.querySelectorAll<HTMLLIElement>('#docs-sidebar-list > li');
+
+  search?.addEventListener('input', () => {
+    const query = search.value.trim().toLowerCase();
+    items.forEach((item) => {
+      const link = item.querySelector('a');
+      const title = link?.getAttribute('data-title') ?? '';
+      const body = link?.getAttribute('data-body') ?? '';
+      const matches = !query || title.includes(query) || body.includes(query);
+      item.style.display = matches ? '' : 'none';
+    });
+  });
+</script>
+
+<style>
+  .docs-sidebar-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .docs-sidebar-toggle {
+    background: none;
+    border: 1px solid #333;
+    color: var(--color-text);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .docs-sidebar-toggle:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .docs-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition:
+      width 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  .docs-sidebar-wrapper.collapsed .docs-sidebar {
+    width: 0;
+    opacity: 0;
+  }
+
+  .docs-sidebar-search {
+    width: 100%;
+    box-sizing: border-box;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: var(--color-text);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+  }
+  .docs-sidebar-search:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .docs-sidebar-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+
+  .docs-sidebar-list > li {
+    margin-bottom: 0.15rem;
+  }
+
+  .docs-sidebar-list > li > a {
+    display: block;
+    padding: 0.5rem 0.4rem;
+    text-decoration: none;
+    color: var(--color-text);
+    border-radius: 4px;
+  }
+  .docs-sidebar-list > li > a:hover {
+    background: #1a1a1a;
+  }
+  .docs-sidebar-list > li > a.active {
+    color: var(--color-accent);
+    background: #1a1a1a;
+  }
+
+  .docs-sidebar-subheadings {
+    list-style: none;
+    margin: 0.15rem 0 0.4rem;
+    padding: 0;
+    border-left: 1px solid #333;
+  }
+  .docs-sidebar-subheadings li a {
+    display: block;
+    padding: 0.3rem 0.4rem 0.3rem 0.8rem;
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: var(--color-text);
+    opacity: 0.8;
+  }
+  .docs-sidebar-subheadings li a:hover {
+    opacity: 1;
+    color: var(--color-accent);
+  }
+  .docs-sidebar-subheadings li.depth-3 a {
+    padding-left: 1.5rem;
+  }
+</style>

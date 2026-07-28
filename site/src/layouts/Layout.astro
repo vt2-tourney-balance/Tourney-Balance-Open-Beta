@@ -2,6 +2,22 @@
 const base = import.meta.env.BASE_URL;
 const logo = `${base}logo_tb_default.png`;
 
+// @font-face can't use CSS custom properties (define:vars) since it isn't
+// tied to any element for var() to resolve against — build the base-prefixed
+// paths as plain strings instead and inject as raw, unscoped CSS below.
+const fontFaceCSS = `
+  @font-face {
+    font-family: 'Caslon Antique';
+    src: url('${base}fonts/CaslonAntique/CaslonAntique.ttf') format('truetype');
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Tiepolo';
+    src: url('${base}fonts/Tiepolo/Tiepolo.ttf') format('truetype');
+    font-display: swap;
+  }
+`;
+
 interface Props {
   title: string;
 }
@@ -36,6 +52,8 @@ const { title } = Astro.props;
   </body>
 </html>
 
+<style set:html={fontFaceCSS}></style>
+
 <style>
   :global(:root) {
     --color-bg: #121212;
@@ -54,12 +72,14 @@ const { title } = Astro.props;
     margin: 0;
     background: var(--color-bg);
     color: var(--color-text);
+    font-family: 'Tiepolo', serif;
     line-height: 1.6;
   }
 
   :global(h1),
   :global(h2),
   :global(h3) {
+    font-family: 'Caslon Antique', serif;
     color: var(--color-accent);
   }
 

@@ -10,4 +10,12 @@ const patchNotes = defineCollection({
   }),
 });
 
-export const collections = { patchNotes };
+const docs = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/docs' }),
+  schema: z.object({
+    title: z.string(),
+    order: z.number().default(0),
+  }),
+});
+
+export const collections = { patchNotes, docs };
