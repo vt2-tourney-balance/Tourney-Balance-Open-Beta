@@ -20,8 +20,9 @@ const fontFaceCSS = `
 
 interface Props {
   title: string;
+  fullBleed?: boolean;
 }
-const { title } = Astro.props;
+const { title, fullBleed = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -43,7 +44,7 @@ const { title } = Astro.props;
         <a href={`${base}documentation/`}>Documentation</a>
       </nav>
     </header>
-    <main>
+    <main class={fullBleed ? 'full-bleed' : ''}>
       <slot />
     </main>
     <footer class="site-footer">
@@ -137,10 +138,22 @@ const { title } = Astro.props;
     min-height: 60vh;
   }
 
+  /* Used for pages with their own full-bleed hero content, so it can butt
+     up flush against the header/footer with no transparent padding gap
+     revealing whatever sits behind (e.g. the homepage's fixed hero video). */
+  main.full-bleed {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
   .site-footer {
     text-align: center;
     padding: 2rem;
     font-size: 0.85rem;
+    background: rgba(18, 18, 18, 0.7);
+  }
+
+  .site-footer p {
     opacity: 0.7;
   }
 </style>
