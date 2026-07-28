@@ -1,10 +1,5 @@
 ---
 const base = import.meta.env.BASE_URL;
-const caslonBold = `${base}fonts/CaslonAntique/CaslonAntique-Bold.ttf`;
-const tiepolo = `${base}fonts/Tiepolo/Tiepolo.ttf`;
-const tiepoloItalic = `${base}fonts/Tiepolo/Tiepolo-Italic.ttf`;
-const tiepoloBold = `${base}fonts/Tiepolo/Tiepolo-Bold.ttf`;
-const freightBook = `${base}fonts/FreightSansPro/FreightSansPro-Book.ttf`;
 const logo = `${base}logo_tb_default.png`;
 
 interface Props {
@@ -41,53 +36,30 @@ const { title } = Astro.props;
   </body>
 </html>
 
-<style define:vars={{ caslonBold, tiepolo, tiepoloItalic, tiepoloBold, freightBook }}>
-  @font-face {
-    font-family: 'Caslon Antique Bold';
-    src: url(var(--caslonBold)) format('truetype');
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'Tiepolo';
-    src: url(var(--tiepolo)) format('truetype');
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'Tiepolo';
-    src: url(var(--tiepoloItalic)) format('truetype');
-    font-style: italic;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'Tiepolo';
-    src: url(var(--tiepoloBold)) format('truetype');
-    font-weight: bold;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'FreightSansPro Book';
-    src: url(var(--freightBook)) format('truetype');
-    font-display: swap;
-  }
-
+<style>
   :global(:root) {
     --color-bg: #121212;
     --color-text: #dfdfdf;
     --color-accent: #e69e00;
   }
 
+  :global(html) {
+    /* Reserves the scrollbar's width permanently, so pages with and without
+       a scrollbar don't shift the content width when navigating between them. */
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
+
   :global(body) {
     margin: 0;
     background: var(--color-bg);
     color: var(--color-text);
-    font-family: 'Tiepolo', serif;
     line-height: 1.6;
   }
 
   :global(h1),
   :global(h2),
   :global(h3) {
-    font-family: 'Caslon Antique Bold', serif;
     color: var(--color-accent);
   }
 
@@ -97,7 +69,6 @@ const { title } = Astro.props;
 
   :global(details summary) {
     cursor: pointer;
-    font-family: 'FreightSansPro Book', sans-serif;
     color: var(--color-accent);
   }
 
@@ -110,14 +81,13 @@ const { title } = Astro.props;
   }
 
   .logo {
-    height: 64px;
+    height: 80px;
     display: block;
   }
 
   .site-nav {
     display: flex;
     gap: 1.5rem;
-    font-family: 'FreightSansPro Book', sans-serif;
   }
 
   .site-nav a {
@@ -129,7 +99,7 @@ const { title } = Astro.props;
   }
 
   main {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 2rem;
     min-height: 60vh;
@@ -138,7 +108,6 @@ const { title } = Astro.props;
   .site-footer {
     text-align: center;
     padding: 2rem;
-    font-family: 'FreightSansPro Book', sans-serif;
     font-size: 0.85rem;
     opacity: 0.7;
   }

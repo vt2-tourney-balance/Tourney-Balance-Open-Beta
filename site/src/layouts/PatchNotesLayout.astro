@@ -1,0 +1,31 @@
+---
+import Layout from './Layout.astro';
+import PatchNotesSidebar from '../components/PatchNotesSidebar.astro';
+
+interface Props {
+  title: string;
+  activeSlug?: string;
+}
+const { title, activeSlug } = Astro.props;
+---
+
+<Layout title={title}>
+  <div class="patch-layout">
+    <PatchNotesSidebar activeSlug={activeSlug} />
+    <div class="patch-main">
+      <slot />
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .patch-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+  .patch-main {
+    flex: 1;
+    min-width: 0;
+  }
+</style>

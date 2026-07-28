@@ -1,0 +1,162 @@
+---
+import { getSortedPatchNotes } from '../lib/patchNotes';
+
+interface Props {
+  activeSlug?: string;
+}
+const { activeSlug } = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const notes = await getSortedPatchNotes();
+---
+
+<div class="patch-sidebar-wrapper">
+  <button
+    type="button"
+    id="patch-sidebar-toggle"
+    class="patch-sidebar-toggle"
+    aria-expanded="true"
+    aria-controls="patch-sidebar"
+  >
+    ☰
+  </button>
+  <aside id="patch-sidebar" class="patch-sidebar">
+    <input
+      type="search"
+      id="patch-sidebar-search"
+      class="patch-sidebar-search"
+      placeholder="Search patch notes..."
+      aria-label="Search patch notes"
+    />
+    <ul class="patch-sidebar-list" id="patch-sidebar-list">
+      {
+        notes.map(({ entry, slug }) => (
+          <li>
+            <a
+              href={`${base}patch-notes/${slug}/`}
+              class={slug === activeSlug ? 'active' : ''}
+              data-title={entry.data.title.toLowerCase()}
+              data-body={(entry.body ?? '').toLowerCase()}
+            >
+              <span class="patch-sidebar-item-title">{entry.data.title}</span>
+              <span class="patch-sidebar-item-date">
+                {entry.data.date.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </aside>
+</div>
+
+<script>
+  const toggle = document.getElementById('patch-sidebar-toggle');
+  const wrapper = toggle?.closest('.patch-sidebar-wrapper');
+
+  toggle?.addEventListener('click', () => {
+    const collapsed = wrapper?.classList.toggle('collapsed');
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  });
+
+  const search = document.getElementById('patch-sidebar-search') as HTMLInputElement | null;
+  const items = document.querySelectorAll<HTMLLIElement>('#patch-sidebar-list li');
+
+  search?.addEventListener('input', () => {
+    const query = search.value.trim().toLowerCase();
+    items.forEach((item) => {
+      const link = item.querySelector('a');
+      const title = link?.getAttribute('data-title') ?? '';
+      const body = link?.getAttribute('data-body') ?? '';
+      const matches = !query || title.includes(query) || body.includes(query);
+      item.style.display = matches ? '' : 'none';
+    });
+  });
+</script>
+
+<style>
+  .patch-sidebar-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .patch-sidebar-toggle {
+    background: none;
+    border: 1px solid #333;
+    color: var(--color-text);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .patch-sidebar-toggle:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .patch-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition:
+      width 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  .patch-sidebar-wrapper.collapsed .patch-sidebar {
+    width: 0;
+    opacity: 0;
+  }
+
+  .patch-sidebar-search {
+    width: 100%;
+    box-sizing: border-box;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: var(--color-text);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+  }
+  .patch-sidebar-search:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .patch-sidebar-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .patch-sidebar-list a {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.4rem;
+    text-decoration: none;
+    color: var(--color-text);
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .patch-sidebar-list a:hover {
+    background: #1a1a1a;
+  }
+  .patch-sidebar-list a.active {
+    color: var(--color-accent);
+    background: #1a1a1a;
+  }
+
+  .patch-sidebar-item-date {
+    opacity: 0.6;
+    font-size: 0.8rem;
+  }
+</style>
