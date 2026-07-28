@@ -1,6 +1,6 @@
 ---
 const base = import.meta.env.BASE_URL;
-const logo = `${base}logo_tb_default.png`;
+const logo = `${base}logo_vt2.png`;
 
 // @font-face can't use CSS custom properties (define:vars) since it isn't
 // tied to any element for var() to resolve against — build the base-prefixed
@@ -47,7 +47,7 @@ const { title } = Astro.props;
       <slot />
     </main>
     <footer class="site-footer">
-      <p>Tourney Balance — a competitive balance mod for Warhammer: Vermintide 2.</p>
+      <p>Tourney Balance is a balance mod for Warhammer: Vermintide 2 and is not affiliated with Games Workshop or Fatshark.</p>
     </footer>
   </body>
 </html>
@@ -59,6 +59,7 @@ const { title } = Astro.props;
     --color-bg: #121212;
     --color-text: #dfdfdf;
     --color-accent: #e69e00;
+    --header-height: 72px;
   }
 
   :global(html) {
@@ -98,11 +99,22 @@ const { title } = Astro.props;
     justify-content: space-between;
     padding: 1rem 2rem;
     border-bottom: 2px solid var(--color-accent);
+    background: rgba(18, 18, 18, 0.7);
+    box-sizing: border-box;
+    height: var(--header-height);
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   .logo {
-    height: 80px;
+    height: 32px;
     display: block;
+    transition: filter 0.2s ease;
+  }
+
+  .logo-link:hover .logo {
+    filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #fff);
   }
 
   .site-nav {

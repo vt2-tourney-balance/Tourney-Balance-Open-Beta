@@ -94,6 +94,11 @@ const subHeadings = activeHeadings.filter((h) => h.depth >= 2 && h.depth <= 3);
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
+    position: sticky;
+    /* Matches where it naturally sat before (below the header plus main's
+       own top padding), rather than snapping flush to the header. */
+    top: calc(var(--header-height) + 2rem);
+    z-index: 5;
   }
 
   .docs-sidebar-toggle {
