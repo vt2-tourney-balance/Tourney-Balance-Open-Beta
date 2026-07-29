@@ -4494,7 +4494,7 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
 	armor_modifier = {
 		attack = {
 			0.93, -- 1		
-			0.19, -- 0.25
+			0.19, -- 0.25, 0.2
 			2,
 			1,
 			0.5 -- 0.6		
@@ -4509,7 +4509,7 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
 	},
 	critical_strike = {
 		attack_armor_power_modifer = {
-			0.035, -- 1
+			1.08, -- 1
 			0.13, -- 0.5
 			2.5,
 			1,
