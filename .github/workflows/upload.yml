@@ -39,7 +39,7 @@ jobs:
           STEAM_TOTP: ${{ steps.steam_totp.outputs.code }} 
         run: |
           # 1. Dynamically set file and folder names based on the current repository
-          if ($env:GITHUB_REPOSITORY -eq "exquilibrium/Tourney-Balance-Open-Beta") {
+          if ($env:GITHUB_REPOSITORY -eq "vt2-tourney-balance/Tourney-Balance-Open-Beta") {
               $cfgFile      = "itemV2-Open-Beta.cfg"
               $bundleFolder = "bundleV2-Open-Beta"
               Write-Host "Running in Open-Beta environment..."

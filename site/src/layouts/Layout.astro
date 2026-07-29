@@ -1,0 +1,310 @@
+---
+const base = import.meta.env.BASE_URL;
+const logo = `${base}logo_vt2.png`;
+
+// @font-face can't use CSS custom properties (define:vars) since it isn't
+// tied to any element for var() to resolve against — build the base-prefixed
+// paths as plain strings instead and inject as raw, unscoped CSS below.
+const fontFaceCSS = `
+  @font-face {
+    font-family: 'Caslon Antique';
+    src: url('${base}fonts/CaslonAntique/CaslonAntique.ttf') format('truetype');
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Tiepolo';
+    src: url('${base}fonts/Tiepolo/Tiepolo.ttf') format('truetype');
+    font-display: swap;
+  }
+`;
+
+interface Props {
+  title: string;
+  fullBleed?: boolean;
+}
+const { title, fullBleed = false } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href={`${base}favicon.ico`} />
+    <title>{title} — Tourney Balance</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href={base} class="logo-link">
+        <img src={logo} alt="Tourney Balance" class="logo" />
+      </a>
+      <button
+        type="button"
+        id="nav-toggle"
+        class="nav-toggle"
+        aria-expanded="false"
+        aria-controls="site-nav"
+        aria-label="Toggle navigation menu"
+      >
+        ☰
+      </button>
+
+      <nav class="site-nav" id="site-nav">
+        <a href={`${base}changes/`}>Balance Changes</a>
+        <a href={`${base}patch-notes/`}>Patch Notes</a>
+        <a href={`${base}documentation/`}>Documentation</a>
+        <a href="https://miro.com/app/board/uXjVHZWgcfU=/">Miro Board ↗</a>
+        <a href="https://github.com/vt2-tourney-balance/Tourney-Balance-Open-Beta" class="logo-link">
+          <img src={`${base}logo_github.png`} alt="GitHub" class="logo-gh" />
+        </a>
+      </nav>
+    </header>
+    <main class={fullBleed ? 'full-bleed' : ''}>
+      <slot />
+    </main>
+    <script>
+      function openLightbox(src: string, alt: string) {
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = alt;
+        overlay.appendChild(img);
+
+        const close = () => {
+          overlay.remove();
+          document.removeEventListener('keydown', onKey);
+        };
+        function onKey(e: KeyboardEvent) {
+          if (e.key === 'Escape') close();
+        }
+
+        overlay.addEventListener('click', close);
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(overlay);
+      }
+
+      document.querySelectorAll<HTMLImageElement>('main img:not(.hero-logo)').forEach((img) => {
+        img.classList.add('zoomable');
+        img.addEventListener('click', () => openLightbox(img.src, img.alt));
+      });
+
+      const navToggle = document.getElementById('nav-toggle');
+      const siteNav = document.getElementById('site-nav');
+
+      navToggle?.addEventListener('click', () => {
+        const isOpen = siteNav?.classList.toggle('nav-open');
+        navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+
+      siteNav?.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => {
+          siteNav.classList.remove('nav-open');
+          navToggle?.setAttribute('aria-expanded', 'false');
+        });
+      });
+    </script>
+
+    <footer class="site-footer">
+      <p>Tourney Balance is not affiliated with Fatshark or Games Workshop.</p>
+    </footer>
+  </body>
+</html>
+
+<style set:html={fontFaceCSS}></style>
+
+<style>
+  :global(:root) {
+    --color-bg: #121212;
+    --color-text: #dfdfdf;
+    --color-accent: #e69e00;
+    --header-height: 72px;
+  }
+
+  :global(html) {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
+
+  :global(body) {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Tiepolo', serif;
+    line-height: 1.6;
+  }
+
+  :global(h1),
+  :global(h2),
+  :global(h3) {
+    font-family: 'Caslon Antique', serif;
+    color: var(--color-accent);
+  }
+
+  :global(a) {
+    color: var(--color-accent);
+  }
+
+  :global(details summary) {
+    cursor: pointer;
+    color: var(--color-accent);
+  }
+
+  :global(main img) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  :global(main em) {
+    opacity: 0.67;
+  }
+
+  :global(main table) {
+    border-collapse: collapse;
+    margin: 1rem 0;
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  :global(main th),
+  :global(main td) {
+    border: 1px solid #fff;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+
+  :global(main img.zoomable) {
+    cursor: zoom-in;
+  }
+
+  :global(.lightbox-overlay) {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: zoom-out;
+  }
+
+  :global(.lightbox-overlay img) {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 2px solid var(--color-accent);
+    background: rgba(18, 18, 18, 0.9);
+    box-sizing: border-box;
+    height: var(--header-height);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    height: 32px;
+    display: block;
+    transition: filter 0.2s ease;
+  }
+  
+  .logo-gh {
+    height: 24px;
+    display: block;
+    transition: filter 0.2s ease;
+  }
+
+  .logo-link:hover .logo,
+  .logo-link:hover .logo-gh {
+    filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #fff);
+  }
+
+  .site-nav {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .site-nav a {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+  .site-nav a:hover {
+    color: var(--color-accent);
+  }
+
+  .nav-toggle {
+    display: none;
+    background: none;
+    border: 1px solid #333;
+    color: var(--color-text);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+  .nav-toggle:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  @media (max-width: 768px) {
+    .nav-toggle {
+      display: block;
+    }
+
+    .site-nav {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      background: rgba(18, 18, 18, 0.95);
+      border-bottom: 2px solid var(--color-accent);
+      padding: 0.5rem 2rem 1rem;
+    }
+
+    .site-nav.nav-open {
+      display: flex;
+    }
+
+    .site-nav a {
+      padding: 0.75rem 0;
+      width: 100%;
+    }
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+    min-height: 60vh;
+  }
+
+  main.full-bleed {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .site-footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 0.85rem;
+    background: rgba(18, 18, 18, 0.7);
+  }
+
+  .site-footer p {
+    opacity: 0.7;
+  }
+</style>

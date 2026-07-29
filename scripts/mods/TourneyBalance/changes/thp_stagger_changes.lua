@@ -152,6 +152,21 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 			just_died = true
 		end
 		DamageUtils.add_damage_network_player(damage_profile, target_index, attack_power_level, target_unit, attacker_unit, hit_zone_name, hit_position, attack_direction, damage_source, hit_ragdoll_actor, boost_curve_multiplier, is_critical_strike, added_dot, first_hit, total_hits, backstab_multiplier, source_attacker_unit)
+
+		local is_direct_hit = not (damage_profile and (damage_profile.is_dot or damage_profile.is_explosion))
+		local mainstay_item_data = rawget(ItemMasterList, damage_source)
+		local mainstay_weapon_template_name = mainstay_item_data and mainstay_item_data.template
+		local mainstay_weapon_template = mainstay_weapon_template_name and Weapons[mainstay_weapon_template_name]
+		local mainstay_buff_type = mainstay_weapon_template and mainstay_weapon_template.buff_type
+		local is_melee_hit = mainstay_buff_type == "MELEE_1H" or mainstay_buff_type == "MELEE_2H"
+
+		if is_direct_hit and is_melee_hit and buff_extension and buff_extension:has_buff_perk("linesman_stagger_damage") then
+			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
+
+			if target_buff_extension then
+				target_buff_extension:add_buff("rebaltourn_mainstay_stagger_mark_buff")
+			end
+		end
 	elseif shield_breaking_hit then
 		local shield_extension = ScriptUnit.has_extension(target_unit, "ai_shield_system")
 
@@ -185,11 +200,12 @@ local function apply_buffs_to_stagger_damage(attacker_unit, target_unit, target_
 	if attacker_buff_extension then
 		local finesse_perk = attacker_buff_extension:has_buff_perk("finesse_stagger_damage")
 		local smiter_perk = attacker_buff_extension:has_buff_perk("smiter_stagger_damage")
-		local mainstay_perk = attacker_buff_extension:has_buff_perk("linesman_stagger_damage")
-
-		if mainstay_perk and new_stagger_number > 0 then
-			new_stagger_number = new_stagger_number + 1
-		elseif (hit_zone == "head" or hit_zone == "neck") and finesse_perk then
+		
+		--local mainstay_perk = attacker_buff_extension:has_buff_perk("linesman_stagger_damage")
+		--if mainstay_perk and new_stagger_number > 0 then
+		--	new_stagger_number = new_stagger_number + 1
+		--else	
+		if (hit_zone == "head" or hit_zone == "neck") and finesse_perk then
 			new_stagger_number = 2
 		elseif smiter_perk then
 			if target_index and target_index <= 1 then
@@ -557,12 +573,21 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 				stagger_number = math.max(stagger_number_override, stagger_number)
 			end
 
+			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
+
+			if target_buff_extension and target_index and target_index <= 5 then
+				stagger_number = target_buff_extension:apply_buffs_to_value(stagger_number, "dummy_stagger") -- Apply mainstay stagger, first 5 enemies hit only
+			end
+
 			if not damage_profile.no_stagger_damage_reduction_ranged then
 				stagger_number = apply_buffs_to_stagger_damage(attacker_unit, target_unit, target_index, hit_zone_name, is_critical_strike, stagger_number)
 			end
 		elseif dummy_unit_armor then
 			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
-			stagger_number = target_buff_extension:apply_buffs_to_value(0, "dummy_stagger")
+
+			if target_buff_extension and target_index and target_index <= 5 then
+				stagger_number = target_buff_extension:apply_buffs_to_value(0, "dummy_stagger") -- Apply mainstay stagger, first 5 enemies hit only
+			end
 
 			if damage_profile.no_stagger_damage_reduction_ranged then
 				local stagger_number_override = 1
@@ -574,8 +599,11 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 			end
 		end
 
+		stagger_number = math.min(stagger_number, 2) -- Mainstay cap
+
 		local min_stagger_damage_coefficient = difficulty_settings.min_stagger_damage_coefficient
-		local stagger_damage_multiplier = difficulty_settings.stagger_damage_multiplier
+		--local stagger_damage_multiplier = difficulty_settings.stagger_damage_multiplier
+		local stagger_damage_multiplier = 0.2 -- fixed 20% per stagger count (1/2 -> 20%/40%), regardless of difficulty_settings.stagger_damage_multiplier
 
 		if stagger_damage_multiplier then
 			local bonus_damage_percentage = stagger_number * stagger_damage_multiplier
@@ -605,6 +633,27 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 		end
 	end
 
+	-- Templar's Knowledge/I Shall Judge You All
+	if calculated_damage and calculated_damage > 0 and attacker_unit and target_unit then
+		local attacker_talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
+
+		if attacker_talent_extension and attacker_talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping") then
+			local is_direct_hit = not (damage_profile and (damage_profile.is_dot or damage_profile.is_explosion))
+			if is_direct_hit then
+				local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
+				-- Templars Knowledge
+				if target_buff_extension and target_buff_extension:has_buff_type("defence_debuff_enemies") and not (breed and breed.boss) then
+					calculated_damage = calculated_damage * 1.25
+				end
+				--[[ I Shall Judge You All Passive
+				if target_buff_extension and attacker_talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") and not (breed and (breed.elite or breed.special)) then
+					calculated_damage = calculated_damage * 1.25
+				end
+				]]
+			end
+		end
+	end
+	
 	return calculated_damage
 end)
 
@@ -665,6 +714,7 @@ function mod.modify_talent(self, career_name, tier, index, new_talent_data)
 end
 
 local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
+local stagger_types = require("scripts/utils/stagger_types")
 
 --[[
 
@@ -826,9 +876,10 @@ mod:add_buff_template("rebaltourn_power_level_unbalance", {
 mod:add_proc_function("rebaltourn_unbalance_debuff_on_stagger", function (owner_unit, buff, params)
 	local hit_unit = params[1]
 	local is_dummy = Unit.get_data(hit_unit, "is_dummy")
-	local buff_type = params[7]
+	--local stagger_type = params[4]
+	--local buff_type = params[7]
 
-	if Unit.alive(owner_unit) and (is_dummy or Unit.alive(hit_unit)) and buff_type == "MELEE_1H" or buff_type == "MELEE_2H" then
+	if Unit.alive(owner_unit) and (is_dummy or Unit.alive(hit_unit)) then --and (buff_type == "MELEE_1H" or buff_type == "MELEE_2H" or stagger_type == stagger_types.explosion) then
 		local buff_extension = ScriptUnit.extension(hit_unit, "buff_system")
 
 		if buff_extension then
@@ -842,21 +893,37 @@ mod:add_buff_template("rebaltourn_tank_unbalance", {
 	event_buff = true,
 	buff_func = "rebaltourn_unbalance_debuff_on_stagger",
 	event = "on_stagger",
-	display_multiplier = 0.2
+	display_multiplier = 0.2,
+	stat_buff = "power_level_impact",
+	multiplier = 0.10
 })
-mod:add_buff_template("rebaltourn_tank_unbalance_buff", {
+mod:add_buff_template("rebaltourn_tank_unbalance_buff", { -- Bulwark
 	refresh_durations = true,
 	name = "tank_unbalance_buff",
 	stat_buff = "unbalanced_damage_taken",
 	max_stacks = 1,
-	duration = 5,
-	bonus = 0.15,
+	duration = 10,
+	bonus = 0.10,
+})
+mod:add_buff_template("rebaltourn_mainstay_stagger_mark_buff", { -- Mainstay
+	refresh_durations = true,
+	name = "mainstay_stagger_mark_buff",
+	stat_buff = "dummy_stagger",
+	max_stacks = 2,
+	duration = 2,
+	bonus = 1,
 })
 mod:add_buff_template("rebaltourn_finesse_unbalance", {
 	max_display_multiplier = 0.4,
 	name = "finesse_unbalance",
 	display_multiplier = 0.2,
 	perks = { buff_perks.finesse_stagger_damage }
+})
+mod:add_buff_template("rebaltourn_linesman_unbalance", {
+	max_display_multiplier = 0.6,
+	name = "linesman_unbalance",
+	display_multiplier = 0.4,
+	perks = { buff_perks.linesman_stagger_damage }
 })
 
 --[[
@@ -872,311 +939,83 @@ mod:add_text("regrowth_name", "Sting") -- Crit Sting
 mod:add_text("rebaltourn_regrowth_desc", "Melee critical strikes gives you 1.5 temporary health and melee headshots restore 3 temporary health. Melee critical headshots restore 4.5 temporary health.")
 
 mod:add_text("smiter_name", "Smiter")
-mod:add_text("enhanced_power_name", "Enhanced Power")
+mod:add_text("rebaltourn_smiter_unbalance_desc", 	"The first enemy hit always counts as staggered.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
 mod:add_text("assassin_name", "Assassin")
+mod:add_text("rebaltourn_finesse_unbalance_desc", 	"Headshots inflict 40% bonus damage.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
 mod:add_text("bulwark_name", "Bulwark")
-mod:add_text("rebaltourn_tank_unbalance_desc", "When you stagger an enemy they take 15% more damage from all sources for 5 seconds.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
-mod:add_text("rebaltourn_finesse_unbalance_desc", "Deal 20%% more damage to staggered enemies.\n\nEach hit against a staggered enemy adds another count of stagger. Headshots instead inflict 40%% bonus damage, as do strikes against enemies afflicted by more than one stagger effect.")
+mod:add_text("rebaltourn_tank_unbalance_desc", 		"Gain 10% stagger power. Enemies that you stagger with any attack take 10% more damage from all sources for 10 seconds.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
+mod:add_text("mainstay_name", "Mainstay")
+mod:add_text("rebaltourn_linesman_unbalance_desc", 	"Melee hits against the first 5 enemy add another count of stagger for 2s.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
+mod:add_text("enhanced_power_name", "Enhanced Power")
 
 -- Replacing THP & Stagger Talents
-local talent_first_row = {
-	{
-		"es_knight",
-		"dr_ranger",
-		"dr_engineer",
-		"wh_priest",
-		"bw_unchained",
+local VANGUARD = 1
+local REAPER = 2
+local BLOODLUST = 3
+local REGROWTH = 4
+local THP_TALENT_OPTIONS = {
+	[VANGUARD] = {
+		display_name = "vanguard_name",
+		description = "vanguard_desc",
+		buffs = { "rebaltourn_vanguard" },
 	},
-	{
-		"es_mercenary",
-		"wh_zealot",
+	[REAPER] = {
+		display_name = "reaper_name",
+		description = "reaper_desc",
+		buffs = { "rebaltourn_reaper" },
+		description_values = {
+			{
+				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
+			}
+		},
 	},
-	{
-		"es_huntsman",
-		"es_questingknight",
-		"dr_ironbreaker",
-		"bw_adept", -- bw
+	[BLOODLUST] = {
+		display_name = "bloodlust_name",
+		description = "bloodlust_desc_3",
+		buffs = { "rebaltourn_bloodlust" },
 	},
-	{
-		"dr_slayer",
-		"bw_scholar", -- pyro
-		"bw_necromancer"
-	},
-	{
-		"we_waywatcher",
-	},
-	{
-		"we_shade",
-		"we_thornsister",
-		"wh_bountyhunter",
-	},
-	{
-		"we_maidenguard",
-	},
-	{
-		"wh_captain",
+	[REGROWTH] = {
+		display_name = "regrowth_name",
+		description = "rebaltourn_regrowth_desc",
+		buffs = { "rebaltourn_regrowth" },
+		description_values = {},
 	},
 }
+-- career_name, talent 1-1, talent 1-2, talent 1-3
+local talent_first_row = {
+	{ "es_mercenary", 		REAPER, 	BLOODLUST, 	VANGUARD },
+	{ "es_huntsman", 		VANGUARD, 	BLOODLUST, 	REAPER },
+	{ "es_knight", 			VANGUARD, 	REAPER, 	BLOODLUST },
+	{ "es_questingknight", 	VANGUARD, 	BLOODLUST, 	REAPER },
 
--- Stagger | Cleave | Kill
--- Second Wind | Carve | Execute
-for i=1, #talent_first_row[1] do
-	local career = talent_first_row[1][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "vanguard_name",
-		description = "vanguard_desc",
-		buffs = {
-			"rebaltourn_vanguard"
-		}
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "bloodlust_name",
-		description = "bloodlust_desc_3",
-		buffs = {
-			"rebaltourn_bloodlust"
-		}
-	})
-end
+	{ "dr_ranger", 			VANGUARD, 	REAPER, 	BLOODLUST },
+	{ "dr_ironbreaker", 	VANGUARD, 	BLOODLUST, 	REAPER },
+	{ "dr_slayer", 			REAPER, 	BLOODLUST, 	REGROWTH },
+	{ "dr_engineer", 		VANGUARD, 	REAPER, 	BLOODLUST },
 
--- Cleave | Kill | Stagger
--- Carve | Execute | Second Wind
-for i=1, #talent_first_row[2] do
-	local career = talent_first_row[2][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "bloodlust_name",
-		description = "bloodlust_desc_3",
-		buffs = {
-			"rebaltourn_bloodlust"
-		}
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "vanguard_name",
-		description = "vanguard_desc",
-		buffs = {
-			"rebaltourn_vanguard"
-		}
-	})
-end
+	{ "we_waywatcher", 		REGROWTH, 	REAPER, 	BLOODLUST },
+	{ "we_maidenguard", 	REAPER, 	REGROWTH, 	VANGUARD }, -- Bloodlust > Regrowth
+	{ "we_shade", 			REGROWTH, 	BLOODLUST, 	REAPER },
+	{ "we_thornsister", 	REGROWTH, 	BLOODLUST, 	REAPER },
 
--- Stagger | Kill | Cleave
--- Second Wind | Execute | Carve
-for i=1, #talent_first_row[3] do
-	local career = talent_first_row[3][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "vanguard_name",
-		description = "vanguard_desc",
-		buffs = {
-			"rebaltourn_vanguard"
-		}
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "bloodlust_name",
-		description = "bloodlust_desc_3",
-		buffs = {
-			"rebaltourn_bloodlust"
-		}
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-end
+	{ "wh_captain", 		REGROWTH, 	REAPER, 	BLOODLUST },
+	{ "wh_bountyhunter", 	REGROWTH, 	BLOODLUST, 	REAPER },
+	{ "wh_zealot", 			REAPER, 	BLOODLUST, 	VANGUARD },
+	{ "wh_priest", 			VANGUARD, 	REAPER, 	BLOODLUST },
 
--- Cleave | Kill | Crit
--- Carve | Execute | Sting
-for i=1, #talent_first_row[4] do
-	local career = talent_first_row[4][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "bloodlust_name",
-		description = "bloodlust_desc_3",
-		buffs = {
-			"rebaltourn_bloodlust"
-		}
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "regrowth_name",
-		description = "rebaltourn_regrowth_desc",
-		buffs = {
-			"rebaltourn_regrowth"
-		},
-		description_values = {},
-	})
-end
+	{ "bw_adept", 			VANGUARD, 	BLOODLUST, 	REAPER },
+	{ "bw_scholar", 		REAPER, 	BLOODLUST, 	REGROWTH },
+	{ "bw_unchained", 		VANGUARD, 	REAPER, 	BLOODLUST },
+	{ "bw_necromancer", 	REAPER, 	BLOODLUST, 	REGROWTH },
+}
 
--- Crit | Cleave | Kill
--- Sting | Carve | Execute
-for i=1, #talent_first_row[5] do
-	local career = talent_first_row[5][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "regrowth_name",
-		description = "rebaltourn_regrowth_desc",
-		buffs = {
-			"rebaltourn_regrowth"
-		},
-		description_values = {},
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "bloodlust_name",
-		description = "bloodlust_desc_3",
-		buffs = {
-			"rebaltourn_bloodlust"
-		}
-	})
-end
+for i = 1, #talent_first_row do
+	local entry = talent_first_row[i]
+	local career = entry[1]
 
--- Crit | Kill | Cleave
--- Sting | Execute | Carve
-for i=1, #talent_first_row[6] do
-	local career = talent_first_row[6][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "regrowth_name",
-		description = "rebaltourn_regrowth_desc",
-		buffs = {
-			"rebaltourn_regrowth"
-		},
-		description_values = {},
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "bloodlust_name",
-		description = "bloodlust_desc_3",
-		buffs = {
-			"rebaltourn_bloodlust"
-		}
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-end
-
--- Cleave | Crit | Stagger
--- Carve | Sting | Second Wind
-for i=1, #talent_first_row[7] do
-	local career = talent_first_row[7][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "regrowth_name",
-		description = "rebaltourn_regrowth_desc",
-		buffs = {
-			"rebaltourn_regrowth"
-		},
-		description_values = {},
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "vanguard_name",
-		description = "vanguard_desc",
-		buffs = {
-			"rebaltourn_vanguard"
-		}
-	})
-end
-
--- Crit | Cleave | Stagger
--- Sting | Carve | Second Wind
-for i=1, #talent_first_row[8] do
-	local career = talent_first_row[8][i]
-	mod:modify_talent(career, 1, 1, {
-		display_name = "regrowth_name",
-		description = "rebaltourn_regrowth_desc",
-		buffs = {
-			"rebaltourn_regrowth"
-		},
-		description_values = {},
-	})
-	mod:modify_talent(career, 1, 2, {
-		display_name = "reaper_name",
-		description = "reaper_desc",
-		buffs = {
-			"rebaltourn_reaper"
-		},
-		description_values = {
-			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
-			}
-		},
-	})
-	mod:modify_talent(career, 1, 3, {
-		display_name = "vanguard_name",
-		description = "vanguard_desc",
-		buffs = {
-			"rebaltourn_vanguard"
-		}
-	})
+	for slot = 1, 3 do
+		mod:modify_talent(career, 1, slot, THP_TALENT_OPTIONS[entry[slot + 1]])
+	end
 end
 
 --[[
@@ -1184,170 +1023,84 @@ end
 	Stagger Talents
 
 ]]
-local talent_third_row = {
-	{
-		"es_mercenary",
-		"es_huntsman",
-		"dr_ranger",
-		"dr_slayer",
-		"we_waywatcher",
-		"we_shade",
-		"we_thornsister",
-		"wh_captain",
-		"wh_bountyhunter",
-		"wh_zealot",
-		"bw_scholar",
-	},
-	{
-		"es_knight",
-		"dr_ironbreaker",
-		"dr_engineer",
-		"we_maidenguard",
-		"bw_adept",
-		"bw_unchained",
-		"wh_priest",
-		"bw_necromancer"
-	},
-	{
-		"es_questingknight",
-	},
-}
--- smiter - assassin - Enhanced Power
-for i=1, #talent_third_row[1] do
-	local career = talent_third_row[1][i]
-	mod:modify_talent(career, 3, 1, {
+local SMITER = 1
+local FINESSE = 2
+local TANK = 3
+local MAINSTAY = 4
+local ENHANCED_POWER = 5
+local TALENT_OPTIONS = {
+	[SMITER] = {
 		name = "smiter_name",
-		description = "smiter_unbalance_desc",
-		buffs = {
-			"rebaltourn_smiter_unbalance"
-		},
-		description_values = {
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_smiter_unbalance.buffs[1].display_multiplier
-			},
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_smiter_unbalance.buffs[1].max_display_multiplier
-			}
-		}
-	})
-	mod:modify_talent(career, 3, 2, {
+		description = "rebaltourn_smiter_unbalance_desc",
+		buffs = { "rebaltourn_smiter_unbalance" },
+		description_values = {},
+	},
+	[FINESSE] = {
 		name = "assassin_name",
 		description = "rebaltourn_finesse_unbalance_desc",
-		buffs = {
-			"rebaltourn_finesse_unbalance"
-		},
-		description_values = {
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_tank_unbalance.buffs[1].display_multiplier
-			},
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_tank_unbalance.buffs[1].max_display_multiplier
-			}
-		}
-	})
-	mod:modify_talent(career, 3, 3, {
-		name = "enhanced_power_name",
-		description = "power_level_unbalance_desc",
-		buffs = {
-			"rebaltourn_power_level_unbalance"
-		},
-		description_values = {
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_power_level_unbalance.buffs[1].multiplier
-			}
-		}
-	})
-end
--- Smiter - Bulwark - Enhanced Power
-for i=1, #talent_third_row[2] do
-	local career = talent_third_row[2][i]
-	mod:modify_talent(career, 3, 1, {
-		name = "smiter_name",
-		description = "smiter_unbalance_desc",
-		buffs = {
-			"rebaltourn_smiter_unbalance"
-		},
-		description_values = {
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_smiter_unbalance.buffs[1].display_multiplier
-			},
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_smiter_unbalance.buffs[1].max_display_multiplier
-			}
-		}
-	})
-	mod:modify_talent(career, 3, 2, {
+		buffs = { "rebaltourn_finesse_unbalance" },
+		description_values = {},
+	},
+	[TANK] = {
 		name = "bulwark_name",
 		description = "rebaltourn_tank_unbalance_desc",
-		buffs = {
-			"rebaltourn_tank_unbalance"
-		},
+		buffs = { "rebaltourn_tank_unbalance" },
 		description_values = {},
-	})
-	mod:modify_talent(career, 3, 3, {
+	},
+	[MAINSTAY] = {
+		name = "mainstay_name",
+		description = "rebaltourn_linesman_unbalance_desc",
+		buffs = { "rebaltourn_linesman_unbalance" },
+		description_values = {},
+	},
+	[ENHANCED_POWER] = {
 		name = "enhanced_power_name",
 		description = "power_level_unbalance_desc",
-		buffs = {
-			"rebaltourn_power_level_unbalance"
-		},
+		buffs = { "rebaltourn_power_level_unbalance" },
 		description_values = {
 			{
 				value_type = "percent",
 				value = BuffTemplates.rebaltourn_power_level_unbalance.buffs[1].multiplier
 			}
-		}
-	})
-end
--- Bulwark - Smiter - Enhanced Power
-for i=1, #talent_third_row[3] do
-	local career = talent_third_row[3][i]
-	mod:modify_talent(career, 3, 1, {
-		name = "bulwark_name",
-		description = "rebaltourn_tank_unbalance_desc",
-		buffs = {
-			"rebaltourn_tank_unbalance"
 		},
-		description_values = {},
-	})
-	mod:modify_talent(career, 3, 2, {
-		name = "smiter_name",
-		description = "smiter_unbalance_desc",
-		buffs = {
-			"rebaltourn_smiter_unbalance"
-		},
-		description_values = {
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_smiter_unbalance.buffs[1].display_multiplier
-			},
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_smiter_unbalance.buffs[1].max_display_multiplier
-			}
-		}
-	})
-	mod:modify_talent(career, 3, 3, {
-		name = "enhanced_power_name",
-		description = "power_level_unbalance_desc",
-		buffs = {
-			"rebaltourn_power_level_unbalance"
-		},
-		description_values = {
-			{
-				value_type = "percent",
-				value = BuffTemplates.rebaltourn_power_level_unbalance.buffs[1].multiplier
-			}
-		}
-	})
-end
+	},
+}
+-- career_name, talent 3-1, talent 3-2, talent 3-3
+local talent_third_row = {
+	{ "es_mercenary", 		FINESSE, 	SMITER, 	ENHANCED_POWER }, -- Mainstay > Finesse
+	{ "es_huntsman", 		FINESSE, 	SMITER, 	ENHANCED_POWER }, -- Bulwark > Finesse
+	{ "es_knight", 			TANK, 		MAINSTAY, 	ENHANCED_POWER },
+	{ "es_questingknight", 	TANK, 		SMITER, 	ENHANCED_POWER },
 
+	{ "dr_ranger", 			TANK,		MAINSTAY, 	ENHANCED_POWER },
+	{ "dr_ironbreaker", 	TANK, 		SMITER, 	ENHANCED_POWER },
+	{ "dr_slayer", 			FINESSE, 	MAINSTAY, 	ENHANCED_POWER }, -- Smiter > Finesse
+	{ "dr_engineer", 		TANK, 		MAINSTAY, 	ENHANCED_POWER },
+
+	{ "we_waywatcher", 		SMITER, 	FINESSE, 	ENHANCED_POWER }, -- Mainstay > Smiter
+	{ "we_maidenguard", 	SMITER, 	MAINSTAY, 	ENHANCED_POWER },
+	{ "we_shade", 			SMITER, 	FINESSE, 	ENHANCED_POWER },
+	{ "we_thornsister", 	TANK, 		MAINSTAY, 	ENHANCED_POWER }, -- Smiter > Bulwark
+
+	{ "wh_captain", 		SMITER, 	FINESSE, 	ENHANCED_POWER }, -- Mainstay > Smiter
+	{ "wh_bountyhunter", 	SMITER, 	FINESSE, 	ENHANCED_POWER },
+	{ "wh_zealot", 			SMITER, 	FINESSE, 	ENHANCED_POWER }, -- Mainstay > Finesse
+	{ "wh_priest", 			SMITER, 	MAINSTAY, 	ENHANCED_POWER },
+	
+	{ "bw_adept", 			TANK, 		SMITER, 	ENHANCED_POWER },
+	{ "bw_scholar", 		SMITER, 	FINESSE, 	ENHANCED_POWER }, -- Mainstay > Assassin
+	{ "bw_unchained", 		TANK, 		MAINSTAY, 	ENHANCED_POWER },
+	{ "bw_necromancer", 	MAINSTAY, 	SMITER, 	ENHANCED_POWER },
+}
+
+for i = 1, #talent_third_row do
+	local entry = talent_third_row[i]
+	local career = entry[1]
+
+	for slot = 1, 3 do
+		mod:modify_talent(career, 3, slot, TALENT_OPTIONS[entry[slot + 1]])
+	end
+end
 
 --Dr related changes
 local IGNORED_SHARED_DAMAGE_TYPES = {

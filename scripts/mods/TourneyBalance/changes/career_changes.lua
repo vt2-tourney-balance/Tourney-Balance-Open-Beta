@@ -302,7 +302,7 @@ mod:add_text("career_active_desc_dr_1", "Bardin taunts all nearby man-sized enem
 	Waystalker
 
 ]]
-ActivatedAbilitySettings.we_3[1].cooldown = 65
+-- ActivatedAbilitySettings.we_3[1].cooldown = 65 -- REVERT ULT to Official
 local sniper_dropoff_ranges = {
 	dropoff_start = 30,
 	dropoff_end = 50
@@ -396,50 +396,69 @@ Weapons.kerillian_waywatcher_career_skill_weapon.actions.action_career_hold.prio
     beastmen_standard_bearer = 1,
 }
 
---Removed bloodshot and ult interaction
-mod:hook_origin(ActionCareerWEWaywatcher, "client_owner_post_update", function (self, dt, t, world, can_damage)
-    local current_action = self.current_action
+--Loaded Bow Buff
+mod:add_text("kerillian_waywatcher_activated_ability_additional_projectile_desc", "Trueflight Volley fires 5 arrows.")
+mod:hook_origin(ActionTrueFlightBow, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level, action_init_data)
+	ActionTrueFlightBow.super.client_owner_start_action(self, new_action, t, chain_action_data, power_level, action_init_data)
 
-	if self.state == "waiting_to_shoot" and self.time_to_shoot <= t then
-		self.state = "shooting"
+	self.current_action = new_action
+	self.true_flight_template_id = TrueFlightTemplates[new_action.true_flight_template].lookup_id
+
+	assert(self.true_flight_template_id)
+
+	local owner_unit = self.owner_unit
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+	local is_critical_strike = ActionUtils.is_critical_strike(owner_unit, new_action, t)
+	local num_extra_shots = self:_update_extra_shots(buff_extension) or 0
+
+	self.num_extra_shots = num_extra_shots
+
+	self:_update_extra_shots(buff_extension, num_extra_shots)
+
+	self.num_projectiles = (new_action.num_projectiles or 1) + num_extra_shots
+
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+	if talent_extension:has_talent("kerillian_waywatcher_activated_ability_additional_projectile") then
+		self.num_projectiles = self.num_projectiles + 2 -- Loaded bow
 	end
 
-	if self.state == "shooting" then
-		local has_extra_shots = self:_update_extra_shots(self.owner_buff_extension, 1)
-		local add_spread = not self.extra_buff_shot
+	self.multi_projectile_spread = new_action.multi_projectile_spread or 0.075
+	self.num_projectiles_shot = 1
 
-		self:fire(current_action, add_spread)
+	if chain_action_data then
+		self.targets = chain_action_data.targets
 
-		if has_extra_shots and has_extra_shots > 1 then
-			self.state = "waiting_to_shoot"
-			self.time_to_shoot = t + 0.1
-			self.extra_buff_shot = true
-		else
-			self.state = "shot"
-		end
-
-		local first_person_extension = self.first_person_extension
-
-		if self.current_action.reset_aim_on_attack then
-			first_person_extension:reset_aim_assist_multiplier()
-		end
-
-		local fire_sound_event = self.current_action.fire_sound_event
-
-		if fire_sound_event then
-			local play_on_husk = self.current_action.fire_sound_on_husk
-
-			first_person_extension:play_hud_sound_event(fire_sound_event, nil, play_on_husk)
-		end
-
-		if self.current_action.extra_fire_sound_event then
-			local position = POSITION_LOOKUP[self.owner_unit]
-
-			WwiseUtils.trigger_position_event(self.world, self.current_action.extra_fire_sound_event, position)
+		if not self.targets then
+			self.targets = {
+				chain_action_data.target,
+			}
 		end
 	end
+
+	if action_init_data then
+		self.targets = action_init_data.targets
+
+		if not self.targets then
+			self.targets = {
+				action_init_data.target,
+			}
+		end
+	end
+
+	self.state = "waiting_to_shoot"
+	self.time_to_shoot = t + (new_action.fire_time or 0)
+	self.power_level = power_level
+	self.extra_buff_shot = false
+
+	local hud_extension = ScriptUnit.has_extension(owner_unit, "hud_system")
+
+	self:_handle_critical_strike(is_critical_strike, buff_extension, hud_extension, nil, "on_critical_shot", nil)
+
+	self._is_critical_strike = is_critical_strike
 end)
 
+--Removed bloodshot and ult interaction
 mod:add_proc_function("kerillian_waywatcher_consume_extra_shot_buff", function (player, buff, params)
     local is_career_skill = params[5]
     local should_consume_shot = nil
@@ -544,11 +563,14 @@ mod:add_text("career_active_desc_we_1_2", "Kerillian becomes undetectable, can p
 	Sister of the Thorn
 
 ]]
-ActivatedAbilitySettings.we_thornsister[1].cooldown = 60
+ActivatedAbilitySettings.we_thornsister[1].cooldown = 70 -- META SHIFT
+PassiveAbilitySettings.we_thornsister.passive_ability_classes[1].init_data.cooldown = 70 --META SHIFT
 mod:modify_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_temp_health_funnel_aura_buff", {
 	multiplier = 0.10
 })
+mod:add_text("career_passive_desc_we_thornsister", "Kerillian is granted Radiance (a free use of her career skill) every 70 seconds.")
 
+--[[
 mod:hook_origin(PassiveAbilityThornsister, "_update_extra_abilities_info", function(self, talent_extension)
     if not talent_extension then
         return
@@ -571,11 +593,12 @@ mod:hook_origin(PassiveAbilityThornsister, "_update_extra_abilities_info", funct
     local cooldown = self._ability_init_data.cooldown
 
     if talent_extension:has_talent("kerillian_thorn_sister_faster_passive") then
-        cooldown = cooldown * 0.75
+        cooldown = cooldown * 0.5 -- META SHIFT
     end
 
     career_ext:update_extra_ability_charge(cooldown)
 end)
+]]
 
 local WALL_TYPES = table.enum("default", "bleed")
 local UNIT_NAMES = {
@@ -667,7 +690,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 }
 
 mod:add_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall.")
-mod:add_text("kerillian_thorn_sister_faster_passive_desc", "Reduce the cooldown of Radiance by 25%%, taking damage sets the cooldown back 2 seconds.")
+mod:add_text("kerillian_thorn_sister_faster_passive_desc", "Reduce the cooldown of Radiance by 50%%, taking damage increases the cooldown by 2 seconds (1 second internal cooldown).")
 
 --[[
 
@@ -680,6 +703,43 @@ mod:hook_safe(CareerAbilityWHZealot, "_run_ability", function(self)
     local health_extension = ScriptUnit.extension(unit, "health_system")
     local perm_health = health_extension:current_permanent_health()
     health_extension:convert_to_temp(perm_health)
+end)
+
+-- Fix Zealot invulnerability desync/invincibility bug: this proc runs on both client and server, and the
+-- server is always faster to evaluate the killing blow. The original code only added the buff locally via
+-- buff_extension:add_buff, so the server could already consider the owner unkillable without ever telling
+-- the client. The client must defer to whatever the server has already synced instead of re-evaluating the
+-- killing blow itself, and the server must use mod:add_buff so the invulnerability buff actually replicates.
+mod:add_proc_function("victor_zealot_gain_invulnerability", function (owner_unit, buff, params)
+    local status_extension = ScriptUnit.extension(owner_unit, "status_system")
+
+    if not Managers.state.network.is_server and ALIVE[owner_unit] then
+        local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+        return buff_extension:has_buff_type("victor_zealot_invulnerability_on_lethal_damage_taken")
+    end
+
+    if ALIVE[owner_unit] and not status_extension:is_knocked_down() then
+        local health_extension = ScriptUnit.extension(owner_unit, "health_system")
+        local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+        local already_unkillable = buff_extension:has_buff_perk("invulnerable") or buff_extension:has_buff_perk("ignore_death")
+
+        if already_unkillable then
+            return false
+        end
+
+        local damage = params[2]
+        local current_health = health_extension:current_health()
+        local killing_blow = current_health <= damage
+        local template = buff.template
+        local buff_to_add = template.buff_to_add
+
+        if killing_blow then
+            mod:add_buff(owner_unit, buff_to_add)
+
+            return true
+        end
+    end
 end)
 
 --[[
@@ -1081,7 +1141,9 @@ mod:add_buff_function("markus_knight_movespeed_on_incapacitated_ally", function 
 	buff.disabled_allies = disabled_allies
 end)
 
---Stam-Tech Removal
+-- Stam-Tech: Internal Cooldown
+local STAM_TECH_COOLDOWN = 120
+
 CharacterStateHelper.check_to_start_dodge = function (unit, input_extension, status_extension, t)
 	if status_extension:dodge_locked() or not status_extension:can_dodge(t) then
 		return false
@@ -1145,6 +1207,17 @@ CharacterStateHelper.check_to_start_dodge = function (unit, input_extension, sta
 
 	if start_dodge then
 		Managers.state.entity:system("play_go_tutorial_system"):register_dodge(dodge_direction)
+
+		-- Stam-Tech Internal CD check
+		-- fatigue can only exceed MAX_FATIGUE via the unclamped wield-swap rescale in GenericStatusExtension.update
+		if status_extension.fatigue > PlayerUnitStatusSettings.MAX_FATIGUE then
+			local last_stam_tech_t = status_extension._stam_tech_last_t
+			if not last_stam_tech_t or t - last_stam_tech_t >= STAM_TECH_COOLDOWN then
+				status_extension._stam_tech_last_t = t
+				status_extension:add_fatigue_points("action_dodge")
+			end
+		end
+
 		status_extension:set_dodge_locked(true)
 		status_extension:add_dodge_cooldown()
 

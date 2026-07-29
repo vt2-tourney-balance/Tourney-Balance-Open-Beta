@@ -213,8 +213,69 @@ DamageProfileTemplates.arrow_carbine.default_target.boost_curve_coefficient = 0.
 DamageProfileTemplates.arrow_carbine.default_target.boost_curve_coefficient_headshot = 0.8 -- 1
 DamageProfileTemplates.arrow_sniper_kruber.critical_strike.attack_armor_power_modifer = { 1, 1, 1, 1, 0.75, 0.5 }
 
--- Blunderbuss Bash Nerf
-Weapons.blunderbuss_template_1.actions.action_two.default.push_radius = 0.9 -- 2.5
+--- Bash Nerf 2.0
+-- Adds max stamina, stamina consumption, and removes chaining/starting the bash below 2 stamina points.
+-- chain_condition_func gates transitions from active actions (e.g. fire-into-bash, bash-into-bash)
+-- condition_func gates true idle state (no current action); separate fallback state in player_character_state_helper.lua
+local MIN_STAMINA_POINTS_TO_BASH = 2
+
+local function can_start_bash(owner_unit, input_extension)
+	local status_extension = ScriptUnit.extension(owner_unit, "status_system")
+	local consumed_points, max_points = status_extension:current_fatigue_points()
+
+	return max_points - consumed_points >= MIN_STAMINA_POINTS_TO_BASH
+end
+
+Weapons.blunderbuss_template_1.max_fatigue_points = 6 -- nil
+Weapons.blunderbuss_template_1.actions.action_two.default.add_fatigue_on_hit = true
+Weapons.blunderbuss_template_1.actions.action_two.default.condition_func = can_start_bash
+Weapons.blunderbuss_template_1.actions.action_two.default.chain_condition_func = can_start_bash
+
+Weapons.grudge_raker_template_1.max_fatigue_points = 6 -- nil
+Weapons.grudge_raker_template_1.actions.action_two.default.add_fatigue_on_hit = true
+Weapons.grudge_raker_template_1.actions.action_two.default.condition_func = can_start_bash
+Weapons.grudge_raker_template_1.actions.action_two.default.chain_condition_func = can_start_bash
+
+Weapons.wh_deus_01_template_1.max_fatigue_points = 6 -- nil
+Weapons.wh_deus_01_template_1.actions.action_two.default.add_fatigue_on_hit = true
+Weapons.wh_deus_01_template_1.actions.action_two.default.condition_func = can_start_bash
+Weapons.wh_deus_01_template_1.actions.action_two.default.chain_condition_func = can_start_bash
+
+-- Prevent weapon swap while fatigued
+-- action_wield table is shared by reference across nearly every weapon (ActionTemplates.wield),
+-- Needs per-weapon clone before mutating chain_condition_func, otherwise prevents weapon swapping globally.
+-- The original can_wield() check is preserved and evaluated first.
+local original_wield_chain_condition_func = ActionTemplates.wield.default.chain_condition_func
+
+local function block_wield_while_fatigued(owner_unit, input_extension)
+	if not original_wield_chain_condition_func(owner_unit, input_extension) then
+		return false
+	end
+
+	local status_extension = ScriptUnit.extension(owner_unit, "status_system")
+
+	return not status_extension:fatigued()
+end
+
+Weapons.blunderbuss_template_1.actions.action_wield = table.clone(ActionTemplates.wield)
+Weapons.blunderbuss_template_1.actions.action_wield.default.chain_condition_func = block_wield_while_fatigued
+
+Weapons.grudge_raker_template_1.actions.action_wield = table.clone(ActionTemplates.wield)
+Weapons.grudge_raker_template_1.actions.action_wield.default.chain_condition_func = block_wield_while_fatigued
+
+Weapons.wh_deus_01_template_1.actions.action_wield = table.clone(ActionTemplates.wield)
+Weapons.wh_deus_01_template_1.actions.action_wield.default.chain_condition_func = block_wield_while_fatigued
+
+-- Stamina consumption on shield_slam hit if add_fatigue_on_hit is set and enemy is hit.
+-- Shields go through same ActionShieldSlam class, but never set add_fatigue_on_hit.
+mod:hook_safe(ActionShieldSlam, "_hit", function (self, world, can_damage, owner_unit, current_action)
+	if current_action.add_fatigue_on_hit and self._num_targets_hit > 0 then
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+		local status_extension = ScriptUnit.extension(owner_unit, "status_system")
+
+		self:_handle_fatigue(buff_extension, status_extension, current_action, false)
+	end
+end)
 
 
 
@@ -332,8 +393,6 @@ NewDamageProfileTemplates.masterwork_pistol_shot = {
 	},
 }
 
--- Grudgeraker Bash Nerf
-Weapons.grudge_raker_template_1.actions.action_two.default.push_radius = 0.9 -- 2.5
 
 
 
@@ -626,6 +685,58 @@ DamageProfileTemplates.arrow_sniper_trueflight = {
 }
 DamageProfileTemplates.arrow_sniper_ability_piercing.friendly_fire_multiplier = 0.25
 
+-- Piercing Shot pinpoint accuracy (career skill only, base Longbow untouched)
+--[[
+Weapons.kerillian_waywatcher_career_skill_weapon_piercing_shot.crosshair_style = "dot"
+Weapons.kerillian_waywatcher_career_skill_weapon_piercing_shot.default_spread_template = "tb_piercing_shot"
+SpreadTemplates.tb_piercing_shot = {
+    continuous = {
+        still = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+        moving = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+        crouch_still = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+        crouch_moving = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+        zoomed_still = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+        zoomed_moving = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+        zoomed_crouch_still = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+        zoomed_crouch_moving = {
+            max_pitch = 0,
+            max_yaw = 0,
+        },
+    },
+    immediate = {
+        being_hit = {
+            immediate_pitch = 0,
+            immediate_yaw = 0,
+        },
+        shooting = {
+            immediate_pitch = 0,
+            immediate_yaw = 0,
+        },
+    },
+} 
+Weapons.kerillian_waywatcher_career_skill_weapon_piercing_shot.default_spread_template = "tb_piercing_shot"
+]]
 
 
 -- Bloodrazor Thicket 
@@ -658,8 +769,6 @@ local balanced_barrels =  { {	yaw = -1, pitch = 0, shot_count = 2 }, { yaw = -0.
 Weapons.wh_deus_01_template_1.actions.action_one.default.barrels = balanced_barrels
 DamageProfileTemplates.shot_duckfoot.cleave_distribution.attack = 0.05
 DamageProfileTemplates.shot_duckfoot.cleave_distribution.impact = 0.05
--- Bash nerf
-Weapons.wh_deus_01_template_1.actions.action_two.default.push_radius = 0.9 -- 2.5
 
 -- Brace of Pistols buff
 Weapons.brace_of_pistols_template_1.ammo_data.max_ammo = 50
@@ -833,6 +942,19 @@ NewDamageProfileTemplates.holy_hammer_light_2 = {
 -- Bolt
 DamageProfileTemplates.fire_spear_3.armor_modifier_near.attack = { 1.01, 0.8, 1.5, 1, 1, 0.4 }
 DamageProfileTemplates.fire_spear_3.armor_modifier_far.attack = { 1.01, 0.8, 1.5, 1, 1, 0.4 }
+-- Weapon Zoom Bolt
+table.insert(PassiveAbilitySettings.bw_1.buffs, "kerillian_waywatcher_passive_increased_zoom")
+table.insert(PassiveAbilitySettings.bw_2.buffs, "kerillian_waywatcher_passive_increased_zoom")
+table.insert(PassiveAbilitySettings.bw_3.buffs, "kerillian_waywatcher_passive_increased_zoom")
+table.insert(PassiveAbilitySettings.bw_necromancer.buffs, "kerillian_waywatcher_passive_increased_zoom")
+
+Weapons.staff_spark_spear_template_1.actions.action_two.default.aim_zoom_delay = 0.01
+Weapons.staff_spark_spear_template_1.actions.action_two.default.default_zoom = "zoom_in_trueflight"
+Weapons.staff_spark_spear_template_1.actions.action_two.default.buffed_zoom_thresholds = { "zoom_in_trueflight", "zoom_in" }
+
+Weapons.staff_spark_spear_template_1.actions.action_two.default.zoom_condition_function = function ()
+    return true
+end
 
 -- Increased Right-click projectile life time from 1.5 seconds to 3 seconds for all three charge stages.
 Weapons.staff_spark_spear_template_1.actions.action_one.shoot_charged.timed_data.life_time = 3 -- 1.5
@@ -1277,7 +1399,10 @@ NewDamageProfileTemplates.staff_conflag_tourney = {
 	},
 }
 
---Burning Head
+-- Pyromancer ult
+-- Lower weapon swap timer after casting ult
+Weapons.sienna_scholar_career_skill_weapon.actions.action_career_release.default.total_time = 0.3 -- 1
+-- Burning Head
 DamageProfileTemplates.fire_spear_trueflight.armor_modifier_near.attack = {
 	1.5,
 	1.5,
@@ -3697,7 +3822,7 @@ NewDamageProfileTemplates.tb_1h_hammer_heavy = {
 		}
 	},
 	critical_strike = "critical_strike_smiter_M",
-	charge_value = "light_attack",
+	charge_value = "heavy_attack", -- WHY WAS THIS LIGHT ATTACK BEFORE???
 	cleave_distribution = "cleave_distribution_smiter_default",
 	default_target = "default_target_smiter_M",
 	targets = "targets_smiter_M",
@@ -4001,20 +4126,22 @@ DamageProfileTemplates.heavy_slashing_linesman_executioner.targets[3].power_dist
 
 -- Dual Swords
 -- Lights
-Weapons.dual_wield_swords_template_1.actions.action_one.light_attack_left.damage_profile = "tb_dual_swords_light"
-Weapons.dual_wield_swords_template_1.actions.action_one.light_attack_right.damage_profile = "tb_dual_swords_light"
-NewDamageProfileTemplates.tb_dual_swords_light = {
+Weapons.dual_wield_swords_template_1.actions.action_one.light_attack_left.damage_profile = "tb_dual_swords_light_1"
+Weapons.dual_wield_swords_template_1.actions.action_one.light_attack_right.damage_profile = "tb_dual_swords_light_2"
+Weapons.dual_wield_swords_template_1.actions.action_one.light_attack_up_left.damage_profile = "tb_dual_swords_light_3"
+Weapons.dual_wield_swords_template_1.actions.action_one.light_attack_up_right.damage_profile = "tb_dual_swords_light_4"
+NewDamageProfileTemplates.tb_dual_swords_light_1 = {
     armor_modifier = {
         attack = {
-            0.85, --1
+            1.05, -- 1.25, 0.85
             0,
             2,
             1,
-            1
+            1.17 -- 1
         },
         impact = {
             1,
-            0.3,
+            0.2, -- 0.3, Why was this 0.3? Why is it undocumented?
             0.5,
             1,
             1
@@ -4022,15 +4149,93 @@ NewDamageProfileTemplates.tb_dual_swords_light = {
     },
     critical_strike = {
         attack_armor_power_modifer = {
-            0.75,
+            0.83, -- 1.25, 0.75
             0.5,
-            1.5,
+            2, -- 2.5
             1,
-            1
+            0.95 -- 1
         },
         impact_armor_power_modifer = {
             1,
+            0.25, -- 0.5, Why was this 0.5? Why is it undocumented?
+            0.5, 
+            1,
+            1
+        }
+    },
+    charge_value = "light_attack",
+    cleave_distribution = {
+        attack = 0.3, -- 0.25
+        impact = 0.2
+    },
+    default_target = {
+        boost_curve_type = "linesman_curve",
+        attack_template = "light_slashing_linesman",
+        power_distribution = {
+            attack = 0.08, -- 0.125
+            impact = 0.05
+        }
+    },
+    targets = {
+        {
+            boost_curve_coefficient_headshot = 0.65, -- 1.5, 2
+            boost_curve_type = "ninja_curve",
+            boost_curve_coefficient = 1, -- 1, 2
+            attack_template = "light_slashing_linesman_hs",
+            power_distribution = {
+                attack = 0.2, -- 0.2
+                impact = 0.1
+            }
+        },
+        {
+            boost_curve_type = "ninja_curve",
+            boost_curve_coefficient_headshot = 0.75, -- 1, 2
+            attack_template = "light_slashing_linesman",
+            power_distribution = {
+                attack = 0.16, -- 0.015
+                impact = 0.084 -- 0.075
+            },
+        },
+		{
+            boost_curve_type = "ninja_curve",
+            boost_curve_coefficient_headshot = 0.85, -- 1, 2
+            attack_template = "light_slashing_linesman",
+            power_distribution = {
+                attack = 0.12, -- 0.125
+                impact = 0.067 -- 0.075
+            },
+        }
+    },
+}
+
+NewDamageProfileTemplates.tb_dual_swords_light_2 = {
+    armor_modifier = {
+        attack = {
+            1.2, -- 1.25, 0.85
+            0,
+            2.1,
+            1,
+            1.37 -- 1
+        },
+        impact = {
+            1,
+            0.2, -- 0.3, Why was this 0.3? Why is it undocumented?
             0.5,
+            1,
+            1
+        }
+    },
+    critical_strike = {
+        attack_armor_power_modifer = {
+            0.905, -- 1.25, 0.75
+            0.5,
+            2.1, -- 2.5
+            1,
+            1.1 -- 1
+        },
+        impact_armor_power_modifer = {
+            1,
+            0.25, -- 0.5, Why was this 0.5? Why is it undocumented?
             0.5,
             1,
             1
@@ -4038,22 +4243,22 @@ NewDamageProfileTemplates.tb_dual_swords_light = {
     },
     charge_value = "light_attack",
     cleave_distribution = {
-        attack = 0.3,
+        attack = 0.347, -- 0.25, 0.3
         impact = 0.2
     },
     default_target = {
         boost_curve_type = "linesman_curve",
         attack_template = "light_slashing_linesman",
         power_distribution = {
-            attack = 0.125,
+            attack = 0.075, -- 0.125
             impact = 0.05
         }
     },
     targets = {
         {
-            boost_curve_coefficient_headshot = 2,
+            boost_curve_coefficient_headshot = 0.65, -- 1.5, 2
             boost_curve_type = "ninja_curve",
-            boost_curve_coefficient = 2,
+            boost_curve_coefficient = 1, -- 1, 2
             attack_template = "light_slashing_linesman_hs",
             power_distribution = {
                 attack = 0.2,
@@ -4062,29 +4267,237 @@ NewDamageProfileTemplates.tb_dual_swords_light = {
         },
         {
             boost_curve_type = "ninja_curve",
-            boost_curve_coefficient_headshot = 2,
+            boost_curve_coefficient_headshot = 0.75, -- 1, 2
             attack_template = "light_slashing_linesman",
             power_distribution = {
-                attack = 0.15,
-                impact = 0.075
-            }
+                attack = 0.175, -- 0.15
+                impact = 0.088 -- 0.075
+            },
+        },
+		{
+            boost_curve_type = "ninja_curve",
+            boost_curve_coefficient_headshot = 0.85, -- 1, 2
+            attack_template = "light_slashing_linesman",
+            power_distribution = {
+                attack = 0.125, -- 0.125
+                impact = 0.075 -- 0.005
+            },
+        },
+		{
+            boost_curve_type = "ninja_curve",
+            boost_curve_coefficient_headshot = 0.95, -- 1, 2
+            attack_template = "light_slashing_linesman",
+            power_distribution = {
+                attack = 0.1, -- 0.125
+                impact = 0.063 -- 0.005
+            },
         }
     },
 }
 
--- Heavy
-Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack_2.damage_profile_right = "tb_dual_swords_heavy"
-Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack_2.damage_profile_left = "tb_dual_swords_heavy"
-Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack.damage_profile_right = "tb_dual_swords_heavy_1"
-Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack.damage_profile_left = "tb_dual_swords_heavy_1"
-NewDamageProfileTemplates.tb_dual_swords_heavy = {
+NewDamageProfileTemplates.tb_dual_swords_light_3 = {
 	armor_modifier = {
 		attack = {
+			1.33, -- 1.25
+			0,
+			2.2, -- 2
+			1,
+			1.6, -- 1
+		},
+		impact = {
+			1,
+			0.2,
+			0.5,
+			1,
+			1,
+		},
+	},
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1.07, -- 1.25
+			0.3,
+			2.3, -- 2.5
+			1,
+			1.3, -- 1
+		},
+		impact_armor_power_modifer = {
 			1,
 			0.25,
+			0.5,
+			1,
+			1,
+		},
+	},
+	charge_value = "light_attack",
+	cleave_distribution = {
+		attack = 0.407, -- 0.25
+		impact = 0.2,
+	},
+	default_target = {
+		attack_template = "light_slashing_linesman",
+		boost_curve_type = "linesman_curve",
+		power_distribution = {
+			attack = 0.1, -- 0.075
+			impact = 0.05,
+		},
+	},
+	targets = {
+		{
+			attack_template = "light_slashing_linesman_hs",
+			boost_curve_coefficient_headshot = 0.6, -- 1.5
+			boost_curve_type = "ninja_curve",
+			power_distribution = {
+				attack = 0.2, -- 0.135
+				impact = 0.1, -- 0.075
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.65, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.18, -- 0.09
+				impact = 0.09, -- 0.05
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.7, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.16, -- 0.075
+				impact = 0.08, -- 0.05
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.75, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.14, -- 0.075
+				impact = 0.07, -- 0.05
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.8, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.12, -- 0.075
+				impact = 0.06, -- 0.05
+			},
+		}
+	},
+}
+
+NewDamageProfileTemplates.tb_dual_swords_light_4 = {
+	armor_modifier = {
+		attack = {
+			1.6, -- 1.25
+			0,
+			2.64, -- 2
+			1,
+			1.9, -- 1
+		},
+		impact = {
+			1,
+			0.2,
+			0.5,
+			1,
+			1,
+		},
+	},
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1.33, -- 1.25
+			0.3,
+			2.5,
+			1,
+			1.58, -- 1
+		},
+		impact_armor_power_modifer = {
+			1,
+			0.25,
+			0.5,
+			1,
+			1,
+		},
+	},
+	charge_value = "light_attack",
+	cleave_distribution = {
+		attack = 0.407, -- 0.25
+		impact = 0.2,
+	},
+	default_target = {
+		attack_template = "light_slashing_linesman",
+		boost_curve_type = "linesman_curve",
+		power_distribution = {
+			attack = 0.125, --  -- 0.075
+			impact = 0.05,
+		},
+	},
+	targets = {
+		{
+			attack_template = "light_slashing_linesman_hs",
+			boost_curve_coefficient_headshot = 0.55, -- 1.5
+			boost_curve_type = "ninja_curve",
+			power_distribution = {
+				attack = 0.2, -- 0.135
+				impact = 0.1, -- 0.075
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.65, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.185, -- 0.09
+				impact = 0.09, -- 0.05
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.75, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.17, -- 0.075
+				impact = 0.08, -- 0.05
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.85, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.165, -- 0.075
+				impact = 0.07, -- 0.05
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_coefficient_headshot = 0.95, -- 1
+			boost_curve_type = "linesman_curve",
+			power_distribution = {
+				attack = 0.14, -- 0.075
+				impact = 0.06, -- 0.05
+			},
+		}
+	},
+}
+
+-- Heavy (test me)
+Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack_2.damage_profile_right = "tb_dual_swords_heavy_2"
+Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack_2.damage_profile_left = "tb_dual_swords_heavy_2"
+Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack.damage_profile_right = "tb_dual_swords_heavy_1"
+Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack.damage_profile_left = "tb_dual_swords_heavy_1"
+NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
+	armor_modifier = {
+		attack = {
+			0.93, -- 1		
+			0.19, -- 0.25, 0.2
 			2,
 			1,
-			0.6
+			0.5 -- 0.6		
 		},
 		impact = {
 			1,
@@ -4096,11 +4509,11 @@ NewDamageProfileTemplates.tb_dual_swords_heavy = {
 	},
 	critical_strike = {
 		attack_armor_power_modifer = {
-			1,
-			0.5,
+			1.08, -- 1
+			0.13, -- 0.5
 			2.5,
 			1,
-			1
+			0.6 -- 1
 		},
 		impact_armor_power_modifer = {
 			1,
@@ -4112,8 +4525,8 @@ NewDamageProfileTemplates.tb_dual_swords_heavy = {
 	},
 	charge_value = "heavy_attack",
 	cleave_distribution = {
-		attack = 0.45,
-		impact = 0.4
+		attack = 0.225, -- 0.45,
+		impact = 0.2 -- 0.4
 	},
 	default_target = {
 		boost_curve_type = "linesman_curve",
@@ -4126,14 +4539,18 @@ NewDamageProfileTemplates.tb_dual_swords_heavy = {
 	},
 	targets = {
 		{
-			boost_curve_coefficient_headshot = 1,
+			boost_curve_coefficient_headshot = 0.33, -- 1
 			boost_curve_type = "linesman_curve",
 			boost_curve_coefficient = 2,
 			attack_template = "heavy_slashing_linesman",
 			power_distribution = {
 				attack = 0.3,
 				impact = 0.275
-			}
+			},
+			--armor_modifier = {
+			--	attack = { 1, 0.2, 2, 1, 0.6 },
+			--	impact = { 1, 0.5, 0.5, 1, 1 }
+			--}
 		},
 		{
 			boost_curve_type = "linesman_curve",
@@ -4143,10 +4560,10 @@ NewDamageProfileTemplates.tb_dual_swords_heavy = {
 				attack = 0.2,
 				impact = 0.15
 			},
-			armor_modifier = {
-				attack = { 1, 0.2, 2, 1, 0.6 },
-				impact = { 1, 0.5, 0.5, 1, 1}
-			}
+			--armor_modifier = {
+			--	attack = { 1, 0.2, 2, 1, 0.6 },
+			--	impact = { 1, 0.5, 0.5, 1, 1}
+			--}
 		},
 		{
 			boost_curve_type = "linesman_curve",
@@ -4166,14 +4583,15 @@ NewDamageProfileTemplates.tb_dual_swords_heavy = {
 		}
 	}
 }
-NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
+
+NewDamageProfileTemplates.tb_dual_swords_heavy_2 = {
 	armor_modifier = {
 		attack = {
-			0.75,		--1
-			0.25,
+			1.35, -- 1, 0.75
+			0.19, -- 0.25
 			2,
 			1,
-			0.5		--0.6
+			0.6
 		},
 		impact = {
 			1,
@@ -4185,11 +4603,11 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
 	},
 	critical_strike = {
 		attack_armor_power_modifer = {
-			1,
-			0.5,
+			1.03, -- 1
+			0.1, -- 0.5
 			2.5,
 			1,
-			1
+			0.45 -- 1
 		},
 		impact_armor_power_modifer = {
 			1,
@@ -4201,8 +4619,8 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
 	},
 	charge_value = "heavy_attack",
 	cleave_distribution = {
-		attack = 0.45,
-		impact = 0.4
+		attack = 0.225, -- 0.45,
+		impact = 0.2 -- 0.4
 	},
 	default_target = {
 		boost_curve_type = "linesman_curve",
@@ -4222,7 +4640,11 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
 			power_distribution = {
 				attack = 0.3,
 				impact = 0.275
-			}
+			},
+			--armor_modifier = {
+			--	attack = { 1, 0.2, 2, 1, 0.6 },
+			--	impact = { 1, 0.5, 0.5, 1, 1 }
+			--}
 		},
 		{
 			boost_curve_type = "linesman_curve",
@@ -4232,10 +4654,10 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_1 = {
 				attack = 0.2,
 				impact = 0.15
 			},
-			armor_modifier = {
-				attack = { 1, 0.2, 2, 1, 0.6 },
-				impact = { 1, 0.5, 0.5, 1, 1}
-			}
+			--armor_modifier = {
+			--	attack = { 1, 0.2, 2, 1, 0.6 },
+			--	impact = { 1, 0.5, 0.5, 1, 1}
+			--}
 		},
 		{
 			boost_curve_type = "linesman_curve",
@@ -4439,7 +4861,6 @@ NewDamageProfileTemplates.tb_2h_hammer_heavy_2_priest = {
 Weapons.one_hand_falchion_template_1.actions.action_one.light_attack_left.damage_profile = "tb_falchion_lights"
 Weapons.one_hand_falchion_template_1.actions.action_one.light_attack_right.damage_profile = "tb_falchion_lights"
 Weapons.one_hand_falchion_template_1.actions.action_one.light_attack_bopp.damage_profile = "tb_falchion_lights"
-Weapons.one_hand_falchion_template_1.actions.action_one.light_attack_down.damage_profile = "light_slashing_smiter_finesse"
 
 NewDamageProfileTemplates.tb_falchion_lights = {
 	armor_modifier = {

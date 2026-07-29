@@ -1,0 +1,20 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { getSortedDocs } from '../../lib/docs';
+import { render } from 'astro:content';
+
+const docs = await getSortedDocs();
+const first = docs[0];
+
+let Content = null;
+let headings: { depth: number; slug: string; text: string }[] = [];
+if (first) {
+  const rendered = await render(first.entry);
+  Content = rendered.Content;
+  headings = rendered.headings;
+}
+---
+
+<DocsLayout title="Documentation" activeSlug={first?.slug} activeHeadings={headings}>
+  {Content ? <Content /> : <p>No documentation yet.</p>}
+</DocsLayout>

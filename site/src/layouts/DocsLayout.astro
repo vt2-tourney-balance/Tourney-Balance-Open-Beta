@@ -1,0 +1,44 @@
+---
+import Layout from './Layout.astro';
+import DocsSidebar from '../components/DocsSidebar.astro';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  title: string;
+  activeSlug?: string;
+  activeHeadings?: Heading[];
+}
+const { title, activeSlug, activeHeadings } = Astro.props;
+---
+
+<Layout title={title}>
+  <div class="docs-layout">
+    <DocsSidebar activeSlug={activeSlug} activeHeadings={activeHeadings} />
+    <div class="docs-main">
+      <slot />
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .docs-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+  .docs-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 768px) {
+    .docs-layout {
+      flex-direction: column;
+    }
+  }
+</style>

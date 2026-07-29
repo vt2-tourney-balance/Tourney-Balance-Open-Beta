@@ -86,8 +86,29 @@ echo.
 echo ==================================================
 echo Building "Tourney Balance Official"
 echo ==================================================
-echo. 
+echo.
+
+echo [System] Temporarily hiding site/node_modules from compiler scan...
+if exist "%MOD_PATH%\site\node_modules" (
+    ren "%MOD_PATH%\site\node_modules" ".node_modules" || (
+        echo [WARNING] Failed to hide node_modules, proceeding anyway...
+    )
+) else (
+    echo [Info] site/node_modules not found, skipping hide step.
+)
+echo.
+
 vmb build "TourneyBalance" -g 2
+echo.
+
+echo [System] Restoring site/node_modules...
+if exist "%MOD_PATH%\site\.node_modules" (
+    ren "%MOD_PATH%\site\.node_modules" "node_modules" || (
+        echo [ERROR] Failed to restore node_modules! Folder may be at .node_modules
+    )
+) else (
+    echo [Info] site/.node_modules not found, skipping restore step.
+)
 echo.
 
 echo [System] Isolating Official build outputs...
@@ -101,8 +122,29 @@ echo.
 echo ==================================================
 echo Building "Tourney Balance Open Beta"
 echo ==================================================
-echo. 
+echo.
+
+echo [System] Temporarily hiding site/node_modules from compiler scan...
+if exist "%MOD_PATH%\site\node_modules" (
+    ren "%MOD_PATH%\site\node_modules" ".node_modules" || (
+        echo [WARNING] Failed to hide node_modules, proceeding anyway...
+    )
+) else (
+    echo [Info] site/node_modules not found, skipping hide step.
+)
+echo.
+
 vmb build "TourneyBalance" -g 2
+echo.
+
+echo [System] Restoring site/node_modules...
+if exist "%MOD_PATH%\site\.node_modules" (
+    ren "%MOD_PATH%\site\.node_modules" "node_modules" || (
+        echo [ERROR] Failed to restore node_modules! Folder may be at .node_modules
+    )
+) else (
+    echo [Info] site/.node_modules not found, skipping restore step.
+)
 echo.
 
 echo [System] Isolating Open Beta build outputs...

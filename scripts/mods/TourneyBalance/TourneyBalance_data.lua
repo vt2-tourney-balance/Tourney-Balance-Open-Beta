@@ -66,6 +66,105 @@ return {
 				title = "performance_logging_title",
 				tooltip = "performance_logging_description",
 			},
+			{
+				setting_id = "accessibility",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "tb_ping_outline_color_group",
+						type = "group",
+						sub_widgets = {
+							{
+								type = "numeric",
+								setting_id = "tb_ping_color_r",
+								default_value = 30,
+								range = {0, 255},
+								decimals_number = 0,
+								title = "tb_ping_color_r_title",
+								tooltip = "tb_ping_color_r_description",
+							},
+							{
+								type = "numeric",
+								setting_id = "tb_ping_color_g",
+								default_value = 150,
+								range = {0, 255},
+								decimals_number = 0,
+								title = "tb_ping_color_g_title",
+								tooltip = "tb_ping_color_g_description",
+							},
+							{
+								type = "numeric",
+								setting_id = "tb_ping_color_b",
+								default_value = 255,
+								range = {0, 255},
+								decimals_number = 0,
+								title = "tb_ping_color_b_title",
+								tooltip = "tb_ping_color_b_description",
+							},
+						},
+					},
+					{
+						setting_id = "tb_isjya_ping_outline_color_group",
+						type = "group",
+						sub_widgets = {
+							{
+								type = "numeric",
+								setting_id = "tb_special_tag_color_r",
+								default_value = 227,
+								range = {0, 255},
+								decimals_number = 0,
+								title = "tb_special_tag_color_r_title",
+								tooltip = "tb_special_tag_color_r_description",
+							},
+							{
+								type = "numeric",
+								setting_id = "tb_special_tag_color_g",
+								default_value = 4,
+								range = {0, 255},
+								decimals_number = 0,
+								title = "tb_special_tag_color_g_title",
+								tooltip = "tb_special_tag_color_g_description",
+							},
+							{
+								type = "numeric",
+								setting_id = "tb_special_tag_color_b",
+								default_value = 4,
+								range = {0, 255},
+								decimals_number = 0,
+								title = "tb_special_tag_color_b_title",
+								tooltip = "tb_special_tag_color_b_description",
+							},
+						},
+					},
+				},
+			},
+			{
+				setting_id = "debugging",
+				type = "group",
+				sub_widgets = {
+					{
+						type = "checkbox",
+						setting_id = "stagger_state_visualizer",
+						default_value = false,
+						title = "stagger_state_visualizer_title",
+						tooltip = "stagger_state_visualizer_description",
+					},
+					{
+						type = "checkbox",
+						setting_id = "stagger_state_visualizer_include_real",
+						default_value = true,
+						title = "stagger_state_visualizer_include_real_title",
+						tooltip = "stagger_state_visualizer_include_real_description",
+					},
+					{
+						type = "checkbox",
+						setting_id = "stagger_state_visualizer_include_mainstay",
+						default_value = true,
+						title = "stagger_state_visualizer_include_mainstay_title",
+						tooltip = "stagger_state_visualizer_include_mainstay_description",
+					},
+				},
+			},
 		}
 	}
 }

@@ -1,0 +1,36 @@
+---
+import PatchNotesLayout from '../../layouts/PatchNotesLayout.astro';
+import { getSortedPatchNotes } from '../../lib/patchNotes';
+import { render } from 'astro:content';
+
+const notes = await getSortedPatchNotes();
+const latest = notes[0];
+const Content = latest ? (await render(latest.entry)).Content : null;
+---
+
+<PatchNotesLayout title="Patch Notes" activeSlug={latest?.slug}>
+  {
+    latest && Content ? (
+      <>
+        <p class="patch-date">
+          {latest.entry.data.date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </p>
+        <Content />
+      </>
+    ) : (
+      <p>No patch notes yet.</p>
+    )
+  }
+</PatchNotesLayout>
+
+<style>
+  .patch-date {
+    opacity: 0.7;
+    font-size: 0.9rem;
+    margin-top: -0.5rem;
+  }
+</style>

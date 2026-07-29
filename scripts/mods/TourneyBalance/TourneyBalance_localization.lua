@@ -403,6 +403,77 @@ local localization = {
 			.. "\n자세한 내용은 워크숍의 모드 설명을 참조하세요."
 			.. "\n이 옵션은 이벤트 중 자동으로 활성화됩니다.",
 	},
+
+	-- Accessibility
+	accessibility = {
+		en = "Accessibility",
+	},
+	tb_ping_outline_color_group = {
+		en = "Ping Outline Color",
+	},
+	tb_isjya_ping_outline_color_group = {
+		en = "Ping Outline Color - I Shall Judge You All",
+	},
+	tb_ping_color_r_title = {
+		en = "Red",
+	},
+	tb_ping_color_r_description = {
+		en = "Default: 30",
+	},
+	tb_ping_color_g_title = {
+		en = "Green",
+	},
+	tb_ping_color_g_description = {
+		en = "Default: 150",
+	},
+	tb_ping_color_b_title = {
+		en = "Blue",
+	},
+	tb_ping_color_b_description = {
+		en = "Default: 255",
+	},
+	tb_special_tag_color_r_title = {
+		en = "Red",
+	},
+	tb_special_tag_color_r_description = {
+		en = "Default: 227",
+	},
+	tb_special_tag_color_g_title = {
+		en = "Green",
+	},
+	tb_special_tag_color_g_description = {
+		en = "Default: 4",
+	},
+	tb_special_tag_color_b_title = {
+		en = "Blue",
+	},
+	tb_special_tag_color_b_description = {
+		en = "Default: 4",
+	},
+
+	-- Debugging
+	debugging = {
+		en = "Debugging",
+	},
+	stagger_state_visualizer_title = {
+		en = "Stagger State Visualizer",
+	},
+	stagger_state_visualizer_description = {
+		en = "Outlines enemies based on the sum of the stagger counts enabled below."
+			.. "\nGreen = 1, Yellow = 2, Red = more than 2, No outline = 0.",
+	},
+	stagger_state_visualizer_include_real_title = {
+		en = "Include Real Stagger Count",
+	},
+	stagger_state_visualizer_include_real_description = {
+		en = "Include the enemy's real stagger count (blackboard.stagger) in the visualized sum.",
+	},
+	stagger_state_visualizer_include_mainstay_title = {
+		en = "Include Mainstay Stagger Count",
+	},
+	stagger_state_visualizer_include_mainstay_description = {
+		en = "Include the Mainstay talent's marked stagger count (from the target's dummy_stagger buff) in the visualized sum.",
+	},
 }
 
 -- check for korean

@@ -309,7 +309,6 @@ mod:add_talent_buff_template("empire_soldier", "mercenary_helborgs_tutelage_crit
 	{
 		event = "on_hit",
 		icon = "markus_mercenary_crit_count",
-		buff_func = "dummy_function",
 		remove_on_proc = true,
 		max_stacks = 1,
 		stat_buff = "critical_strike_chance",
@@ -775,6 +774,36 @@ mod:add_text("ranger_veteran_foe_feller_attack_speed_desc", "Increases attack sp
 --Ales
 Weapons.bardin_survival_ale.actions.action_one.default.total_time = 0.8
 
+-- 1 Frag or Fire bomb per game
+mod:add_text("career_passive_desc_dr_3a_2", "Whenever a special is killed, Bardin will drop an ammo pickup at his feet. This pickup restores 10% of the player's max ammunition, rounded down. Additionally, there is a 5% chance to drop a bomb, once per game.")
+
+local RangerVeteranBonusBombDrops = {
+	{ name = "frag_grenade_t1", weight = 30 },
+	{ name = "frag_grenade_t2", weight = 15 },
+	{ name = "fire_grenade_t1", weight = 30 },
+	{ name = "fire_grenade_t2", weight = 15 },
+	{ name = "engineer_grenade_t1", weight = 10 },
+}
+
+local function pick_weighted_bomb_drop(drops)
+	local total_weight = 0
+
+	for _, drop in ipairs(drops) do
+		total_weight = total_weight + drop.weight
+	end
+
+	local roll = math.random(1, total_weight)
+	local cumulative_weight = 0
+
+	for _, drop in ipairs(drops) do
+		cumulative_weight = cumulative_weight + drop.weight
+
+		if roll <= cumulative_weight then
+			return drop.name
+		end
+	end
+end
+
 mod:add_proc_function("gs_bardin_ranger_scavenge_proc", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
@@ -792,6 +821,16 @@ mod:add_proc_function("gs_bardin_ranger_scavenge_proc", function (owner_unit, bu
 			local player_pos = POSITION_LOOKUP[owner_unit] + Vector3.up() * 0.1
 			local raycast_down = true
 			local pickup_system = Managers.state.entity:system("pickup_system")
+
+			if not buff.bonus_bomb_dropped and math.random(1, 100) <= 5 then
+				local bonus_bomb = pick_weighted_bomb_drop(RangerVeteranBonusBombDrops)
+
+				pickup_system:buff_spawn_pickup(bonus_bomb, player_pos + offset_position_1, raycast_down)
+
+				if bonus_bomb ~= "engineer_grenade_t1" then
+					buff.bonus_bomb_dropped = true
+				end
+			end
 
 			if talent_extension:has_talent("bardin_ranger_passive_spawn_potions_or_bombs", "dwarf_ranger", true) then
 				local counter = buff.counter
@@ -1057,17 +1096,17 @@ end)
 
 -- Vengeance Buff
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_stacking_buff_gromril", {
-    update_frequency = 2 --7, 3
+    update_frequency = 0,
 })
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_attack_speed", {
-    multiplier = 0.048, -- 0.08, 0.06
-    duration = 15 -- 10, 12
+    multiplier = 0.03,
+    duration = 20,
 })
 mod:modify_talent("dr_ironbreaker", 4, 1, {
     description = "bardin_ironbreaker_rising_attack_speed_desc",
     description_values = {},
 })
-mod:add_text("bardin_ironbreaker_rising_attack_speed_desc", "Periodically generate stacks (up to 5 max) of Rising Anger every 2 seconds while Gromril is active. When Gromril is lost, gain 4.8% attack speed per stack of Rising Anger for 15 seconds.")
+mod:add_text("bardin_ironbreaker_rising_attack_speed_desc", "When Gromril is lost, gain 15% attack speed for 20 seconds.")
 
 -- Under Pressure Buff
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_increased_ranged_power", {
@@ -1340,13 +1379,15 @@ mod:add_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is in
 mod:modify_talent_buff_template("wood_elf", "kerillian_waywatcher_passive", {
     update_func = "gs_update_kerillian_waywatcher_regen"
 })
-mod:add_text("career_passive_desc_we_3a_2", "Kerillian regenerates 3 health every 10 seconds when below 66.6% health. This does not replace temp health.")
-mod:add_text("kerillian_waywatcher_improved_regen_desc_2", "Increases Kerillian's health regenerated from Amaranthe by 100%%. And increases the maximum amount to 100%%")
+mod:add_text("career_passive_desc_we_3a_2", "Kerillian regenerates 3 health when below 50.0% health and 1 ammo every 10 seconds. This does not replace temp health.")
+mod:add_text("kerillian_waywatcher_improved_regen_desc_2", "Increases Kerillian's health regenerated from Amaranthe by 100%%. Health regeneration caps at 100%%. No longer restores ammo.")
+mod:add_text("kerillian_waywatcher_passive_cooldown_restore_desc", "Amaranthe reduces the cooldown of Trueflight Volley by 5.0%% and restores 1 additional ammo every tick. No longer restores health.")
+mod:add_text("kerillian_waywatcher_group_regen_desc", "Amaranthe's health regeneration also affects the other members of the party.")
 mod:add_buff_function("gs_update_kerillian_waywatcher_regen", function (unit, buff, params)
     local t = params.t
     local buff_template = buff.template
     local next_heal_tick = buff.next_heal_tick or 0
-    local regen_cap = 0.666 --1
+    local regen_cap = 0.5 --0.666 --1 -- Official = 0.5
     local network_manager = Managers.state.network
     local network_transmit = network_manager.network_transmit
     local heal_type_id = NetworkLookup.heal_types.career_skill
@@ -1354,37 +1395,46 @@ mod:add_buff_function("gs_update_kerillian_waywatcher_regen", function (unit, bu
 
     if next_heal_tick < t and Unit.alive(unit) then
         local talent_extension = ScriptUnit.extension(unit, "talent_system")
+		
         local cooldown_talent = talent_extension:has_talent("kerillian_waywatcher_passive_cooldown_restore", "wood_elf", true)
+		if cooldown_talent then
+			local cooldown_reduction = 0.05
+			local career_extension = ScriptUnit.extension(unit, "career_system")
 
-        if cooldown_talent then
-            local weapon_slot = "slot_ranged"
-            local inventory_extension = ScriptUnit.extension(unit, "inventory_system")
-            local slot_data = inventory_extension:get_slot_data(weapon_slot)
+			career_extension:reduce_activated_ability_cooldown_percent(cooldown_reduction)
+		end
 
-            if slot_data then
-                local right_unit_1p = slot_data.right_unit_1p
-                local left_unit_1p = slot_data.left_unit_1p
-                local right_hand_ammo_extension = ScriptUnit.has_extension(right_unit_1p, "ammo_system")
-                local left_hand_ammo_extension = ScriptUnit.has_extension(left_unit_1p, "ammo_system")
-                local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
+		-- Ammo Regen (if not Isha's Embrace)
+		if not talent_extension:has_talent("kerillian_waywatcher_improved_regen", "wood_elf", true) then
+			local weapon_slot = "slot_ranged"
+			local inventory_extension = ScriptUnit.extension(unit, "inventory_system")
+			local slot_data = inventory_extension:get_slot_data(weapon_slot)
 
-                if ammo_extension then
-                    local ammo_bonus_fraction = 0.05
-                    local ammo_amount = math.max(math.round(ammo_extension:max_ammo() * ammo_bonus_fraction), 1)
+			if slot_data then
+				local right_unit_1p = slot_data.right_unit_1p
+				local left_unit_1p = slot_data.left_unit_1p
+				local right_hand_ammo_extension = ScriptUnit.has_extension(right_unit_1p, "ammo_system")
+				local left_hand_ammo_extension = ScriptUnit.has_extension(left_unit_1p, "ammo_system")
+				local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
 
-                    ammo_extension:add_ammo_to_reserve(ammo_amount)
-                end
-            end
-        end
+				if ammo_extension then
+					local ammo_amount = 1
+					if cooldown_talent then
+						ammo_amount = ammo_amount + 1
+					end
+					ammo_extension:add_ammo_to_reserve(ammo_amount)
+				end
+			end
+		end
 
-        -- if Managers.state.network.is_server and not cooldown_talent then
-        if Managers.state.network.is_server then
+
+        if Managers.state.network.is_server and not cooldown_talent then
             local health_extension = ScriptUnit.extension(unit, "health_system")
             local status_extension = ScriptUnit.extension(unit, "status_system")
             local heal_amount = buff_template.heal_amount
 
             if talent_extension:has_talent("kerillian_waywatcher_improved_regen", "wood_elf", true) then
-                regen_cap = 1
+                regen_cap = regen_cap * 2
                 heal_amount = heal_amount * 2
             end
 
@@ -1494,11 +1544,172 @@ mod:modify_talent("we_waywatcher", 5, 1, {
     description = "elf_ws_movement_speed_on_special_kill_desc",
     description_values = {},
 })
-mod:add_text("elf_ws_movement_speed_on_special_kill_desc", "Killing a special or elite enemy increases movement speed by 15.0% and grants noclip for 10 seconds.")
+mod:add_text("elf_ws_movement_speed_on_special_kill_desc", "Killing a special or elite enemy increases movement speed by 15.0% and lets Kerillian pass through enemies for 10 seconds.")
 
 
+-- Richochet BUFFS
+-- Prevent extra arrow from Bloodshot to trigger ammo refund
+local pending_bonus_shot = {}
+mod:hook(ActionBow, "fire", function (func, self, current_action, add_spread)
+	pending_bonus_shot[self.owner_unit] = add_spread == false
+
+	func(self, current_action, add_spread) -- ActionBow.fire's "add_spread" is false only for that bonus arrow
+
+	pending_bonus_shot[self.owner_unit] = nil
+end)
+mod:hook_safe(PlayerProjectileUnitExtension, "init", function (self, extension_init_context, unit, extension_init_data)
+	self._is_bonus_shot = pending_bonus_shot[extension_init_data.owner_unit] or false
+end)
+-- 
+
+mod:add_text("kerillian_waywatcher_projectile_ricochet_desc", "Kerillian's arrows now ricochet, bouncing up to 3 times or until it hits an enemy. While below 10 ammo ricochet hits refund 1 ammo.")
+mod:hook_origin(PlayerProjectileUnitExtension, "hit_enemy", function(self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, breed, has_ranged_boost, ranged_boost_curve_multiplier)
+	local shield_blocked = false
+	local damage_profile_name = impact_data.damage_profile or "default"
+	local damage_profile = DamageProfileTemplates[damage_profile_name]
+	local allow_link = true
+	local forced_penetration = false
+	local aoe_data = impact_data.aoe
+
+	breed = AiUtils.unit_breed(hit_unit)
+
+	if not breed then
+		return
+	end
+
+	local hit_zone_name
+
+	if damage_profile then
+		local node = Actor.node(hit_actor)
+		local hit_zone = breed.hit_zones_lookup[node]
+
+		hit_zone_name = hit_zone.name
+
+		local send_to_server = true
+		local charge_value = damage_profile.charge_value or "projectile"
+		local is_critical_strike = self._is_critical_strike
+		local owner_unit = self._owner_unit
+		local num_targets_hit = self._num_targets_hit + 1
+		local unmodified = true
+
+		-- Ricochet ammo refund
+		if HEALTH_ALIVE[hit_unit] and ALIVE[owner_unit] then
+			local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+			if  talent_extension and talent_extension:has_talent("kerillian_waywatcher_projectile_ricochet") then
+				local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
+				local slot_data = inventory_extension:get_slot_data("slot_ranged")
+				local ammo_extension = GearUtils.get_ammo_extension(slot_data.right_unit_1p, slot_data.left_unit_1p)
+
+				if ammo_extension and self._num_bounces > 0 and not self._is_bonus_shot then
+					local current_ammo = ammo_extension:ammo_count() + ammo_extension:remaining_ammo()
+					ammo_threshold = 10
+
+					if current_ammo < ammo_threshold then
+						local ammo_amount = self._num_bounces
+						ammo_extension:add_ammo_to_reserve(ammo_amount)
+					end
+                end
+			end
+		end
+
+		if hit_zone_name ~= "head" and HEALTH_ALIVE[hit_unit] and breed and breed.hit_zones and breed.hit_zones.head then
+			local owner_buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+			local auto_headshot = owner_buff_extension and owner_buff_extension:has_buff_perk("auto_headshot")
+
+			if auto_headshot and hit_zone_name ~= "afro" then
+				hit_zone_name = "head"
+				unmodified = false
+
+				owner_buff_extension:trigger_procs("on_auto_headshot")
+			end
+		end
+
+		local buff_type = DamageUtils.get_item_buff_type(self.item_name)
+		
+		DamageUtils.buff_on_attack(owner_unit, hit_unit, charge_value, is_critical_strike, hit_zone_name, num_targets_hit, send_to_server, buff_type, unmodified, self.item_name)
+		shield_blocked, forced_penetration = self:hit_enemy_damage(damage_profile, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, breed, has_ranged_boost, ranged_boost_curve_multiplier)
+		allow_link = hit_zone_name ~= "ward"
+
+		if allow_link and breed and not shield_blocked then
+			local impact_pickup_settings = impact_data.pickup_settings
+
+			if impact_pickup_settings then
+				allow_link = not not impact_pickup_settings.link_hit_zones[hit_zone_name]
+			end
+		end
+	end
+
+	if self._num_additional_penetrations == 1 and aoe_data and aoe_data.explosion then
+		local talent_extension = ScriptUnit.has_extension(self._owner_unit, "talent_system")
+
+		if talent_extension and talent_extension:has_talent("bardin_engineer_ranged_pierce") then
+			self._num_additional_penetrations = self._num_additional_penetrations - 1
+		end
+	end
+
+	local grenade = impact_data.grenade
+
+	if self._num_additional_penetrations == 0 then
+		local should_stop = false
+
+		if aoe_data and (grenade or self._amount_of_mass_hit >= self._max_mass) then
+			self:do_aoe(aoe_data, hit_position)
+
+			if grenade then
+				local owner_unit = self._owner_unit
+				local owner_buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+				if owner_buff_extension then
+					owner_buff_extension:trigger_procs("on_grenade_exploded", impact_data, hit_position, self._is_critical_strike, self.item_name, Unit.local_rotation(self._projectile_unit, 0), self.scale, self.power_level)
+				end
+			end
+
+			should_stop = true
+		end
+
+		if self.chain_hit_settings then
+			local t = Managers.time:time("game")
+			local source_pos = Unit.has_node(hit_unit, "j_spine") and Unit.world_position(hit_unit, Unit.node(hit_unit, "j_spine")) or POSITION_LOOKUP[hit_unit] + Vector3(0, 0, 1.5)
+
+			self._weapon_system:try_fire_chained_projectile(self.chain_hit_settings, self.item_name, self._is_critical_strike, self.power_level, ranged_boost_curve_multiplier, t, self._owner_unit, source_pos, nil, hit_unit, 1)
+
+			should_stop = true
+		end
+
+		if should_stop then
+			self:stop(hit_unit, hit_zone_name, hit_normal)
+		end
+	end
+
+	if self._amount_of_mass_hit >= self._max_mass then
+		if self._num_additional_penetrations > 0 then
+			forced_penetration = true
+		else
+			local hit_enemy_or_player = true
+
+			self:_handle_linking(impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, self._did_damage, allow_link, shield_blocked, hit_enemy_or_player)
+			self:stop(hit_unit, hit_zone_name, hit_normal)
+		end
+	end
+
+	if breed.is_player or breed.play_ranged_hit_reacts then
+		local husk = not self._owner_player.local_player
+
+		DamageUtils.add_hit_reaction(hit_unit, breed, husk, hit_direction, false)
+	end
+
+	if self.locomotion_extension.notify_hit_enemy then
+		self.locomotion_extension:notify_hit_enemy(hit_unit)
+	end
+
+	if forced_penetration then
+		self._num_additional_penetrations = self._num_additional_penetrations - 1
+	end
+end)
 
 
+-- Drakira's Alacrity
 mod:modify_talent("we_waywatcher", 2, 3, {
     description_values = {
         {
@@ -1514,21 +1725,6 @@ mod:modify_talent_buff_template("wood_elf", "kerillian_waywatcher_attack_speed_o
     duration = 10,
 	multiplier = 0.20
 })
---[[ mod:modify_talent("we_waywatcher", 5, 1, {
-	description = "kerillian_waywatcher_extra_arrow_melee_kill_desc",
-	name = "kerillian_waywatcher_extra_arrow_melee_kill",
-	num_ranks = 1,
-	icon = "kerillian_waywatcher_extra_arrow_melee_kill",
-	description_values = {
-		{
-			value = 10
-		}
-	},
-	buffs = {
-		"kerillian_waywatcher_extra_arrow_melee_kill"
-	}
-}) ]]
-mod:add_text("kerillian_waywatcher_passive_cooldown_restore_desc", "Amaranthe also restores 5.0%% ammunition every tick.")
 
 -- Piercing Shot Refund Fix on Headshot Through Teammate
 ProcFunctions.kerillian_waywatcher_reduce_activated_ability_cooldown = function (owner_unit, buff, params)
@@ -1543,6 +1739,20 @@ ProcFunctions.kerillian_waywatcher_reduce_activated_ability_cooldown = function 
         end
     end
 end
+
+
+-- Kurnous' Reward ammo refund nerf
+mod:modify_talent_buff_template("wood_elf", "kerillian_waywatcher_activated_ability_restore_ammo_on_career_skill_special_kill", {
+	ammo_bonus_fraction = 0.2, -- 0.3
+})
+mod:modify_talent("we_waywatcher", 6, 3, {
+	description_values = {
+		{
+			value_type = "percent",
+			value = 0.2, -- 0.3
+		},
+	},
+})
 
 --[[
 
@@ -1841,15 +2051,38 @@ mod:add_text("kerillian_shade_activated_stealth_combo_desc_tb", "Leaving Infiltr
 
 ]]
 
+-- Radiant Inheritance
+-- extended duration: local function must be declared before the modify_talent_buff_template
+local radiant_thorn_stack_count = {}
+local function tb_radiant_thorn_duration_modifier(unit, sub_buff_template, duration, buff_extension, params)
+	local is_active = buff_extension:has_buff_type("kerillian_thorn_sister_team_buff_aura")
+	local current_count = radiant_thorn_stack_count[unit] or 0
+	local new_count = math.min(is_active and current_count + 1 or 1, 2)
+
+	radiant_thorn_stack_count[unit] = new_count
+
+	return duration * new_count
+end
+
 -- longer duration for radiant inheritance
 mod:modify_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buff_aura", {
-	duration = 20
+	duration = 10,
+	max_stacks = 2,
+	refresh_durations = true,
+	duration_modifier_func = tb_radiant_thorn_duration_modifier,
 })
+
+-- trigger radiant inheritance on regular ult too, not just extra-charge uses
+mod:modify_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_team_buff", {
+	event = "on_ability_cooldown_started"
+})
+
 mod:modify_talent("we_thornsister", 4, 3, {
     description = "sister_inheritance_desc",
     description_values = {},
 })
-mod:add_text("sister_inheritance_desc", "Consuming Radiance grants Kerillian and nearby allies 15% power and 5% critical strike chance for 20 seconds.")
+
+mod:add_text("sister_inheritance_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15% power and 5% critical strike chance for 10 seconds. Duration can stack 2 times.")
 
 -- shorter cd for burst ult
 mod:modify_talent("we_thornsister", 6, 3, {
@@ -1859,11 +2092,16 @@ mod:modify_talent("we_thornsister", 6, 3, {
 })
 mod:add_talent_buff_template("wood_elf", "tb_cd_thorn", {
 	stat_buff = "activated_cooldown",
-	multiplier = -0.3,
+	multiplier = -0.4, -- META SHIFT
 	max_stacks = 1
 })
-mod:add_text("kerillian_thorn_sister_debuff_wall_desc_2", "Thornwake instead causes roots to burst from the ground, staggering enemies and applying Blackvenom to them. Reduces cooldown by 30%%.")
+mod:add_text("kerillian_thorn_sister_debuff_wall_desc_2", "Thornwake instead causes roots to burst from the ground, staggering enemies and applying Blackvenom to them. Reduces cooldown by 40%%.")
 
+-- Briar's Malice
+-- consume only on hit
+mod:modify_talent_buff_template("wood_elf", "kerillian_thorn_sister_crit_on_any_ability_handler", {
+	event = "on_hit"
+})
 
 --[[
 
@@ -1875,6 +2113,349 @@ mod:add_text("kerillian_thorn_sister_debuff_wall_desc_2", "Thornwake instead cau
 ╚═════╝░╚═╝░░╚═╝╚══════╝░░░╚═╝░░░╚══════╝╚═╝░░░░░░░░╚═╝░░░╚═╝░░╚═╝╚══════╝
 
 ]]
+
+
+--[[
+
+	WHC Talents
+
+]]
+
+-- Riposte Updated
+mod:modify_talent("wh_captain", 2, 1, {
+	description = "victor_witchhunter_guaranteed_crit_on_timed_block_desc_new",
+	description_values = {},
+})
+mod:add_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc_new", "Blocking just as an enemy attack is about to hit causes your next melee or ranged attack within 2 seconds to be a guaranteed critical hit.")
+
+
+-- Fervency: extend guaranteed melee crit from 6s to 10s and 20 melee crit stacks
+mod:modify_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_guaranteed_crit_self_buff", {
+	duration = 10, -- 6
+})
+
+mod:modify_talent("wh_captain", 6, 2, {
+	description = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc_new",
+	description_values = {},
+})
+
+-- Fervency: additionally grants 20 stacks of guaranteed melee crit on ult use
+mod:add_talent_buff_template("witch_hunter", "tb_fervency_crit_stacks", {
+	icon = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff",
+	stat_buff = "critical_strike_chance_melee",
+	bonus = 1,
+	max_stacks = 20,
+})
+
+mod:add_talent_buff_template("witch_hunter", "tb_fervency_stack_provider", {
+	buff_func = "add_buff_reff_buff_stack",
+	buff_to_add = "tb_fervency_crit_stacks",
+	amount_to_add = 20,
+	event = "on_ability_activated",
+})
+
+mod:add_talent_buff_template("witch_hunter", "tb_fervency_stack_consumer", {
+	buff_func = "remove_buff_stack",
+	event = "on_melee_hit",
+	max_stacks = 1,
+	remove_buff_stack_data = {
+		{ buff_to_remove = "tb_fervency_crit_stacks", num_stacks = 1 },
+	},
+})
+
+mod:modify_talent("wh_captain", 6, 2, {
+	buffs = {
+		"tb_fervency_stack_provider",
+		"tb_fervency_stack_consumer"
+	},
+	description = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc_new",
+	description_values = {},
+})
+mod:add_text("victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc_new", "Animosity grants Victor guaranteed melee critical strikes for 10 seconds and the next 20 melee hits. No longer affects teammates and ranged attacks.")
+
+
+-- Templar's Knowledge ### SEE thp_stagger_changes.lua
+mod:modify_talent_buff_template("witch_hunter", "victor_witchhunter_improved_damage_taken_ping", {
+	duration = 15, -- 5
+})
+mod:modify_talent("wh_captain", 4, 1, {
+	description = "victor_witchhunter_improved_damage_taken_ping_desc_new",
+	description_values = {},
+})
+mod:add_text("victor_witchhunter_improved_damage_taken_ping_desc_new", "Witch Hunt causes enemies to take an additional 5.0% damage. Victor deals additional 25.0% direct damage to enemies affected by Witch Hunt (excluding Lords and Bosses).")
+
+
+
+-- I Shall Judge You All: Headshotting enemies affected by Witch Hunt extends crit duration by 2 seconds
+local ISJYA_ANIMOSITY_MAX_DURATION = 24
+
+mod:add_proc_function("tb_isjya_extend_animosity_on_headshot", function (owner_unit, buff, params)
+	if not Unit.alive(owner_unit) then
+		return
+	end
+
+	local hit_unit = params[1]
+	local hit_zone_name = params[3]
+
+	if hit_zone_name ~= "head" then
+		return
+	end
+
+	local hit_unit_buff_extension = hit_unit and ALIVE[hit_unit] and ScriptUnit.has_extension(hit_unit, "buff_system")
+
+	if not hit_unit_buff_extension or not hit_unit_buff_extension:has_buff_type("defence_debuff_enemies") then
+		return
+	end
+
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+	local animosity_buff = buff_extension:get_buff_type("victor_witchhunter_activated_ability_crit_buff")
+
+	if animosity_buff and animosity_buff.duration then
+		animosity_buff.duration = math.min(animosity_buff.duration + buff.bonus, ISJYA_ANIMOSITY_MAX_DURATION)
+		animosity_buff.end_time = animosity_buff.start_time + animosity_buff.duration
+
+		local remaining_duration = animosity_buff.end_time - Managers.time:time("game")
+
+		if remaining_duration > 0 then
+			buff_extension:add_buff("tb_isjya_headshot_stacks", {
+				external_optional_duration = remaining_duration,
+			})
+		end
+	end
+end)
+
+mod:add_talent_buff_template("witch_hunter", "tb_isjya_extend_animosity_on_headshot", {
+	buff_func = "tb_isjya_extend_animosity_on_headshot",
+	event = "on_hit",
+	bonus = 2,
+})
+
+-- I Shall Judge You All: purely cosmetic stack counter (reuses Animosity's icon) tracking qualifying headshots landed this Animosity, capped at 12
+mod:add_talent_buff_template("witch_hunter", "tb_isjya_headshot_stacks", {
+	icon = "victor_witchhunter_activated_ability",
+	max_stacks = 12,
+	refresh_durations = true,
+})
+
+-- I Shall Judge You All: once Animosity has been active for 6 seconds, its crit bonus decays 1% per second (25% -> 24% at 6s, 23% at 7s, 22% at 8s, ...)
+local ISJYA_ANIMOSITY_BASE_BONUS = 0.25
+local ISJYA_ANIMOSITY_BASE_DURATION = 6
+local ISJYA_ANIMOSITY_DECAY_PER_SECOND = 0.01
+
+mod:add_buff_function("tb_isjya_animosity_crit_decay", function (unit, buff, params, world)
+	local time_into_buff = params.time_into_buff
+
+	if not time_into_buff or time_into_buff < ISJYA_ANIMOSITY_BASE_DURATION then
+		return
+	end
+
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+
+	if not talent_extension or not talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") then
+		return
+	end
+
+	local seconds_past_base = math.floor(time_into_buff - (ISJYA_ANIMOSITY_BASE_DURATION - 1))
+	local target_bonus = math.max(0, ISJYA_ANIMOSITY_BASE_BONUS - ISJYA_ANIMOSITY_DECAY_PER_SECOND * seconds_past_base)
+
+	if math.abs(target_bonus - (buff.bonus or 0)) < 0.0001 then
+		return
+	end
+
+	local buff_extension = ScriptUnit.extension(unit, "buff_system")
+
+	buff_extension:remove_buff(buff.id)
+	buff_extension:add_buff(buff.buff_template_name, {
+		external_optional_bonus = target_bonus,
+		external_optional_duration = buff.duration,
+		_hot_join_sync_buff_age = time_into_buff,
+	})
+end)
+
+mod:modify_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_crit_buff", {
+	update_func = "tb_isjya_animosity_crit_decay",
+	update_frequency = 1,
+})
+
+mod:modify_talent("wh_captain", 6, 1, {
+	buffs = {
+		"tb_isjya_extend_animosity_on_headshot",
+	},
+	description = "victor_captain_activated_ability_stagger_ping_debuff_desc_new",
+	description_values = {},
+})
+mod:add_text("victor_captain_activated_ability_stagger_ping_debuff_desc_new", "Applies Witch Hunt to enemies hit by Animosity and permanently to all specials.\n\nHeadshotting enemies affected by Witch Hunt extends the duration of Animosity by 2 seconds. Animosity's critical strike chance bonus decays by 1% per second after the first 6 seconds.")
+
+--[[ Ping All Specials on WHC ISJYA ULT ]]
+local PING_DURATION = 150
+local marked_enemies = {}
+
+OutlineSettings.colors.tb_judged_special = {
+	pulsate = false,
+	pulse_multiplier = 50,
+	color = { 255, mod:get("tb_special_tag_color_r"), mod:get("tb_special_tag_color_g"), mod:get("tb_special_tag_color_b") }, -- alpha, r, g, b
+}
+OutlineSettings.templates.tb_judged_special = {
+	method = "ai_alive",
+	priority = 15,
+	outline_color = OutlineSettings.colors.tb_judged_special,
+	flag = OutlineSettings.flags.non_wall_occluded,
+}
+
+-- Regular ping color is the base game's own OutlineSettings.colors.player_attention table, mutated in place
+-- (not replaced) so every template already referencing it - ping_unit, target_ally - picks up the change too.
+do
+	local color = OutlineSettings.colors.player_attention.color
+
+	color[2] = mod:get("tb_ping_color_r")
+	color[3] = mod:get("tb_ping_color_g")
+	color[4] = mod:get("tb_ping_color_b")
+end
+
+-- mod.on_setting_changed never fired reliably here, so tag colors are polled instead (like
+-- stagger_state_visualizer's approach) via the shared mod:add_update_function dispatcher.
+local TAG_COLOR_UPDATE_INTERVAL = 0.5
+local tag_color_update_timer = 0
+local last_ping_color = {
+	r = mod:get("tb_ping_color_r"),
+	g = mod:get("tb_ping_color_g"),
+	b = mod:get("tb_ping_color_b"),
+}
+local last_special_color = {
+	r = mod:get("tb_special_tag_color_r"),
+	g = mod:get("tb_special_tag_color_g"),
+	b = mod:get("tb_special_tag_color_b"),
+}
+
+mod:add_update_function(function (dt)
+	tag_color_update_timer = tag_color_update_timer + dt
+
+	if tag_color_update_timer < TAG_COLOR_UPDATE_INTERVAL then
+		return
+	end
+
+	tag_color_update_timer = 0
+
+	local ping_r, ping_g, ping_b = mod:get("tb_ping_color_r"), mod:get("tb_ping_color_g"), mod:get("tb_ping_color_b")
+
+	if last_ping_color.r ~= ping_r or last_ping_color.g ~= ping_g or last_ping_color.b ~= ping_b then
+		last_ping_color.r, last_ping_color.g, last_ping_color.b = ping_r, ping_g, ping_b
+
+		local color = OutlineSettings.colors.player_attention.color
+
+		color[2], color[3], color[4] = ping_r, ping_g, ping_b
+	end
+
+	local special_r, special_g, special_b = mod:get("tb_special_tag_color_r"), mod:get("tb_special_tag_color_g"), mod:get("tb_special_tag_color_b")
+
+	if last_special_color.r ~= special_r or last_special_color.g ~= special_g or last_special_color.b ~= special_b then
+		last_special_color.r, last_special_color.g, last_special_color.b = special_r, special_g, special_b
+
+		local color = OutlineSettings.colors.tb_judged_special.color
+
+		color[2], color[3], color[4] = special_r, special_g, special_b
+
+		-- Force already-tagged specials to redraw immediately with the new color, not just future tags
+		for enemy_unit, data in pairs(marked_enemies) do
+			if ALIVE[enemy_unit] and data.outline_id then
+				local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
+
+				if outline_extension then
+					outline_extension:reapply_outline()
+				end
+			end
+		end
+	end
+end)
+
+mod:hook_safe(DamageUtils, "create_explosion", function (world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, is_husk, damaging_unit, attacker_power_level, is_critical_strike, source_attacker_unit)
+	if damage_source ~= "career_ability" or not ALIVE[attacker_unit] then
+		return
+	end
+
+	local career_extension = ScriptUnit.has_extension(attacker_unit, "career_system")
+
+	if not career_extension or career_extension:career_name() ~= "wh_captain" then
+		return
+	end
+
+	local talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
+
+	if not talent_extension or not talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") then
+		return
+	end
+
+	local has_templars_knowledge = talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
+	local proximity_system = Managers.state.entity:system("proximity_system")
+	local t = Managers.time:time("game")
+
+	for enemy_unit, _ in pairs(proximity_system.ai_unit_extensions_map) do
+		local breed = Unit.get_data(enemy_unit, "breed")
+		local is_special = breed and breed.special
+
+		if ALIVE[enemy_unit] and is_special then
+			if marked_enemies[enemy_unit] then
+				marked_enemies[enemy_unit].expire_t = t + PING_DURATION
+			else
+				local ping_extension = ScriptUnit.has_extension(enemy_unit, "ping_system")
+
+				if ping_extension then
+					ping_extension:set_pinged(true, false, attacker_unit, false)
+
+					local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
+					local outline_id = outline_extension and outline_extension:add_outline(OutlineSettings.templates.tb_judged_special)
+
+					marked_enemies[enemy_unit] = {
+						owner_unit = attacker_unit,
+						expire_t = t + PING_DURATION,
+						outline_id = outline_id,
+					}
+				end
+			end
+
+			if Managers.state.network.is_server then
+				local buff_system = Managers.state.entity:system("buff_system")
+
+				buff_system:add_buff_synced(enemy_unit, "defence_debuff_enemies", BuffSyncType.All, {
+					external_optional_duration = PING_DURATION,
+				})
+
+				if has_templars_knowledge then
+					buff_system:add_buff_synced(enemy_unit, "victor_witchhunter_improved_damage_taken_ping", BuffSyncType.All, {
+						external_optional_duration = PING_DURATION,
+					})
+				end
+			end
+		end
+	end
+end)
+
+-- visual
+mod:hook_safe(IngameHud, "update", function (self)
+	local t = Managers.time:time("game")
+
+	for enemy_unit, data in pairs(marked_enemies) do
+		if not ALIVE[enemy_unit] or t >= data.expire_t then
+			if ALIVE[enemy_unit] then
+				local ping_extension = ScriptUnit.has_extension(enemy_unit, "ping_system")
+
+				if ping_extension then
+					ping_extension:set_pinged(false, nil, data.owner_unit, false)
+				end
+
+				local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
+
+				if outline_extension and data.outline_id then
+					outline_extension:remove_outline(data.outline_id)
+				end
+			end
+
+			marked_enemies[enemy_unit] = nil
+		end
+	end
+end)
+
+
 --[[
 
 	Bounty Hunter Talents
