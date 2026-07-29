@@ -43,6 +43,9 @@ const { title, fullBleed = false } = Astro.props;
         <a href={`${base}patch-notes/`}>Patch Notes</a>
         <a href={`${base}documentation/`}>Documentation</a>
         <a href="https://miro.com/app/board/uXjVHZWgcfU=/">Miro Board ↗</a>
+        <a href="https://github.com/vt2-tourney-balance/Tourney-Balance-Open-Beta" class="logo-link">
+          <img src={`${base}logo_github.png`} alt="GitHub" class="logo-gh" />
+        </a>
       </nav>
     </header>
     <main class={fullBleed ? 'full-bleed' : ''}>
@@ -101,7 +104,7 @@ const { title, fullBleed = false } = Astro.props;
     justify-content: space-between;
     padding: 1rem 2rem;
     border-bottom: 2px solid var(--color-accent);
-    background: rgba(18, 18, 18, 0.7);
+    background: rgba(18, 18, 18, 0.9);
     box-sizing: border-box;
     height: var(--header-height);
     position: sticky;
@@ -114,8 +117,15 @@ const { title, fullBleed = false } = Astro.props;
     display: block;
     transition: filter 0.2s ease;
   }
+  
+  .logo-gh {
+    height: 24px;
+    display: block;
+    transition: filter 0.2s ease;
+  }
 
-  .logo-link:hover .logo {
+  .logo-link:hover .logo,
+  .logo-link:hover .logo-gh {
     filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #fff);
   }
 
@@ -139,9 +149,6 @@ const { title, fullBleed = false } = Astro.props;
     min-height: 60vh;
   }
 
-  /* Used for pages with their own full-bleed hero content, so it can butt
-     up flush against the header/footer with no transparent padding gap
-     revealing whatever sits behind (e.g. the homepage's fixed hero video). */
   main.full-bleed {
     padding-top: 0;
     padding-bottom: 0;

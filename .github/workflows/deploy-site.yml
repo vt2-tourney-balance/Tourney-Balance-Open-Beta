@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   build:
+    # Only deploy gh-pages on Open Beta Fork
+    if: github.repository == 'vt2-tourney-balance/Tourney-Balance-Open-Beta'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source
@@ -46,6 +48,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.repository == 'vt2-tourney-balance/Tourney-Balance-Open-Beta'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
