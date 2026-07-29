@@ -4485,7 +4485,7 @@ NewDamageProfileTemplates.tb_dual_swords_light_4 = {
 	},
 }
 
--- Heavy
+-- Heavy (test me)
 Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack_2.damage_profile_right = "tb_dual_swords_heavy_2"
 Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack_2.damage_profile_left = "tb_dual_swords_heavy_2"
 Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack.damage_profile_right = "tb_dual_swords_heavy_1"
