@@ -3,16 +3,16 @@ title: "FAQ"
 order: 2
 ---
 
-*Placeholder content — replace with real documentation.*
+*Placeholder content*
 
 ## Is Tourney Balance required to play with others?
 
-Placeholder answer.
+Yes, everyone in the lobby needs to have Tourney Balance to play together.
 
 ## Does this affect my saves or progression?
 
-Placeholder answer.
+No.
 
 ## How often is the mod updated?
 
-Placeholder answer — see the Patch Notes page for the actual history.
+When I have time.

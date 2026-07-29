@@ -3,7 +3,7 @@ title: "Terminology"
 order: 1
 ---
 
-*Placeholder content — replace with real documentation.*
+*Placeholder content*
 
 ## Careers
 
@@ -20,7 +20,7 @@ mod's internal naming convention.
 
 ## Talents
 
-Each career has six talent rows, with a choice of talents per row.
+Each career has six talent rows, with a choice of 3 talents per row.
 
 ## Traits
 
