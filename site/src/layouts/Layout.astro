@@ -38,7 +38,18 @@ const { title, fullBleed = false } = Astro.props;
       <a href={base} class="logo-link">
         <img src={logo} alt="Tourney Balance" class="logo" />
       </a>
-      <nav class="site-nav">
+      <button
+        type="button"
+        id="nav-toggle"
+        class="nav-toggle"
+        aria-expanded="false"
+        aria-controls="site-nav"
+        aria-label="Toggle navigation menu"
+      >
+        ☰
+      </button>
+
+      <nav class="site-nav" id="site-nav">
         <a href={`${base}changes/`}>Balance Changes</a>
         <a href={`${base}patch-notes/`}>Patch Notes</a>
         <a href={`${base}documentation/`}>Documentation</a>
@@ -77,6 +88,21 @@ const { title, fullBleed = false } = Astro.props;
       document.querySelectorAll<HTMLImageElement>('main img:not(.hero-logo)').forEach((img) => {
         img.classList.add('zoomable');
         img.addEventListener('click', () => openLightbox(img.src, img.alt));
+      });
+
+      const navToggle = document.getElementById('nav-toggle');
+      const siteNav = document.getElementById('site-nav');
+
+      navToggle?.addEventListener('click', () => {
+        const isOpen = siteNav?.classList.toggle('nav-open');
+        navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+
+      siteNav?.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => {
+          siteNav.classList.remove('nav-open');
+          navToggle?.setAttribute('aria-expanded', 'false');
+        });
       });
     </script>
 
@@ -197,6 +223,51 @@ const { title, fullBleed = false } = Astro.props;
   }
   .site-nav a:hover {
     color: var(--color-accent);
+  }
+
+  .nav-toggle {
+    display: none;
+    background: none;
+    border: 1px solid #333;
+    color: var(--color-text);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+  .nav-toggle:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  @media (max-width: 768px) {
+    .nav-toggle {
+      display: block;
+    }
+
+    .site-nav {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      background: rgba(18, 18, 18, 0.95);
+      border-bottom: 2px solid var(--color-accent);
+      padding: 0.5rem 2rem 1rem;
+    }
+
+    .site-nav.nav-open {
+      display: flex;
+    }
+
+    .site-nav a {
+      padding: 0.75rem 0;
+      width: 100%;
+    }
   }
 
   main {

@@ -57,10 +57,15 @@ const notes = await getSortedPatchNotes();
 <script>
   const toggle = document.getElementById('patch-sidebar-toggle');
   const wrapper = toggle?.closest('.patch-sidebar-wrapper');
+  const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
   toggle?.addEventListener('click', () => {
-    const collapsed = wrapper?.classList.toggle('collapsed');
-    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    const hasCollapsedClass = wrapper?.classList.toggle('collapsed');
+    // On desktop ".collapsed" hides an initially-shown sidebar; on mobile it
+    // reveals an initially-hidden one — same class, opposite meaning below
+    // the breakpoint, so aria-expanded is computed accordingly either way.
+    const isExpanded = isMobile() ? hasCollapsedClass : !hasCollapsedClass;
+    toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
   });
 
   const search = document.getElementById('patch-sidebar-search') as HTMLInputElement | null;
@@ -117,6 +122,56 @@ const notes = await getSortedPatchNotes();
   .patch-sidebar-wrapper.collapsed .patch-sidebar {
     width: 0;
     opacity: 0;
+  }
+
+  @media (max-width: 768px) {
+    .patch-sidebar-wrapper {
+      /* Children below are fixed-positioned overlays, so the wrapper itself
+         contributes no size to the document flow — no more empty gap
+         before the main content starts. */
+      position: static;
+      width: auto;
+      display: block;
+    }
+
+    .patch-sidebar-toggle {
+      /* Always reachable at the same spot on screen, regardless of scroll
+         position — matches the desktop sticky behavior. */
+      position: fixed;
+      top: calc(var(--header-height) + 1rem);
+      left: 1rem;
+      z-index: 20;
+    }
+
+    .patch-sidebar {
+      /* Hidden off-canvas by default; slides in from the right as an
+         overlay on top of the main content instead of pushing it aside. */
+      position: fixed;
+      top: var(--header-height);
+      right: 0;
+      width: min(85vw, 320px);
+      height: calc(100vh - var(--header-height));
+      background: rgba(18, 18, 18, 0.98);
+      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
+      padding: 1rem;
+      box-sizing: border-box;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.2s ease;
+      opacity: 1;
+      z-index: 15;
+    }
+
+    /* Same toggle class as desktop, but inverted meaning: here it reveals
+       the sidebar instead of hiding it (see the isMobile() check in the
+       script below, which keeps aria-expanded correct either way).
+       Explicitly overrides width/opacity from the desktop collapsed rule
+       above — same selector, so both would otherwise apply at once here. */
+    .patch-sidebar-wrapper.collapsed .patch-sidebar {
+      transform: translateX(0);
+      width: min(85vw, 320px);
+      opacity: 1;
+    }
   }
 
   .patch-sidebar-search {

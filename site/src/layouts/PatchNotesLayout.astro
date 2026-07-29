@@ -28,4 +28,10 @@ const { title, activeSlug } = Astro.props;
     flex: 1;
     min-width: 0;
   }
+
+  @media (max-width: 768px) {
+    .patch-layout {
+      flex-direction: column;
+    }
+  }
 </style>

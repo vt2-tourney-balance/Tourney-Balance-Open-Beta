@@ -35,4 +35,10 @@ const { title, activeSlug, activeHeadings } = Astro.props;
     flex: 1;
     min-width: 0;
   }
+
+  @media (max-width: 768px) {
+    .docs-layout {
+      flex-direction: column;
+    }
+  }
 </style>
