@@ -51,6 +51,35 @@ const { title, fullBleed = false } = Astro.props;
     <main class={fullBleed ? 'full-bleed' : ''}>
       <slot />
     </main>
+    <script>
+      function openLightbox(src: string, alt: string) {
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = alt;
+        overlay.appendChild(img);
+
+        const close = () => {
+          overlay.remove();
+          document.removeEventListener('keydown', onKey);
+        };
+        function onKey(e: KeyboardEvent) {
+          if (e.key === 'Escape') close();
+        }
+
+        overlay.addEventListener('click', close);
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(overlay);
+      }
+
+      document.querySelectorAll<HTMLImageElement>('main img:not(.hero-logo)').forEach((img) => {
+        img.classList.add('zoomable');
+        img.addEventListener('click', () => openLightbox(img.src, img.alt));
+      });
+    </script>
+
     <footer class="site-footer">
       <p>Tourney Balance is not affiliated with Fatshark or Games Workshop.</p>
     </footer>
@@ -68,8 +97,6 @@ const { title, fullBleed = false } = Astro.props;
   }
 
   :global(html) {
-    /* Reserves the scrollbar's width permanently, so pages with and without
-       a scrollbar don't shift the content width when navigating between them. */
     scrollbar-gutter: stable;
     overflow-y: scroll;
   }
@@ -96,6 +123,36 @@ const { title, fullBleed = false } = Astro.props;
   :global(details summary) {
     cursor: pointer;
     color: var(--color-accent);
+  }
+
+  :global(main img) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  :global(main em) {
+    opacity: 0.67;
+  }
+
+  :global(main img.zoomable) {
+    cursor: zoom-in;
+  }
+
+  :global(.lightbox-overlay) {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: zoom-out;
+  }
+
+  :global(.lightbox-overlay img) {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
   }
 
   .site-header {
