@@ -1,7 +1,8 @@
 ---
-title: "Example"
-order: 999
+title: "Adding Patch Notes"
+order: 3
 ---
+# GitHub Pages
 # H1 - Markdown Example
 ## H2 - Career, Talent, Weapon, Misc
 ### H3 - The Details

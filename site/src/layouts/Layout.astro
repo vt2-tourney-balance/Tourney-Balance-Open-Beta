@@ -160,6 +160,21 @@ const { title, fullBleed = false } = Astro.props;
     opacity: 0.67;
   }
 
+  :global(main table) {
+    border-collapse: collapse;
+    margin: 1rem 0;
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  :global(main th),
+  :global(main td) {
+    border: 1px solid #fff;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+
   :global(main img.zoomable) {
     cursor: zoom-in;
   }
