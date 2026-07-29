@@ -2297,7 +2297,7 @@ OutlineSettings.colors.tb_judged_special = {
 }
 OutlineSettings.templates.tb_judged_special = {
 	method = "ai_alive",
-	priority = 15,
+	priority = 10,
 	outline_color = OutlineSettings.colors.tb_judged_special,
 	flag = OutlineSettings.flags.non_wall_occluded,
 }
