@@ -12,20 +12,14 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 
 ]]
 
-local function merge(dst, src)
-		for k, v in pairs(src) do
-			dst[k] = v
-		end
-		return dst
-end
 function mod.add_buff_template(self, buff_name, buff_data, extra_data)
     local new_buff = {
         buffs = {
-            merge({ name = buff_name }, buff_data),
+            table.merge({ name = buff_name }, buff_data),
         },
     }
     if extra_data then
-        new_buff = merge(new_buff, extra_data)
+        new_buff = table.merge(new_buff, extra_data)
 	elseif type(buff_data[1]) == "table" then
 		new_buff = {
 			buffs = buff_data,
@@ -40,7 +34,7 @@ function mod.add_buff_template(self, buff_name, buff_data, extra_data)
     NetworkLookup.buff_templates[buff_name] = index
 end
 function mod.add_explosion_template(self, explosion_name, data)
-    ExplosionTemplates[explosion_name] = merge({ name = explosion_name}, data)
+    ExplosionTemplates[explosion_name] = table.merge({ name = explosion_name}, data)
     local index = #NetworkLookup.explosion_templates + 1
     NetworkLookup.explosion_templates[index] = explosion_name
     NetworkLookup.explosion_templates[explosion_name] = index

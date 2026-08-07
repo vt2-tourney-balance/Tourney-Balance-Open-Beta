@@ -128,12 +128,25 @@ end
 local UPDATE_INTERVAL = 0.15
 local next_update_t = 0
 
-mod:add_update_function(function (dt)
-	if not mod:get("stagger_state_visualizer") then
-		if next(outlined_units) then
-			clear_all_outlines()
-		end
+-- Settings cached here and refreshed only on actual change (TourneyBalance.lua's
+-- mod:add_setting_changed_function dispatcher), instead of calling mod:get() every frame
+-- (the enabled flag) or every 0.15s tick (include_real/include_mainstay) in the hot loop below.
+local stagger_state_visualizer_enabled = mod:get("stagger_state_visualizer")
+local include_real = mod:get("stagger_state_visualizer_include_real")
+local include_mainstay = mod:get("stagger_state_visualizer_include_mainstay")
 
+mod:add_setting_changed_function(function ()
+	stagger_state_visualizer_enabled = mod:get("stagger_state_visualizer")
+	include_real = mod:get("stagger_state_visualizer_include_real")
+	include_mainstay = mod:get("stagger_state_visualizer_include_mainstay")
+
+	if not stagger_state_visualizer_enabled and next(outlined_units) then
+		clear_all_outlines()
+	end
+end)
+
+mod:add_update_function(function (dt)
+	if not stagger_state_visualizer_enabled then
 		return
 	end
 
@@ -158,9 +171,6 @@ mod:add_update_function(function (dt)
 			clear_outline(unit)
 		end
 	end
-
-	local include_real = mod:get("stagger_state_visualizer_include_real")
-	local include_mainstay = mod:get("stagger_state_visualizer_include_mainstay")
 
 	for unit, blackboard in pairs(BLACKBOARDS) do
 		if ALIVE[unit] then

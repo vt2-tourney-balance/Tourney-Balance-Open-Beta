@@ -359,9 +359,9 @@ mod.on_all_mods_loaded = function()
     initiate_mod_checker()
 end
 
-mod.on_setting_changed = function()
+mod:add_setting_changed_function(function()
     initiate_mod_checker()
-end
+end)
 
 mod.on_game_state_changed = function(status, state_name)
     initiate_mod_checker()

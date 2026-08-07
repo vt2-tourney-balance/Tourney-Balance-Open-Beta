@@ -1,69 +1,77 @@
 local mod = get_mod("TourneyBalance")
+local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
+-- Kill THP
 NewBreedTweaks = NewBreedTweaks or {} --table.clone(BreedTweaks)
 NewBreedTweaks.bloodlust_health = {
 	beastmen_horde = 1.5,
-    chaos_roamer = 3,
-    skaven_special = 8,
-    chaos_warrior = 20,
-    skaven_elite = 8,
-    beastmen_roamer = 3,
-    chaos_elite = 10,
-    beastmen_elite = 15,
-    skaven_horde = 1,
-    chaos_special = 10,
-    skaven_roamer = 2,
-    monster = 35,
-    chaos_horde = 1.5
+	chaos_roamer = 3,
+	skaven_special = 8,
+	chaos_warrior = 20,
+	skaven_elite = 8,
+	beastmen_roamer = 3,
+	chaos_elite = 10,
+	beastmen_elite = 15,
+	skaven_horde = 1,
+	chaos_special = 10,
+	skaven_roamer = 2,
+	monster = 35,
+	chaos_horde = 1.5,
 }
 
-Breeds.beastmen_bestigor.bloodlust_health = NewBreedTweaks.bloodlust_health.beastmen_elite
-Breeds.beastmen_gor.bloodlust_health = NewBreedTweaks.bloodlust_health.beastmen_roamer
-Breeds.beastmen_gor_dummy.bloodlust_health = NewBreedTweaks.bloodlust_health.beastmen_roamer
-Breeds.beastmen_minotaur.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.beastmen_standard_bearer.bloodlust_health = NewBreedTweaks.bloodlust_health.beastmen_elite
-Breeds.beastmen_ungor_archer.bloodlust_health = NewBreedTweaks.bloodlust_health.beastmen_horde
-Breeds.beastmen_ungor.bloodlust_health = NewBreedTweaks.bloodlust_health.beastmen_horde
-Breeds.beastmen_ungor_dummy.bloodlust_health = NewBreedTweaks.bloodlust_health.beastmen_horde
-Breeds.chaos_berzerker.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_elite
-Breeds.chaos_corruptor_sorcerer.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_special
-Breeds.chaos_exalted_champion_warcamp.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.chaos_exalted_sorcerer_drachenfels.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.chaos_exalted_sorcerer.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.chaos_fanatic.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_horde
-Breeds.chaos_marauder_with_shield.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_roamer
-Breeds.chaos_marauder.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_roamer
-Breeds.chaos_marauder_tutorial.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_roamer
-Breeds.chaos_mutator_sorcerer.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_special
---Breeds.chaos_plague_sorcerer.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_special
-Breeds.chaos_raider.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_elite
-Breeds.chaos_raider_tutorial.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_elite
-Breeds.chaos_spawn.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
---Breeds.chaos_tentacle_sorcerer.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_special
-Breeds.chaos_troll.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.chaos_vortex_sorcerer.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_special
-Breeds.chaos_warrior.bloodlust_health = NewBreedTweaks.bloodlust_health.chaos_warrior
-Breeds.skaven_clan_rat_with_shield.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_roamer
-Breeds.skaven_clan_rat.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_roamer
-Breeds.skaven_clan_rat_tutorial.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_roamer
-Breeds.skaven_explosive_loot_rat.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_roamer
-Breeds.skaven_grey_seer.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.skaven_gutter_runner.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_special
-Breeds.skaven_loot_rat.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_special
-Breeds.skaven_pack_master.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_special
-Breeds.skaven_plague_monk.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_elite
-Breeds.skaven_poison_wind_globadier.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_special
-Breeds.skaven_rat_ogre.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.skaven_ratling_gunner.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_special
-Breeds.skaven_slave.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_horde
-Breeds.skaven_storm_vermin_champion.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.skaven_storm_vermin_warlord.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.skaven_storm_vermin_with_shield.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_elite
-Breeds.skaven_storm_vermin.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_elite
-Breeds.skaven_storm_vermin_commander.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_elite
-Breeds.skaven_stormfiend_boss.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.skaven_stormfiend.bloodlust_health = NewBreedTweaks.bloodlust_health.monster
-Breeds.skaven_warpfire_thrower.bloodlust_health = NewBreedTweaks.bloodlust_health.skaven_special
+local BLOODLUST_HEALTH_BY_BREED = {
+	beastmen_bestigor = "beastmen_elite",
+	beastmen_gor = "beastmen_roamer",
+	beastmen_gor_dummy = "beastmen_roamer",
+	beastmen_minotaur = "monster",
+	beastmen_standard_bearer = "beastmen_elite",
+	beastmen_ungor_archer = "beastmen_horde",
+	beastmen_ungor = "beastmen_horde",
+	beastmen_ungor_dummy = "beastmen_horde",
+	chaos_berzerker = "chaos_elite",
+	chaos_corruptor_sorcerer = "chaos_special",
+	chaos_exalted_champion_warcamp = "monster",
+	chaos_exalted_sorcerer_drachenfels = "monster",
+	chaos_exalted_sorcerer = "monster",
+	chaos_fanatic = "chaos_horde",
+	chaos_marauder_with_shield = "chaos_roamer",
+	chaos_marauder = "chaos_roamer",
+	chaos_marauder_tutorial = "chaos_roamer",
+	chaos_mutator_sorcerer = "chaos_special",
+	-- chaos_plague_sorcerer = "chaos_special",
+	chaos_raider = "chaos_elite",
+	chaos_raider_tutorial = "chaos_elite",
+	chaos_spawn = "monster",
+	-- chaos_tentacle_sorcerer = "chaos_special",
+	chaos_troll = "monster",
+	chaos_vortex_sorcerer = "chaos_special",
+	chaos_warrior = "chaos_warrior",
+	skaven_clan_rat_with_shield = "skaven_roamer",
+	skaven_clan_rat = "skaven_roamer",
+	skaven_clan_rat_tutorial = "skaven_roamer",
+	skaven_explosive_loot_rat = "skaven_roamer",
+	skaven_grey_seer = "monster",
+	skaven_gutter_runner = "skaven_special",
+	skaven_loot_rat = "skaven_special",
+	skaven_pack_master = "skaven_special",
+	skaven_plague_monk = "skaven_elite",
+	skaven_poison_wind_globadier = "skaven_special",
+	skaven_rat_ogre = "monster",
+	skaven_ratling_gunner = "skaven_special",
+	skaven_slave = "skaven_horde",
+	skaven_storm_vermin_champion = "monster",
+	skaven_storm_vermin_warlord = "monster",
+	skaven_storm_vermin_with_shield = "skaven_elite",
+	skaven_storm_vermin = "skaven_elite",
+	skaven_storm_vermin_commander = "skaven_elite",
+	skaven_stormfiend_boss = "monster",
+	skaven_stormfiend = "monster",
+	skaven_warpfire_thrower = "skaven_special",
+}
+
+for breed_name, category in pairs(BLOODLUST_HEALTH_BY_BREED) do
+	Breeds[breed_name].bloodlust_health = NewBreedTweaks.bloodlust_health[category]
+end
 
 -- Fixes the cannons crashing the game in "Return of the Reik"
 mod:hook(DamageUtils, "stagger_ai", function (func, t, damage_profile, target_index, power_level, target_unit, attacker_unit, hit_zone_name, attack_direction, boost_curve_multiplier, is_critical_strike, blocked, damage_source, source_attacker_unit, optional_predicted_damage)
@@ -164,7 +172,7 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
 
 			if target_buff_extension then
-				target_buff_extension:add_buff("rebaltourn_mainstay_stagger_mark_buff")
+				target_buff_extension:add_buff("tb_mainstay_stagger_mark_buff")
 			end
 		end
 	elseif shield_breaking_hit then
@@ -645,73 +653,12 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 				if target_buff_extension and target_buff_extension:has_buff_type("defence_debuff_enemies") and not (breed and breed.boss) then
 					calculated_damage = calculated_damage * 1.25
 				end
-				--[[ I Shall Judge You All Passive
-				if target_buff_extension and attacker_talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") and not (breed and (breed.elite or breed.special)) then
-					calculated_damage = calculated_damage * 1.25
-				end
-				]]
 			end
 		end
 	end
 	
 	return calculated_damage
 end)
-
--- Buff and Talent Functions
-local function merge(dst, src)
-    for k, v in pairs(src) do
-        dst[k] = v
-    end
-    return dst
-end
-function mod.add_talent_buff_template(self, hero_name, buff_name, buff_data, extra_data)   
-    local new_talent_buff = {
-        buffs = {
-            merge({ name = buff_name }, buff_data),
-        },
-    }
-    if extra_data then
-        new_talent_buff = merge(new_talent_buff, extra_data)
-    elseif type(buff_data[1]) == "table" then
-        new_talent_buff = {
-            buffs = buff_data,
-        }
-        if new_talent_buff.buffs[1].name == nil then
-            new_talent_buff.buffs[1].name = buff_name
-        end
-    end
-    TalentBuffTemplates[hero_name][buff_name] = new_talent_buff
-    BuffTemplates[buff_name] = new_talent_buff
-    local index = #NetworkLookup.buff_templates + 1
-    NetworkLookup.buff_templates[index] = buff_name
-    NetworkLookup.buff_templates[buff_name] = index
-end
-function mod.add_buff_template(self, buff_name, buff_data)   
-    local new_talent_buff = {
-        buffs = {
-            merge({ name = buff_name }, buff_data),
-        },
-    }
-    BuffTemplates[buff_name] = new_talent_buff
-    local index = #NetworkLookup.buff_templates + 1
-    NetworkLookup.buff_templates[index] = buff_name
-    NetworkLookup.buff_templates[buff_name] = index
-end
-function mod.add_proc_function(self, name, func)
-    ProcFunctions[name] = func
-end
-function mod.modify_talent(self, career_name, tier, index, new_talent_data)
-	local career_settings = CareerSettings[career_name]
-    local hero_name = career_settings.profile_name
-	local talent_tree_index = career_settings.talent_tree_index
-
-	local old_talent_name = TalentTrees[hero_name][talent_tree_index][tier][index]
-	local old_talent_id_lookup = TalentIDLookup[old_talent_name]
-	local old_talent_id = old_talent_id_lookup.talent_id
-	local old_talent_data = Talents[hero_name][old_talent_id]
-
-    Talents[hero_name][old_talent_id] = merge(old_talent_data, new_talent_data)
-end
 
 local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 local stagger_types = require("scripts/utils/stagger_types")
@@ -723,7 +670,7 @@ local stagger_types = require("scripts/utils/stagger_types")
 ]]
 
 -- THP on Crit
-mod:add_proc_function("rebaltourn_heal_finesse_damage_on_melee", function (owner_unit, buff, params)
+mod_api.insert_proc_function("tb_heal_finesse_damage_on_melee", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
@@ -756,16 +703,16 @@ mod:add_proc_function("rebaltourn_heal_finesse_damage_on_melee", function (owner
 	end
 end)
 
-mod:add_buff_template("rebaltourn_regrowth", {
+mod_api.insert_buff_template("tb_regrowth", {
 	name = "regrowth",
 	event_buff = true,
-	buff_func = "rebaltourn_heal_finesse_damage_on_melee",
+	buff_func = "tb_heal_finesse_damage_on_melee",
 	event = "on_hit",
 	perks = { buff_perks.ninja_healing },
 })
 
 -- THP on Stagger
-mod:add_proc_function("rebaltourn_heal_stagger_targets_on_melee", function (owner_unit, buff, params)
+mod_api.insert_proc_function("tb_heal_stagger_targets_on_melee", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
@@ -825,17 +772,17 @@ mod:add_proc_function("rebaltourn_heal_stagger_targets_on_melee", function (owne
 		end
 	end
 end)
-mod:add_buff_template("rebaltourn_vanguard", {
+mod_api.insert_buff_template("tb_vanguard", {
 	multiplier = 1,
 	name = "vanguard",
 	event_buff = true,
-	buff_func = "rebaltourn_heal_stagger_targets_on_melee",
+	buff_func = "tb_heal_stagger_targets_on_melee",
 	event = "on_stagger",
 	perks = { buff_perks.tank_healing }
 })
 
 -- THP on Cleave
-mod:add_buff_template("rebaltourn_reaper", {
+mod_api.insert_buff_template("tb_reaper", {
 	multiplier = -0.05,
 	name = "reaper",
 	event_buff = true,
@@ -847,7 +794,7 @@ mod:add_buff_template("rebaltourn_reaper", {
 })
 
 -- THP on Kill
-mod:add_buff_template("rebaltourn_bloodlust", {
+mod_api.insert_buff_template("tb_bloodlust", {
 	multiplier = 0.2,
 	name = "bloodlust",
 	event_buff = true,
@@ -861,19 +808,19 @@ mod:add_buff_template("rebaltourn_bloodlust", {
 	Stagger Talents
 
 ]]
-mod:add_buff_template("rebaltourn_smiter_unbalance", {
+mod_api.insert_buff_template("tb_smiter_unbalance", {
 	max_display_multiplier = 0.4,
 	name = "smiter_unbalance",
 	display_multiplier = 0.2,
 	perks = { buff_perks.smiter_stagger_damage }
 })
-mod:add_buff_template("rebaltourn_power_level_unbalance", {
+mod_api.insert_buff_template("tb_power_level_unbalance", {
 	max_stacks = 1,
 	name = "power_level_unbalance",
 	stat_buff = "power_level",
 	multiplier = 0.1 -- 0.075
 })
-mod:add_proc_function("rebaltourn_unbalance_debuff_on_stagger", function (owner_unit, buff, params)
+mod_api.insert_proc_function("tb_unbalance_debuff_on_stagger", function (owner_unit, buff, params)
 	local hit_unit = params[1]
 	local is_dummy = Unit.get_data(hit_unit, "is_dummy")
 	--local stagger_type = params[4]
@@ -883,21 +830,21 @@ mod:add_proc_function("rebaltourn_unbalance_debuff_on_stagger", function (owner_
 		local buff_extension = ScriptUnit.extension(hit_unit, "buff_system")
 
 		if buff_extension then
-			buff_extension:add_buff("rebaltourn_tank_unbalance_buff")
+			buff_extension:add_buff("tb_tank_unbalance_buff")
 		end
 	end
 end )
-mod:add_buff_template("rebaltourn_tank_unbalance", {
+mod_api.insert_buff_template("tb_tank_unbalance", {
 	max_display_multiplier = 0.4,
 	name = "tank_unbalance",
 	event_buff = true,
-	buff_func = "rebaltourn_unbalance_debuff_on_stagger",
+	buff_func = "tb_unbalance_debuff_on_stagger",
 	event = "on_stagger",
 	display_multiplier = 0.2,
 	stat_buff = "power_level_impact",
 	multiplier = 0.10
 })
-mod:add_buff_template("rebaltourn_tank_unbalance_buff", { -- Bulwark
+mod_api.insert_buff_template("tb_tank_unbalance_buff", { -- Bulwark
 	refresh_durations = true,
 	name = "tank_unbalance_buff",
 	stat_buff = "unbalanced_damage_taken",
@@ -905,7 +852,7 @@ mod:add_buff_template("rebaltourn_tank_unbalance_buff", { -- Bulwark
 	duration = 10,
 	bonus = 0.10,
 })
-mod:add_buff_template("rebaltourn_mainstay_stagger_mark_buff", { -- Mainstay
+mod_api.insert_buff_template("tb_mainstay_stagger_mark_buff", { -- Mainstay
 	refresh_durations = true,
 	name = "mainstay_stagger_mark_buff",
 	stat_buff = "dummy_stagger",
@@ -913,13 +860,13 @@ mod:add_buff_template("rebaltourn_mainstay_stagger_mark_buff", { -- Mainstay
 	duration = 2,
 	bonus = 1,
 })
-mod:add_buff_template("rebaltourn_finesse_unbalance", {
+mod_api.insert_buff_template("tb_finesse_unbalance", {
 	max_display_multiplier = 0.4,
 	name = "finesse_unbalance",
 	display_multiplier = 0.2,
 	perks = { buff_perks.finesse_stagger_damage }
 })
-mod:add_buff_template("rebaltourn_linesman_unbalance", {
+mod_api.insert_buff_template("tb_linesman_unbalance", {
 	max_display_multiplier = 0.6,
 	name = "linesman_unbalance",
 	display_multiplier = 0.4,
@@ -931,22 +878,22 @@ mod:add_buff_template("rebaltourn_linesman_unbalance", {
 	Text Localization
 
 ]]
-mod:add_text("bloodlust_name", "Execute") -- Kill Execute
-mod:add_text("reaper_name", "Carve") -- Cleave Carve
-mod:add_text("vanguard_name", "Second Wind") -- Stagger Second Wind
-mod:add_text("regrowth_name", "Sting") -- Crit Sting
---mod:add_text("rebaltourn_regrowth_desc", "Melee Strikes restore 0.5 Temporary Health. Melee Critical Strikes and Headshots instead restore 2. Critical Headshots instead restore 4.")
-mod:add_text("rebaltourn_regrowth_desc", "Melee critical strikes gives you 1.5 temporary health and melee headshots restore 3 temporary health. Melee critical headshots restore 4.5 temporary health.")
+mod_api.insert_text("bloodlust_name", "Execute") -- Kill Execute
+mod_api.insert_text("reaper_name", "Carve") -- Cleave Carve
+mod_api.insert_text("vanguard_name", "Second Wind") -- Stagger Second Wind
+mod_api.insert_text("regrowth_name", "Sting") -- Crit Sting
+--mod_api.insert_text("tb_regrowth_desc", "Melee Strikes restore 0.5 Temporary Health. Melee Critical Strikes and Headshots instead restore 2. Critical Headshots instead restore 4.")
+mod_api.insert_text("tb_regrowth_desc", "Melee critical strikes gives you 1.5 temporary health and melee headshots restore 3 temporary health. Melee critical headshots restore 4.5 temporary health.")
 
-mod:add_text("smiter_name", "Smiter")
-mod:add_text("rebaltourn_smiter_unbalance_desc", 	"The first enemy hit always counts as staggered.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
-mod:add_text("assassin_name", "Assassin")
-mod:add_text("rebaltourn_finesse_unbalance_desc", 	"Headshots inflict 40% bonus damage.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
-mod:add_text("bulwark_name", "Bulwark")
-mod:add_text("rebaltourn_tank_unbalance_desc", 		"Gain 10% stagger power. Enemies that you stagger with any attack take 10% more damage from all sources for 10 seconds.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
-mod:add_text("mainstay_name", "Mainstay")
-mod:add_text("rebaltourn_linesman_unbalance_desc", 	"Melee hits against the first 5 enemy add another count of stagger for 2s.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
-mod:add_text("enhanced_power_name", "Enhanced Power")
+mod_api.insert_text("smiter_name", "Smiter")
+mod_api.insert_text("tb_smiter_unbalance_desc", 	"The first enemy hit always counts as staggered.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
+mod_api.insert_text("assassin_name", "Assassin")
+mod_api.insert_text("tb_finesse_unbalance_desc", 	"Headshots inflict 40% bonus damage.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
+mod_api.insert_text("bulwark_name", "Bulwark")
+mod_api.insert_text("tb_tank_unbalance_desc", 		"Gain 10% stagger power. Enemies that you stagger with any attack take 10% more damage from all sources for 10 seconds.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
+mod_api.insert_text("mainstay_name", "Mainstay")
+mod_api.insert_text("tb_linesman_unbalance_desc", 	"Melee hits against the first 5 enemy add another count of stagger for 2s.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
+mod_api.insert_text("enhanced_power_name", "Enhanced Power")
 
 -- Replacing THP & Stagger Talents
 local VANGUARD = 1
@@ -957,27 +904,27 @@ local THP_TALENT_OPTIONS = {
 	[VANGUARD] = {
 		display_name = "vanguard_name",
 		description = "vanguard_desc",
-		buffs = { "rebaltourn_vanguard" },
+		buffs = { "tb_vanguard" },
 	},
 	[REAPER] = {
 		display_name = "reaper_name",
 		description = "reaper_desc",
-		buffs = { "rebaltourn_reaper" },
+		buffs = { "tb_reaper" },
 		description_values = {
 			{
-				value = BuffTemplates.rebaltourn_reaper.buffs[1].max_targets
+				value = BuffTemplates.tb_reaper.buffs[1].max_targets
 			}
 		},
 	},
 	[BLOODLUST] = {
 		display_name = "bloodlust_name",
 		description = "bloodlust_desc_3",
-		buffs = { "rebaltourn_bloodlust" },
+		buffs = { "tb_bloodlust" },
 	},
 	[REGROWTH] = {
 		display_name = "regrowth_name",
-		description = "rebaltourn_regrowth_desc",
-		buffs = { "rebaltourn_regrowth" },
+		description = "tb_regrowth_desc",
+		buffs = { "tb_regrowth" },
 		description_values = {},
 	},
 }
@@ -1014,7 +961,7 @@ for i = 1, #talent_first_row do
 	local career = entry[1]
 
 	for slot = 1, 3 do
-		mod:modify_talent(career, 1, slot, THP_TALENT_OPTIONS[entry[slot + 1]])
+		mod_api.update_talent(career, 1, slot, THP_TALENT_OPTIONS[entry[slot + 1]])
 	end
 end
 
@@ -1031,36 +978,36 @@ local ENHANCED_POWER = 5
 local TALENT_OPTIONS = {
 	[SMITER] = {
 		name = "smiter_name",
-		description = "rebaltourn_smiter_unbalance_desc",
-		buffs = { "rebaltourn_smiter_unbalance" },
+		description = "tb_smiter_unbalance_desc",
+		buffs = { "tb_smiter_unbalance" },
 		description_values = {},
 	},
 	[FINESSE] = {
 		name = "assassin_name",
-		description = "rebaltourn_finesse_unbalance_desc",
-		buffs = { "rebaltourn_finesse_unbalance" },
+		description = "tb_finesse_unbalance_desc",
+		buffs = { "tb_finesse_unbalance" },
 		description_values = {},
 	},
 	[TANK] = {
 		name = "bulwark_name",
-		description = "rebaltourn_tank_unbalance_desc",
-		buffs = { "rebaltourn_tank_unbalance" },
+		description = "tb_tank_unbalance_desc",
+		buffs = { "tb_tank_unbalance" },
 		description_values = {},
 	},
 	[MAINSTAY] = {
 		name = "mainstay_name",
-		description = "rebaltourn_linesman_unbalance_desc",
-		buffs = { "rebaltourn_linesman_unbalance" },
+		description = "tb_linesman_unbalance_desc",
+		buffs = { "tb_linesman_unbalance" },
 		description_values = {},
 	},
 	[ENHANCED_POWER] = {
 		name = "enhanced_power_name",
 		description = "power_level_unbalance_desc",
-		buffs = { "rebaltourn_power_level_unbalance" },
+		buffs = { "tb_power_level_unbalance" },
 		description_values = {
 			{
 				value_type = "percent",
-				value = BuffTemplates.rebaltourn_power_level_unbalance.buffs[1].multiplier
+				value = BuffTemplates.tb_power_level_unbalance.buffs[1].multiplier
 			}
 		},
 	},
@@ -1098,7 +1045,7 @@ for i = 1, #talent_third_row do
 	local career = entry[1]
 
 	for slot = 1, 3 do
-		mod:modify_talent(career, 3, slot, TALENT_OPTIONS[entry[slot + 1]])
+		mod_api.update_talent(career, 3, slot, TALENT_OPTIONS[entry[slot + 1]])
 	end
 end
 
