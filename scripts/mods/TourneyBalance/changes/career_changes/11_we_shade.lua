@@ -3,14 +3,23 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Shade Changes
-		ult		: 	Lord and Boss boost_curve_multiplier_override incresed to 2 (from 1.8/1.5).
-					Reduced stealth duration to 2.5s (from 5)
-		passives:  	Blur 			- Increased parry window to 0.75s (from 0.5s).
-		talent21:   Cruelty 		- Increased crit damage bonus to 80% (from 50%) and crit rate bonus to 5% (from 0%).
-		talent43:  	Bloodfetcher 	- Changed ammo refund to 5% (from 1 ammo).
-		talent61:	Shimmer Strike 	- Limited extending stealth duration to 4s (from uncapped).
-	$END_TB	
+		# Shade Changes
+		## Career Ability
+		- Lord and Boss boost_curve_multiplier_override incresed to 2 (from 1.8/1.5).
+		- Reduced stealth duration to 2.5s (from 5)
+
+		## Passives
+		### Blur
+		- Increased parry window to 0.75s (from 0.5s).
+
+		## Talents
+		### Cruelty
+		- Increased crit damage bonus to 80% (from 50%) and crit rate bonus to 5% (from 0%).
+		### Bloodfetcher
+		- Changed ammo refund to 5% (from 1 ammo).
+		### Shimmer Strike
+		- Limited extending stealth duration to 4s (from uncapped).
+	$END_TB
 ]]
 
 --[[

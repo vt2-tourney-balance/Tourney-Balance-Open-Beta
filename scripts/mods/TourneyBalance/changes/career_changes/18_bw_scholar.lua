@@ -3,12 +3,13 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Pyromancer Changes
-		ult		: 	-
-		passives:  	-
-		talent22:  	Martial Study 	- Increased attack speed to 10% (from 5%).
-		talent23:  	Spirit Casting 	- Additionally gives 5% crit, while above 65% health.
-	$END_TB	
+		# Pyromancer Changes
+		## Talents
+		### Martial Study
+		- Increased attack speed to 10% (from 5%).
+		### Spirit Casting
+		- Additionally gives 5% crit, while above 65% health.
+	$END_TB
 ]]
 
 --[[

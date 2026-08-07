@@ -1,5 +1,7 @@
 // Generates site/src/content/balance-changes/*.md from the $BEGIN_TB/$END_TB
 // comment blocks in scripts/mods/TourneyBalance/changes/career_changes/*.lua.
+// The block content is already plain markdown (starting with a "# Title"
+// heading) - this just extracts it, dedents it, and adds frontmatter.
 // Runs automatically via the predev/prebuild npm hooks - see package.json.
 import { readdirSync, readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -9,104 +11,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE_DIR = path.resolve(__dirname, '../../scripts/mods/TourneyBalance/changes/career_changes');
 const OUTPUT_DIR = path.resolve(__dirname, '../src/content/balance-changes');
 
-const KEY_LINE = /^(title|ult|passives|talent[a-zA-Z0-9]*)\s*:\s*(.*)$/i;
-const NAME_DASH = /^(.+?)\s-\s(.+)$/;
-
-function startParagraph(sectionType, line) {
-  if (sectionType === 'ult' || sectionType === 'title') {
-    return { name: null, text: line };
-  }
-  const m = line.match(NAME_DASH);
-  if (m) return { name: m[1].trim(), text: m[2].trim() };
-  return { name: null, text: line };
+// Strips the common leading whitespace shared by every non-blank line.
+function dedent(block) {
+  const lines = block.replace(/^\n/, '').replace(/\s+$/, '').split('\n');
+  const indents = lines.filter((l) => l.trim().length > 0).map((l) => l.match(/^[ \t]*/)[0].length);
+  const minIndent = indents.length > 0 ? Math.min(...indents) : 0;
+  return lines.map((l) => l.slice(minIndent)).join('\n');
 }
 
-// Parses one $BEGIN_TB..$END_TB block into { title, ultParagraphs, passivesParagraphs, talentParagraphs }.
-function parseBlock(block) {
-  const lines = block
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  const sections = [];
-  let current = null;
-  let currentParagraph = null;
-
-  for (const line of lines) {
-    const keyMatch = line.match(KEY_LINE);
-    if (keyMatch) {
-      const rawKey = keyMatch[1].toLowerCase();
-      const type = rawKey.startsWith('talent') ? 'talent' : rawKey;
-      current = { type, paragraphs: [] };
-      sections.push(current);
-      currentParagraph = null;
-
-      const rest = keyMatch[2].trim();
-      if (rest) {
-        currentParagraph = startParagraph(type, rest);
-        current.paragraphs.push(currentParagraph);
-      }
-      continue;
-    }
-
-    if (!current) continue; // stray line before any key line, ignore
-
-    if (current.type === 'ult' || current.type === 'title') {
-      currentParagraph = startParagraph(current.type, line);
-      current.paragraphs.push(currentParagraph);
-    } else if (NAME_DASH.test(line)) {
-      currentParagraph = startParagraph(current.type, line);
-      current.paragraphs.push(currentParagraph);
-    } else if (currentParagraph) {
-      currentParagraph.text += `\n${line}`;
-    } else {
-      currentParagraph = startParagraph(current.type, line);
-      current.paragraphs.push(currentParagraph);
-    }
-  }
-
-  const isMeaningful = (p) => p.text.trim() !== '' && p.text.trim() !== '-';
-  const collect = (type) =>
-    sections
-      .filter((s) => s.type === type)
-      .flatMap((s) => s.paragraphs)
-      .filter(isMeaningful);
-
-  const title = sections.find((s) => s.type === 'title')?.paragraphs[0]?.text.trim() || '';
-
-  return {
-    title,
-    ultParagraphs: collect('ult'),
-    passivesParagraphs: collect('passives'),
-    talentParagraphs: collect('talent'),
-  };
-}
-
-function renderParagraph(p) {
-  const text = p.text.split('\n').join('  \n');
-  return p.name ? `**${p.name}** - ${text}` : text;
-}
-
-function renderSection(heading, paragraphs) {
-  if (paragraphs.length === 0) return '';
-  return `## ${heading}\n\n${paragraphs.map(renderParagraph).join('\n\n')}\n\n`;
-}
-
-function toMarkdown(fileBase, parsed) {
+function toMarkdown(fileBase, body) {
   const orderMatch = fileBase.match(/^(\d+)_/);
   const order = orderMatch ? Number(orderMatch[1]) : 0;
-  const title = parsed.title || fileBase;
+  const titleMatch = body.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : fileBase;
 
   const frontmatter = `---\ntitle: ${JSON.stringify(title)}\norder: ${order}\n---\n\n`;
 
-  let body =
-    renderSection('Ultimate', parsed.ultParagraphs) +
-    renderSection('Passives', parsed.passivesParagraphs) +
-    renderSection('Talents', parsed.talentParagraphs);
-
-  if (!body) body = 'No changes documented yet.\n';
-
-  return frontmatter + body.trimEnd() + '\n';
+  return frontmatter + body.trim() + '\n';
 }
 
 function main() {
@@ -118,12 +39,14 @@ function main() {
 
   for (const file of files) {
     const source = readFileSync(path.join(SOURCE_DIR, file), 'utf8');
-    const blockMatch = source.match(/\$BEGIN_TB([\s\S]*?)\$END_TB/i);
+    const blockMatch = source.match(/\$BEGIN_TB\r?\n([\s\S]*?)\r?\n[ \t]*\$END_TB/i);
     if (!blockMatch) continue;
 
-    const parsed = parseBlock(blockMatch[1]);
+    const body = dedent(blockMatch[1]);
+    if (!body) continue;
+
     const fileBase = file.replace(/\.lua$/, '');
-    const markdown = toMarkdown(fileBase, parsed);
+    const markdown = toMarkdown(fileBase, body);
 
     writeFileSync(path.join(OUTPUT_DIR, `${fileBase}.md`), markdown, 'utf8');
     generated++;

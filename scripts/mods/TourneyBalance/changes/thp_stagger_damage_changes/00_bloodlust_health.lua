@@ -1,21 +1,23 @@
 local mod = get_mod("TourneyBalance")
 
 -- Kill THP
-NewBreedTweaks = NewBreedTweaks or {} --table.clone(BreedTweaks)
+-- https://github.com/Aussiemon/Vermintide-2-Source-Code/tree/master/scripts/settings/breeds/breed_tweaks.lua#L594
+NewBreedTweaks = NewBreedTweaks or {}
 NewBreedTweaks.bloodlust_health = {
-	beastmen_horde = 1.5,
-	chaos_roamer = 3,
-	skaven_special = 8,
-	chaos_warrior = 20,
-	skaven_elite = 8,
-	beastmen_roamer = 3,
-	chaos_elite = 10,
 	beastmen_elite = 15,
-	skaven_horde = 1,
-	chaos_special = 10,
-	skaven_roamer = 2,
-	monster = 35,
+	beastmen_horde = 1.5,
+	beastmen_roamer = 3,
+	chaos_bulwark = 35,
+	chaos_elite = 10, -- 15
 	chaos_horde = 1.5,
+	chaos_roamer = 3,
+	chaos_special = 10,
+	chaos_warrior = 20, -- 30
+	monster = 35, --50
+	skaven_elite = 8,
+	skaven_horde = 1,
+	skaven_roamer = 2,
+	skaven_special = 8,
 }
 
 local BLOODLUST_HEALTH_BY_BREED = {

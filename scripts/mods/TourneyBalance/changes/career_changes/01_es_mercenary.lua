@@ -4,12 +4,19 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 --[[
 	$BEGIN_TB
-		title	: 	Mercenary Changes
-		ult		: 	-
-		passives: 	Paced Strikes 		- Hitting 3 enemies in one swing grants 10% increased attack speed for 6 seconds to the Krubersreik 5, or 4.
-		talent23: 	Helborg's Tutelage 	- Every 5 hits grant a guaranteed critical strike. Random Crits can still occur.
-		talent42: 	Enhanced Training	- Paced Strikes now increases attack speed by 20%
-		talent43: 	Strike Together 	- Paced Strikes activates on hitting 1 enemy.
+		# Mercenary Changes
+		
+		## Passives
+		### Paced Strikes
+		- Paced Strikes applies to the team.
+
+		## Talents
+		### Helborg's Tutelage
+		- Added random crits.
+		### Enhanced Training
+		- Decreased required enemies to activate Paced Strikes to 3 (from 4)
+		### Strike Together
+		- Changed to Paced Strikes activates on hitting 1 enemy.
 	$END_TB
 ]]
 

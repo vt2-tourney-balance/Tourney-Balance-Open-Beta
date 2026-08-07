@@ -3,15 +3,18 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Slayer Changes
-		ult		: 	-
-		passives:  	-
-		talent21:  	A Thousand Cuts 	- Attack speed increased to 15% (from 10%).
-		talent41:  	Impatience 			- Additionally grants 5% dodge distance and 5% dodge speed per Trophy Hunter stack.
-		talent43:  	Adrenaline Surge 	- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
-		talent53:  	Barge 				- Additionally grants 10% dodge distance and 10% dodge speed.
-					Barge 				- Additionally grants 15% damage reduction.
-	$END_TB	
+		# Slayer Changes
+		## Talents
+		### A Thousand Cuts
+		- Attack speed increased to 15% (from 10%).
+		### Impatience
+		- Additionally grants 5% dodge distance and 5% dodge speed per Trophy Hunter stack.
+		### Adrenaline Surge
+		- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
+		### Barge
+		- Additionally grants 10% dodge distance and 10% dodge speed.
+		- Additionally grants 15% damage reduction.
+	$END_TB
 ]]
 
 --[[

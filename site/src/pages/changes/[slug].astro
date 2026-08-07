@@ -16,6 +16,5 @@ const { Content } = await render(entry);
 ---
 
 <BalanceChangesLayout title={entry.data.title} activeSlug={Astro.params.slug}>
-  <h1>{entry.data.title}</h1>
   <Content />
 </BalanceChangesLayout>

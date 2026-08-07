@@ -3,16 +3,19 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Witch Hunter Captain Changes
-		ult		: 	-
-		passives:  	-
-		talent21:  	Riposte 				- Fix description: crits also applpy to ranged attacks.
-		talent41:  	Templar's Knowledge 	- Duration increased to 15s (from 5s).
-					Templar's Knowledge 	- Elites and specials take 25% more direct damage from Saltzpyre.
-		talent61:  	I Shall Judge You All 	- Permanently marks specials. Headshotting tagged enemies refreshes Animosity duration.
-		talent62:  	Fervency 				- Increased duration to 10s (from 6s).
-					Fervency 				- Added ult makes first hits 20 guaranteed melee crits.
-	$END_TB	
+		# Witch Hunter Captain Changes
+		## Talents
+		### Riposte
+		- Fix description: crits also applpy to ranged attacks.
+		### Templar's Knowledge
+		- Duration increased to 15s (from 5s).
+		- Elites and specials take 25% more direct damage from Saltzpyre.
+		### I Shall Judge You All
+		- Permanently marks specials. Headshotting tagged enemies refreshes Animosity duration.
+		### Fervency
+		- Increased duration to 10s (from 6s).
+		- Added ult makes first hits 20 guaranteed melee crits.
+	$END_TB
 ]]
 
 --[[

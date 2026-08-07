@@ -3,11 +3,8 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Outcast Engineer Changes
-		ult		: 	-
-		passives:  	-
-		talentXY:   -
-	$END_TB	
+		# Outcast Engineer Changes
+	$END_TB
 ]]
 
 

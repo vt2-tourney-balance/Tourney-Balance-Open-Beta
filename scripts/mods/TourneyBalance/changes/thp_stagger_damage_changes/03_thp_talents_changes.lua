@@ -7,11 +7,24 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 	THP Talents
 
 	$BEGIN_TB
-		title: 		THP Talent Changes
-		talent11:	Bloodlust 	- dummy_changes
-		talent12:	Reaper 		- dummy_changes	
-		talent13:	Regrowth 	- dummy_changes
-		talent14:	Vanguard 	- dummy_changes
+		# THP Talent Changes
+		## Careers
+		### Handmaiden
+		- Execute (THP on Kill) replaced with Sting (THP on Crits/Headshots).
+
+		## Talents
+		### Execute
+		- Decreased THP from chaos elite kills to 10 (from 15).
+		- Decreased THP from chaos warrior kills to 20 (from 30).
+		- Decreased THP from monster kills to 35 from (from 50).
+		### Reaper
+		- Updated description: Max 5 enemies per swing.
+		### Sting
+		- Removed THP on hit (from 0.5).
+		- Decreased THP on crit to 1.5 (from 2).
+		- Increased THP on headshot to 3 (from 2).
+		### Second Wind
+		- dummy_changes
 	$END_TB
 ]]
 --[[
@@ -106,7 +119,7 @@ mod_api.insert_proc_function("tb_heal_stagger_targets_on_melee", function (owner
 		local stagger_calulation = stagger_type or stagger_value
 		local heal_amount = stagger_calulation * multiplier
 		local death_extension = ScriptUnit.has_extension(hit_unit, "death_system")
-		local is_corpse = death_extension.death_is_done == false
+		local is_corpse = death_extension.death_is_done == false --???
 		local is_shield_slam = nil
 
 		if damage_profile.default_target.attack_template and damage_profile.default_target.attack_template == "heavy_blunt_fencer" then
@@ -127,7 +140,7 @@ mod_api.insert_proc_function("tb_heal_stagger_targets_on_melee", function (owner
 			local item_name = item_data.name
 			local damage_profile_aoe = Weapons[weapon_template].actions.action_one[attack_type] and Weapons[weapon_template].actions.action_one[attack_type].damage_profile_aoe or nil
 
-			if item_name == "wh_2h_billhook" and heal_amount == 9 then
+			if item_name == "wh_2h_billhook" and heal_amount == 9 then -- Excuse me what are we gating here???
 				heal_amount = 2
 			end
 			if item_name == "bw_ghost_scythe" and is_discharge and not is_push and heal_amount > 0 then
@@ -142,6 +155,11 @@ mod_api.insert_proc_function("tb_heal_stagger_targets_on_melee", function (owner
 					end
             end
     	end
+		--- TODO: stagger thp from corpses?
+		-- Stagger THP only procs on: the first 4 cleave targets on light/heavy melee attacks/pushes/bashes
+		-- `is_corpse` (death_is_done == false) is true for units that are alive or still
+		-- mid-death-reaction, not for units whose death reaction has finished, so this does
+		-- NOT currently exclude settled corpses from proccing stagger THP.
 		if target_index and target_index < 5 and breed and not breed.is_hero and (attack_type == "light_attack" or attack_type == "heavy_attack" or attack_type == "action_push") and not is_corpse then
 			DamageUtils.heal_network(owner_unit, owner_unit, heal_amount, "heal_from_proc")
 		end
@@ -162,9 +180,9 @@ mod_api.insert_buff_template("tb_vanguard", {
 
 ]]
 --mod_api.insert_text("bloodlust_name", "Execute")
---mod_api.insert_text("reaper_name", "Carve")
---mod_api.insert_text("regrowth_name", "Sting")
---mod_api.insert_text("vanguard_name", "Second Wind")
+--mod_api.insert_text("reaper_name", 	"Carve")
+--mod_api.insert_text("regrowth_name", 	"Sting")
+--mod_api.insert_text("vanguard_name", 	"Second Wind")
 mod_api.insert_text("tb_bloodlust_desc",	"Killing an enemy with a Melee Attack grants Temporary Health based on the health of the slain enemy.")
 mod_api.insert_text("tb_reaper_desc", 		"Damaging multiple enemies in one Melee Attack grants Temporary Health. Max 5 enemies.")
 mod_api.insert_text("tb_regrowth_desc", 	"Melee Critical Strikes grant 1.5 Temporary Health. Melee Headshots grant 3 Temporary Health. Melee Critical Headshots grant 4.5 Temporary Health.")

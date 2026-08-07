@@ -3,22 +3,36 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Waystalker Changes
-		ult		: 	Damage cleave buff.
-					Prioritizes specials now.
-					Does not consume Bloodshot anymore.
-		passives:  	Amaranthe 			- Additionally regen 1 ammo every tick.
-					Amaranthe 			- Heath regen no longer replaces temp health.
-		talent23:  	Drakira's Alacrity	- Increased attack speed to 20% (from 15%) and duration to 10s (from 5s)
-		talent41:	Isha's Embrace 		- Increased health regen bonus to 100% (from 50%) and health regen cap to 100% max health
-					Isha's Embrace 		- No longer grants Amaranthe's ammo regen.
-		talent42:	Spirit Arrows 		- Additionally increases Amaranthes ammo regen by 1 ammo regen per tick (to total of 2 ammo per tick)
-		talent51:	Fervent Huntress 	- Additionally allows Kerillian to pass through enemies for 10s.
-		talent52:	Ricochet 			- When below 10 ammo, ricochet shots hitting enemies return 1 ammo.
-		talent61:	Piercing Shot 		- Cooldown refund when headshotting enemy works when piercing through team mate first.
-		talent62:	Loaded Bow 			- Increased additional Trueshot Volley arrows to +2 (from +1)
-		talent63:	Kurnous Reward 		- Reduced ammo regen to 20% (from 30%) per kill.
-	$END_TB	
+		# Waystalker Changes
+		## Career Ability
+		- Damage cleave buff.
+		- Prioritizes specials now.
+		- Does not consume Bloodshot anymore.
+
+		## Passives
+		### Amaranthe
+		- Additionally regen 1 ammo every tick.
+		- Heath regen no longer replaces temp health.
+
+		## Talents
+		### Drakira's Alacrity
+		- Increased attack speed to 20% (from 15%) and duration to 10s (from 5s)
+		### Isha's Embrace
+		- Increased health regen bonus to 100% (from 50%) and health regen cap to 100% max health
+		- No longer grants Amaranthe's ammo regen.
+		### Spirit Arrows
+		- Additionally increases Amaranthes ammo regen by 1 ammo regen per tick (to total of 2 ammo per tick)
+		### Fervent Huntress
+		- Additionally allows Kerillian to pass through enemies for 10s.
+		### Ricochet
+		- When below 10 ammo, ricochet shots hitting enemies return 1 ammo.
+		### Piercing Shot
+		- Cooldown refund when headshotting enemy works when piercing through team mate first.
+		### Loaded Bow
+		- Increased additional Trueshot Volley arrows to +2 (from +1)
+		### Kurnous Reward
+		- Reduced ammo regen to 20% (from 30%) per kill.
+	$END_TB
 ]]
 	
 --[[

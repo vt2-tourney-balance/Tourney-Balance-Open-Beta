@@ -3,24 +3,30 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Grail Knight Changes
-		ult		: 	-
-		passives:  	-
-		talent22:  	Virtue of Knightly Temper 		- Reduced instant slay damage multiplier for non-Lords-and-Bosses to 3 (from 4)
-		talent43:	Virtue of the Penitent 			- Increased required kills as follows
-					Virtue of the Penitent 			- Recruit		: 100 (from 50)
-					Virtue of the Penitent 			- Veteran		: 150 (from 60)
-					Virtue of the Penitent 			- Champion		: 250 (from 75)
-					Virtue of the Penitent 			- Legend			: 300 (from 85)
-					Virtue of the Penitent 			- Cataclysm		: 350 (from 100)
-					Virtue of the Penitent 			- Cataclysm 2	: 400 (from 100)
-					Virtue of the Penitent 			- Cataclysm 3	: 500 (from 100)
-		talent62:	Virtue of the Impetuous Knight 	- Increased buff duration to 25s (from 15s).
-					Virtue of the Impetuous Knight 	- Added 30% cooldown reduction.
-		talent63:	Virtue of Confidence			- Removed infinite damage cleave, but keep infinite stagger cleave.
-					Virtue of Confidence 			- Added heavy linesman modifier.
-					Virtue of Confidence 			- Lowered damage window start time to 0.05s (from 0.15s)
-					Virtue of Confidence 			- Damage cleave distribution lowered to 0.5 (from 100)
+		# Grail Knight Changes
+		## Talents
+		###	Virtue of Knightly Temper
+		- Reduced instant slay damage multiplier for non-Lords-and-Bosses to 3 (from 4).
+		###	Virtue of the Penitent
+		- Increased required kills as follows
+		
+		| Difficulty | New Value | Old Value |
+		| --- | --- | --- |
+		| **Recruit** | 100 | 50 |
+		| **Veteran** | 150 | 60 |
+		| **Champion** | 250 | 75 |
+		| **Legend** | 300 | 85 |
+		| **Cataclysm** | 350 | 100 |
+		| **Cataclysm 2** | 400 | 100 |
+		| **Cataclysm 3** | 500 | 100 |
+		### Virtue of the Impetuous Knight 
+		- Increased buff duration to 25s (from 15s).
+		- Added 30% cooldown reduction.
+		### Virtue of Confidence
+		- Removed infinite damage cleave, but keep infinite stagger cleave.
+		- Added heavy linesman modifier.
+		- Lowered damage window start time to 0.05s (from 0.15s)
+		- Damage cleave distribution lowered to 0.5 (from 100)
 	$END_TB	
 ]]
 
