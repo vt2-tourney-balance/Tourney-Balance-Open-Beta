@@ -47,15 +47,17 @@ end)
     Balance Changes 
 
 ]]
+-- Enemies for Spicy
+mod:dofile("scripts/mods/TourneyBalance/changes/00_spicy_enemies")
+
 -- THP/Stagger/Damage Related Changes
-mod:dofile("scripts/mods/TourneyBalance/changes/thp_stagger_damage_changes")
+mod:dofile("scripts/mods/TourneyBalance/changes/01_thp_stagger_damage_changes")
 
 -- Career Changes (Ultimates/Passives/Talents)
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes")
+mod:dofile("scripts/mods/TourneyBalance/changes/02_career_changes")
 
 -- Weapon Changes
-mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes")
-
+mod:dofile("scripts/mods/TourneyBalance/changes/03_weapon_changes")
 -- Damage profile linking + weapon defaults MUST run after weapon_changes: they finalize
 -- and validate whatever weapon_changes registered into NewDamageProfileTemplates/Weapons,
 -- and only fill in a default where weapon_changes left a field unset. Reordering these
@@ -67,9 +69,6 @@ mod:dofile("scripts/mods/TourneyBalance/changes/_weapon_defaults_setup")
 
 -- Trait Changes
 mod:dofile("scripts/mods/TourneyBalance/changes/trait_changes")
-
--- Enemies for Spicy
-mod:dofile("scripts/mods/TourneyBalance/changes/SpicyEnemies")
 
 -- Misc standalone fixes not tied to any other category
 mod:dofile("scripts/mods/TourneyBalance/changes/_misc_fixes")
