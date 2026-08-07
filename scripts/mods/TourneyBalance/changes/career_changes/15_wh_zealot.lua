@@ -6,9 +6,9 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 	$BEGIN_TB
 		title	: 	Zealot Changes
 		ult		: 	Turn green hp into white hp on ult.
-		passives:  	Ironheart - Fixed invincibility not proccing on client.
-		talent22:   Smite - Added random crits.
-		talent23:   Unbending Purpose - Change to 20% melee power (from 5% power).
+		passives:  	Ironheart           - Fixed invincibility not proccing on client.
+		talent22:   Smite               - Added random crits.
+		talent23:   Unbending Purpose   - Change to 20% melee power (from 5% power).
 	$END_TB	
 ]]
 

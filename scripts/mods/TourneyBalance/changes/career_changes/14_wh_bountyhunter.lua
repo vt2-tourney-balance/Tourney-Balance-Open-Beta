@@ -6,13 +6,13 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 	$BEGIN_TB
 		title	: 	Bounty Hunter Changes
 		ult		: 	-
-		passives:  	Blessed Kill (NEW) - Melee Kills reset the cooldown of Blessed Shots.
-		talentXY:  	Blessed Combat - Added ranged hits also grant 15% more attack speed for the next 6 attacks.
-		talentXY:  	Salvaged Ammunition - Added effect to also trigger on special kills.
-		talentXY:  	Job Well Done - Decreased max damage reductions stacks to 20 (from 30).
-		talentXY:  	Just Reward - Decreased trigger time window to 4s (from 10s)
-		talentXY:  	Double Shotted - Increased cooldown reduction to 80% (from 60%).
-		talentXY:  	Indiscriminate Blast - Increased cooldown reduction to 60% (from 25%).
+		passives:  	Blessed Kill (NEW) 		- Melee Kills reset the cooldown of Blessed Shots.
+		talent41:  	Blessed Combat 			- Added ranged hits also grant 15% more attack speed for the next 6 attacks.
+		talent52:  	Salvaged Ammunition 	- Added effect to also trigger on special kills.
+		talent53:  	Job Well Done 			- Decreased max damage reductions stacks to 20 (from 30).
+		talent61:  	Just Reward 			- Decreased trigger time window to 4s (from 10s)
+		talent62:  	Double Shotted 			- Increased cooldown reduction to 80% (from 60%).
+		talent63:  	Indiscriminate Blast 	- Increased cooldown reduction to 60% (from 25%).
 	$END_TB	
 ]]
 

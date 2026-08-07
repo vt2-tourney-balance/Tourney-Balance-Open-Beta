@@ -6330,6 +6330,17 @@ DamageProfileTemplates.shield_slam = {
 	default_target = "default_target_slam_tank_M"
 }
 
+-- Shield Push Nerfs
+-- Nerfs all shields' damage_profile_inner to "medium push"
+Weapons.one_handed_sword_shield_template_1.actions.action_one.push.damage_profile_inner = "medium_push"
+Weapons.one_handed_sword_shield_template_2.actions.action_one.push.damage_profile_inner = "medium_push"
+Weapons.one_handed_hammer_shield_template_1.actions.action_one.push.damage_profile_inner = "medium_push"
+Weapons.one_handed_hammer_shield_template_2.actions.action_one.push.damage_profile_inner = "medium_push"
+Weapons.one_hand_axe_shield_template_1.actions.action_one.push.damage_profile_inner = "medium_push"
+Weapons.one_handed_spears_shield_template.actions.action_one.push.damage_profile_inner = "medium_push"
+Weapons.one_handed_hammer_shield_priest_template.actions.action_one.push.damage_profile_inner = "medium_push"
+Weapons.one_handed_flail_shield_template.actions.action_one.push.damage_profile_inner = "medium_push"
+
 --Weapon Swap Fixes (moonfire, Coru, MWP, Jav)
 Weapons.we_deus_01_template_1.actions.action_one.default.total_time = 0.7
 Weapons.we_deus_01_template_1.actions.action_one.default.allowed_chain_actions[1].start_time =  0.4

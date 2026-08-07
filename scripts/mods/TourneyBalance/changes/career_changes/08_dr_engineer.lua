@@ -6,7 +6,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		title	: 	Outcast Engineer Changes
 		ult		: 	-
 		passives:  	-
-		talentXY:  
+		talentXY:   -
 	$END_TB	
 ]]
 

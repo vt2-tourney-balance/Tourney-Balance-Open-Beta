@@ -6,17 +6,17 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 	$BEGIN_TB
 		title	: 	Ranger Veteran Changes
 		ult		: 	-
-		passives:  	Survivalist - Added pseudeo-random 5% chance to drop engineer bombs with every survivalist drop (bag size 100 with 5 winning tickets).
-					Fast Hands - Added double effective range for ranged weapons.
-					Fast Hands - Added 10% increased ranged power.
-		talent23:  	Foe-Feller - Attack speed increased to 15% (from 5%)
-		talent41:  	Drunken Brawler - Lowered drinking time to 0.8s (from 1.9s)
-		    	  	Drunken Brawler - Pseudo-random 50% (bag size 20 with 10 winning tickets)
-		talent43:  	Scavenger - Removed bomb drops and reduced drop chance to pseudo-random 6% (from real-random 20%) (bag size 50 with 3 winning tickets).
-					Scavenger - Potions drop pseudo-random from bag size 6 with 2 of each potion (speed, strength, cooldown reduction).
-		talent52:  	Exuberance - Reduced damage reduction to 20% (from 30%)
-		talent62:   Surprise Guest - Added 30% cooldown reduction.
-		talent63:   Ranger's Parting Gift - Free bomb only applies to engineer bombs.
+		passives:  	Survivalist 			- Added pseudeo-random 5% chance to drop engineer bombs with every survivalist drop (bag size 100 with 5 winning tickets).
+					Fast Hands 				- Added double effective range for ranged weapons.
+					Fast Hands 				- Added 10% increased ranged power.
+		talent23:  	Foe-Feller 				- Attack speed increased to 15% (from 5%)
+		talent41:  	Drunken Brawler 		- Lowered drinking time to 0.8s (from 1.9s)
+		    	  	Drunken Brawler 		- Pseudo-random 50% (bag size 20 with 10 winning tickets)
+		talent43:  	Scavenger 				- Removed bomb drops and reduced drop chance to pseudo-random 6% (from real-random 20%) (bag size 50 with 3 winning tickets).
+					Scavenger 				- Potions drop pseudo-random from bag size 6 with 2 of each potion (speed, strength, cooldown reduction).
+		talent52:  	Exuberance 				- Reduced damage reduction to 20% (from 30%)
+		talent62:   Surprise Guest 			- Added 30% cooldown reduction.
+		talent63:   Ranger's Parting Gift 	- Free bomb only applies to engineer bombs.
 	$END_TB	
 ]]
 

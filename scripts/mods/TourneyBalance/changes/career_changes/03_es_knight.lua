@@ -7,14 +7,14 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		ult		: 	Ultimate increased to 40s (from 30s).
 					Baseline ult damage/stagger cleave buffed to 4 (from 2). Exludes wide charge.
 					Baseline ult on_interrupt_blast.radius buffed to 4 (from 3). Excludes wide charge.
-		passives: 	No Guts, No Glory - Aura radius increased to 20 (from 5).
-					No Guts, No Glory - Aura damage reduction reduced to 10% (from 15%).
+		passives: 	No Guts, No Glory 	- Aura radius increased to 20 (from 5).
+					No Guts, No Glory 	- Aura damage reduction reduced to 10% (from 15%).
 					CDR on Damage Taken - Reduced ult cooldown gain on damage taken to 0.35 (from 0.5).
-		talent21: 	Staggering Force - Stagger power decreased to 20% (from 35%)
-		talent22: 	Have At Thee! - Duration increased to 15s (from 10s)
-		talent23: 	Crowd Clearer - Duration increased to 5s (from 3s)
-		talent51:	It's Hero Time - Cooldown refund reduced to 70% (from 100%)
-		talent53:	Inspiring Blow - Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
+		talent21: 	Staggering Force 	- Stagger power decreased to 20% (from 35%)
+		talent22: 	Have At Thee! 		- Duration increased to 15s (from 10s)
+		talent23: 	Crowd Clearer 		- Duration increased to 5s (from 3s)
+		talent51:	It's Hero Time 		- Cooldown refund reduced to 70% (from 100%)
+		talent53:	Inspiring Blow 		- Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
 	$END_TB
 ]]
 

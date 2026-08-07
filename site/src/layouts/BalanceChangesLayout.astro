@@ -1,0 +1,37 @@
+---
+import Layout from './Layout.astro';
+import BalanceChangesSidebar from '../components/BalanceChangesSidebar.astro';
+
+interface Props {
+  title: string;
+  activeSlug?: string;
+}
+const { title, activeSlug } = Astro.props;
+---
+
+<Layout title={title}>
+  <div class="patch-layout">
+    <BalanceChangesSidebar activeSlug={activeSlug} />
+    <div class="patch-main">
+      <slot />
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .patch-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+  .patch-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 768px) {
+    .patch-layout {
+      flex-direction: column;
+    }
+  }
+</style>

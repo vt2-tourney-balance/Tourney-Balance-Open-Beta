@@ -1,12 +1,19 @@
 ---
-import Layout from '../../layouts/Layout.astro';
+import BalanceChangesLayout from '../../layouts/BalanceChangesLayout.astro';
+import { getSortedBalanceChanges } from '../../lib/balanceChanges';
+
+const careers = await getSortedBalanceChanges();
 ---
 
-<Layout title="Balance Changes">
+<BalanceChangesLayout title="Balance Changes">
   <h1>Balance Changes</h1>
-  <p>Coming soon — Career, Talent, Weapon, and Misc changes will be documented here.</p>
   <p>
-  For now you can checkout the outdated 
-  Google Document <a href="https://docs.google.com/document/d/1AKHfd_0QGPtYnNOiO7IuOf5NSEqDbwN2755Ogowu364/edit?tab=t.0#heading=h.xkssf5sn3qck">here</a>
+    Career, Talent, and Weapon changes are auto-generated from the mod source on every release. Pick a
+    career from the sidebar to see its changes.
   </p>
-</Layout>
+  <p>
+    For the older, hand-written changelog you can still check the outdated Google Document
+    <a href="https://docs.google.com/document/d/1AKHfd_0QGPtYnNOiO7IuOf5NSEqDbwN2755Ogowu364/edit?tab=t.0#heading=h.xkssf5sn3qck">here</a>.
+  </p>
+  {careers.length === 0 && <p>No balance changes documented yet.</p>}
+</BalanceChangesLayout>

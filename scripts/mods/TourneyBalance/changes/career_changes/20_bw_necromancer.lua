@@ -7,11 +7,11 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		ult		: 	Reduced stagger from regular ult to 0 (from 1). Excludes Barrow Blades ult, which has improved stagger.
 		passives:  	-
 		talentXY:  	Death Ascendant - Changed buff to ranged weapon damage (from ranged power).
-		talentXY:  	Reaping - Removed power bonus (from 25%).
-		talentXY:  	Cursed Blood - Reduced explosion damage to 10% (from 25%) of the crit attack triggering the explosion
-					Cursed Blood - Added internal cooldown of 0.3s.
-					Cursed Blood - Removed stagger from the blood explosion (from 0.08) and crit burst from (0.7). 
-		talentXY:  	Lost Souls - Removed stagger from unleashed souls (from 0.25)
+		talentXY:  	Reaping 		- Removed power bonus (from 25%).
+		talentXY:  	Cursed Blood 	- Reduced explosion damage to 10% (from 25%) of the crit attack triggering the explosion
+					Cursed Blood 	- Added internal cooldown of 0.3s.
+					Cursed Blood 	- Removed stagger from the blood explosion (from 0.08) and crit burst from (0.7). 
+		talentXY:  	Lost Souls 		- Removed stagger from unleashed souls (from 0.25)
 	$END_TB	
 ]]
 --[[
@@ -31,7 +31,7 @@ DamageProfileTemplates.sienna_necromancer_ability_stagger.default_target.power_d
 mod_api.update_talent_buff_template("bright_wizard", "sienna_necromancer_2_2_buff", {
     stat_buff = "increased_weapon_damage_ranged" -- "power_level_ranged"
 })
-mod_api.update_talent("sienna_necromancer_2_2_desc", 2, 2, {
+mod_api.update_talent("bw_necromancer", 2, 2, {
     description = "sienna_necromancer_2_2_desc",
     description_values = {},
 })

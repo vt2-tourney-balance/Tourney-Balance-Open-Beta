@@ -47,10 +47,10 @@ end)
     Balance Changes 
 
 ]]
--- THP & Stagger Talent Functions & Changes
-mod:dofile("scripts/mods/TourneyBalance/changes/thp_stagger_changes")
+-- THP/Stagger/Damage Related Changes
+mod:dofile("scripts/mods/TourneyBalance/changes/thp_stagger_damage_changes")
 
--- Career Changes (Ultimates, Passives, Talents)
+-- Career Changes (Ultimates/Passives/Talents)
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes")
 
 -- Weapon Changes
@@ -74,6 +74,11 @@ mod:dofile("scripts/mods/TourneyBalance/changes/SpicyEnemies")
 -- Misc standalone fixes not tied to any other category
 mod:dofile("scripts/mods/TourneyBalance/changes/_misc_fixes")
 
+--[[
+
+    Utility
+
+]]
 -- Performance Logging System
 -- Disabled: its mod.update collided with stagger_state_visualizer.lua's
 -- mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/performance_logging")
@@ -90,6 +95,13 @@ mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/ping_color")
 -- Debugging Tools
 mod:dofile("scripts/mods/TourneyBalance/debugging/stagger_state_visualizer")
 
+
+--[[
+
+    Merge Changes
+
+
+]]
 local function updateValues()
 	for _, buffs in pairs(TalentBuffTemplates) do
 		table.merge_recursive(BuffTemplates, buffs)

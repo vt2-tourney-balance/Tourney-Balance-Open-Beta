@@ -5,14 +5,14 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	$BEGIN_TB
 		title	: 	Sister of the Thorn Changes
 		ult		: 	Increased ultimate cooldown to 70s (from 40s).
-		passives:  	A Cluster of Radiants - Increased passive ultimate cooldown to 70s (from 60s).
-					A Sustenance of Leechlings - Decreased temp health siphon from team to 10% (from 100%).
-		talent23:  	Briar's Malice - Only consume crit stacks on hit.
-		talent42:  	Bonded Spirit - Updated description
-		talent43:  	Radiant Inheritance - Can be activated with Thornwake (regular ult).
-					Radiant Inheritnace - Recasting refreshes the and extends the duration to 20s.
-		talent61:  	Ironbark Thicket - Reduced wall duration to 6s (from 10s).
-		talent63:  	Blackvenom Thicket - Added 40% cooldown reduction.
+		passives:  	A Cluster of Radiants 		- Increased passive ultimate cooldown to 70s (from 60s).
+					A Sustenance of Leechlings 	- Decreased temp health siphon from team to 10% (from 100%).
+		talent23:  	Briar's Malice 				- Only consume crit stacks on hit.
+		talent42:  	Bonded Spirit 				- Updated description
+		talent43:  	Radiant Inheritance 		- Can be activated with Thornwake (regular ult).
+					Radiant Inheritnace 		- Recasting refreshes the and extends the duration to 20s.
+		talent61:  	Ironbark Thicket 			- Reduced wall duration to 6s (from 10s).
+		talent63:  	Blackvenom Thicket 			- Added 40% cooldown reduction.
 	$END_TB	
 ]]
 

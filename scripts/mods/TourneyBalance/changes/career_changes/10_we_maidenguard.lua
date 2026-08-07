@@ -6,16 +6,16 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 	$BEGIN_TB
 		title	: 	Handmaiden Changes
 		ult		: 	Increased hitbox width for non-bleed ult to 5.0 (from 1.5)
-		passives:  	Renewal - Stam regen aura range increased to 20 (from 5).
-                    Bendy (NEW) - Increase healing received by 40%.
-		talent21:   Focused Spirit - Changed to 30% melee power (from 15% power).
-                    Focused Spirit - Decreased reset duration to 4s (from 10s).
-		talent22:   Oak Stance - Increased crit chance to 10% (from 5%).
-                    Oak Stance - Added 30% crit power.
-		talent23:   Asrai Alacrity - Increased stacks gained to 3 (from 2)
-		talent42:   Dance of Blades - Increased power to 15% (from 10%) and duration to 3.5s (from 2s).
-		talent51:   Heart of Oak - Increased health bonus to 20% (from 15%).
-		talent53:   Quiver of Plenty - Increased ammo bonus to 70% (from 40%).
+		passives:  	Renewal             - Stam regen aura range increased to 20 (from 5).
+                    Bendy (NEW)         - Increase healing received by 40%.
+		talent21:   Focused Spirit      - Changed to 30% melee power (from 15% power).
+                    Focused Spirit      - Decreased reset duration to 4s (from 10s).
+		talent22:   Oak Stance          - Increased crit chance to 10% (from 5%).
+                    Oak Stance          - Added 30% crit power.
+		talent23:   Asrai Alacrity      - Increased stacks gained to 3 (from 2)
+		talent42:   Dance of Blades     - Increased power to 15% (from 10%) and duration to 3.5s (from 2s).
+		talent51:   Heart of Oak        - Increased health bonus to 20% (from 15%).
+		talent53:   Quiver of Plenty    - Increased ammo bonus to 70% (from 40%).
 	$END_TB	
 ]]
 
