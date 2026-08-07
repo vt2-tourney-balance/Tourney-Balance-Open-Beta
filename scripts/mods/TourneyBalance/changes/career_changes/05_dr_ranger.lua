@@ -152,38 +152,46 @@ mod_api.update_talent("dr_ranger", 5, 2, {
 --[[
 	Parting Gift
 ]]
--- While having party -- needs fix
+-- Remove free grenade perk
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_ability_free_grenade_buff", {
+	perks = {},
+})
+-- Free engineer grenade
 mod:hook(ActionChargedProjectileUtility, "fire_charged_projectile", function (func, projectile_context, ...)
-	local buff_extension = projectile_context.buff_extension
-
 	if not (projectile_context.is_grenade and not projectile_context.grenade_thrown) then
 		return func(projectile_context, ...)
 	end
 
-	local free_grenade_buff = buff_extension:get_non_stacking_buff("bardin_ranger_ability_free_grenade_buff")
+	local buff_extension = projectile_context.buff_extension
 
-	if not free_grenade_buff then
+	if not buff_extension:get_non_stacking_buff("bardin_ranger_ability_free_grenade_buff") then
 		return func(projectile_context, ...)
 	end
 
-	local is_engineer_bomb = projectile_context.item_name == "engineer_grenade_t1"
+	-- item_name is the ItemMasterList key ("grenade_engineer")
+	-- not the pickup/weapon template name ("engineer_grenade_t1")
+	local is_engineer_bomb = projectile_context.item_name == "grenade_engineer"
+	local real_has_buff_perk = buff_extension.has_buff_perk
 
-	function buff_extension:has_buff_perk(perk_name)
-		if perk_name == "free_grenade" then
-			return is_engineer_bomb
+	buff_extension.has_buff_perk = function (self, perk_name)
+		if perk_name == "free_grenade" and is_engineer_bomb then
+			return true
 		end
 
-		return BuffExtension.has_buff_perk(self, perk_name)
+		return real_has_buff_perk(self, perk_name)
 	end
 
-	-- Forwards errors in hooked function
-	local ok, err = pcall(func, projectile_context, ...)
+	-- Forwards errors in hooked function, and its return value (trigger_wield) - dropping
+	-- the latter was why the weapon never rewielded after a free throw.
+	local ok, result = pcall(func, projectile_context, ...)
 
-	buff_extension.has_buff_perk = nil
+	buff_extension.has_buff_perk = real_has_buff_perk
 
 	if not ok then
-		error(err, 0)
+		error(result, 0)
 	end
+
+	return result
 end)
 mod_api.insert_text("bardin_ranger_ability_free_grenade_desc", "Activating Disengage causes the next engineer bomb Bardin throws to not be consumed. Does not stack.")
 

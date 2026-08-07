@@ -162,9 +162,7 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 		DamageUtils.add_damage_network_player(damage_profile, target_index, attack_power_level, target_unit, attacker_unit, hit_zone_name, hit_position, attack_direction, damage_source, hit_ragdoll_actor, boost_curve_multiplier, is_critical_strike, added_dot, first_hit, total_hits, backstab_multiplier, source_attacker_unit)
 
 		local is_direct_hit = not (damage_profile and (damage_profile.is_dot or damage_profile.is_explosion))
-		-- Excludes push/shield-slam splash hits (which use no_damage=true profiles) so
-		-- only the center/damage-dealing hit can generate a mark - target_index can't be
-		-- trusted for this (shield slam hardcodes it to 1 for every enemy hit).
+		-- Excludes push/shield-slam splash hits, i.e. only the center/damage-dealing hit can generate stagger count.
 		local is_center_hit = not damage_profile.no_damage
 		local mainstay_item_data = rawget(ItemMasterList, damage_source)
 		local mainstay_weapon_template_name = mainstay_item_data and mainstay_item_data.template

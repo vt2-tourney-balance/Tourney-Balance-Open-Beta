@@ -440,7 +440,7 @@ mod:hook_origin(PlayerProjectileUnitExtension, "hit_enemy", function(self, impac
 	if breed.is_player or breed.play_ranged_hit_reacts then
 		local husk = not self._owner_player.local_player
 
-		DamageUtils.insert_hit_reaction(hit_unit, breed, husk, hit_direction, false)
+		DamageUtils.add_hit_reaction(hit_unit, breed, husk, hit_direction, false)
 	end
 
 	if self.locomotion_extension.notify_hit_enemy then

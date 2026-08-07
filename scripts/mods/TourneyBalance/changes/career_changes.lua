@@ -5,7 +5,7 @@ mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/01_es_mercenary")
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/02_es_huntsman") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/03_es_knight") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/04_es_questingknight") -- ok
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/05_dr_ranger") -- ok -- new bomb dupe
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/05_dr_ranger") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/06_dr_ironbreaker") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/07_dr_slayer") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/08_dr_engineer") -- ok
@@ -15,12 +15,12 @@ mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/11_we_shade") -- 
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/12_we_thornsister") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/13_wh_captain") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/14_wh_bountyhunter") -- ok
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/15_wh_zealot")
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/15_wh_zealot") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/16_wh_priest") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/17_bw_adept") -- ok
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/18_bw_scholar")
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/18_bw_scholar") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/19_bw_unchained") -- ok
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/20_bw_necromancer")
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/20_bw_necromancer") -- ok
 
 --[[
 	Timed Block Long
