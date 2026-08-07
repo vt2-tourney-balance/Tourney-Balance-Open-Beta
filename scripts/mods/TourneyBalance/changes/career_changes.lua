@@ -1,25 +1,25 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/01_es_mercenary")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/02_es_huntsman")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/03_es_knight")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/04_es_questingknight")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/05_dr_ranger")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/06_dr_ironbreaker")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/07_dr_slayer")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/08_dr_engineer")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/09_we_waywatcher")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/10_we_maidenguard")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/11_we_shade")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/12_we_thornsister")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/13_wh_captain")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/14_wh_bountyhunter")
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/01_es_mercenary") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/02_es_huntsman") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/03_es_knight") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/04_es_questingknight") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/05_dr_ranger") -- ok -- new bomb dupe
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/06_dr_ironbreaker") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/07_dr_slayer") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/08_dr_engineer") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/09_we_waywatcher") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/10_we_maidenguard") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/11_we_shade") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/12_we_thornsister") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/13_wh_captain") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/14_wh_bountyhunter") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/15_wh_zealot")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/16_wh_priest")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/17_bw_adept")
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/16_wh_priest") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/17_bw_adept") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/18_bw_scholar")
-mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/19_bw_unchained")
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/19_bw_unchained") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/20_bw_necromancer")
 
 --[[
@@ -183,6 +183,7 @@ mod_api.insert_proc_function("reduce_activated_ability_cooldown", function (owne
 end)
 
 -- Firebomb fix? Fire damage starts ealier.
+local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 mod_api.insert_buff_template("burning_dot_fire_grenade", {
 	apply_buff_func = "start_dot_damage",
 	damage_profile = "burning_dot_firegrenade",
@@ -238,12 +239,12 @@ mod_api.insert_buff_template("burning_dot_fire_grenade", {
 
 		return duration
 	end,
-},)
+})
 -- Reduce super amour damage
 DamageProfileTemplates.burning_dot_firegrenade.default_target.armor_modifier.attack[6] = 0.25 -- 0.5
 
 -- Remove Stam-Tech
-mod:hook_origin("check_to_start_dodge", function (unit, input_extension, status_extension, t)
+mod:hook_origin(CharacterStateHelper, "check_to_start_dodge", function (unit, input_extension, status_extension, t)
 	if status_extension:dodge_locked() or not status_extension:can_dodge(t) then
 		return false
 	end

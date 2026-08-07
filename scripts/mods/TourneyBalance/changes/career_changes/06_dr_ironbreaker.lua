@@ -8,6 +8,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		passives:  	CDR on Damage Taken - Reduced ult cooldown gain on damage taken to 0.4 (from 0.5).
 		talent21:	Under Pressure - Base damage multiplier changed to 80% - 130% from (20% - 120%)
 					Under Pressure - Ranged attack speed multiploer changed to 200% to 100% (from 200% - 50%) depending on overcharge.
+		talent23: 	Rune-Etched Shield - Corrected description to melee power (from power).
 		talent41: 	Vengeance - Grants 15% attack speed for 20s, when Gromril is lost.
 	$END_TB	
 ]]
@@ -77,7 +78,17 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_drakefir
 		multiplier = -0.1 -- -0.15 -- Attack speed decrease per stack. Max 10 stacks.
 	},
 })
+mod_api.update_talent("dr_ironbreaker", 2, 1, { --TODO: 1to1 copy bu still does not work???
+    description = "bardin_ironbreaker_overcharge_increase_power_lowers_attack_speed_desc",
+    description_values = {},
+})
 mod_api.insert_text("bardin_ironbreaker_overcharge_increase_power_lowers_attack_speed_desc", "Drake Fire base damage multiplier increases from 80% to 130% and ranged attack speed bonus decreases from 100% to 0% depending on overcharge. Removes overcharge slowdown.")
+
+--[[
+	Rune-Etched Shield description correction
+]]
+mod_api.insert_text("bardin_ironbreaker_party_power_on_blocked_attacks_desc", "Blocking an attack increases Bardin's melee power (and that of nearby allies) by 2.0%% for 10 seconds. Stacks 5 times.")
+
 
 --[[
 	Vengeance
@@ -90,4 +101,4 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_
     multiplier = 0.03,
     duration = 20,
 })
-mod_api.insert_text("bardin_ironbreaker_rising_attack_speed_desc", "When Gromril is lost, gain 15% attack speed for 20 seconds.")
+mod_api.insert_text("bardin_ironbreaker_rising_attack_speed_desc", "When Gromril is lost, gain 15.0%% attack speed for 20 seconds.")

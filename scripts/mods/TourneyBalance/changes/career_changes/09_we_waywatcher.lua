@@ -288,7 +288,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_movement_s
 	apply_buff_func = "tb_apply_movement_buff_and_noclip",
 	remove_buff_func = "tb_remove_movement_buff_and_noclip",
 })
-mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", "Killing a special or elite enemy increases movement speed by 15.0% and lets Kerillian pass through enemies for 10 seconds.")
+mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", "Killing a special or elite enemy increases movement speed by 15.0%% and lets Kerillian pass through enemies for 10 seconds.")
 
 --[[
 	Richochet
@@ -303,7 +303,7 @@ mod:hook(ActionBow, "fire", function (func, self, current_action, add_spread)
 
 	pending_bonus_shot[self.owner_unit] = nil
 end)
-mod_api.hook_safe(PlayerProjectileUnitExtension, "init", function (self, extension_init_context, unit, extension_init_data)
+mod:hook_safe(PlayerProjectileUnitExtension, "init", function (self, extension_init_context, unit, extension_init_data)
 	self._is_bonus_shot = pending_bonus_shot[extension_init_data.owner_unit] or false
 end)
 

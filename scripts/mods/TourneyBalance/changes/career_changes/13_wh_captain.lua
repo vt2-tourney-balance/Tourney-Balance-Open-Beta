@@ -24,7 +24,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 --[[
 	Riposte
 ]]
-mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block", "Blocking just as an enemy attack is about to hit causes your next melee or ranged attack within 2 seconds to be a guaranteed critical hit.")
+mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Blocking just as an enemy attack is about to hit causes your next melee or ranged attack within 2 seconds to be a guaranteed critical hit.")
 
 --[[
 	Templar's Knowledge
@@ -33,6 +33,10 @@ mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block", "Blocki
 -- Duration increase
 mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_improved_damage_taken_ping", {
 	duration = 15, -- 5
+})
+mod_api.update_talent("wh_captain", 4, 1, {
+	description = "victor_witchhunter_improved_damage_taken_ping_desc",
+	description_values = {},
 })
 mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage. Victor deals additional 25.0% direct damage to enemies affected by Witch Hunt (excluding Lords and Bosses).")
 

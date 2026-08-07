@@ -20,11 +20,9 @@ function buff_api.insert_buff_template(buff_name, buff_data)
         },
     }
     BuffTemplates[buff_name] = new_talent_buff
-    if NetworkLookup.buff_templates[buff_name] == nil then
-        local index = #NetworkLookup.buff_templates + 1
-        NetworkLookup.buff_templates[index] = buff_name
-        NetworkLookup.buff_templates[buff_name] = index
-    end
+    local index = #NetworkLookup.buff_templates + 1
+    NetworkLookup.buff_templates[index] = buff_name
+    NetworkLookup.buff_templates[buff_name] = index
 end
 
 function buff_api.insert_proc_function(name, func)

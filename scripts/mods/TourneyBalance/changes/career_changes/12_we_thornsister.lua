@@ -82,7 +82,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buf
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_team_buff", {
 	event = "on_ability_cooldown_started",
 })
-mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15% power and 5% critical strike chance for 10 seconds. Duration can stack 2 times.")
+mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 10 seconds. Duration can stack 2 times.")
 
 --[[
 	Ironbark Thicket

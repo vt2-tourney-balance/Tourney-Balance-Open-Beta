@@ -31,6 +31,10 @@ DamageProfileTemplates.sienna_necromancer_ability_stagger.default_target.power_d
 mod_api.update_talent_buff_template("bright_wizard", "sienna_necromancer_2_2_buff", {
     stat_buff = "increased_weapon_damage_ranged" -- "power_level_ranged"
 })
+mod_api.update_talent("sienna_necromancer_2_2_desc", 2, 2, {
+    description = "sienna_necromancer_2_2_desc",
+    description_values = {},
+})
 mod_api.insert_text("sienna_necromancer_2_2_desc", "Casting spells grants 5% ranged damage for 6 seconds. Max stacks 5.")
 
 --[[

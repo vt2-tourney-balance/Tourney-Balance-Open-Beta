@@ -3,7 +3,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		title	: 	Huntsman Changes
+		title	: 	Foot Knight Changes
 		ult		: 	Ultimate increased to 40s (from 30s).
 					Baseline ult damage/stagger cleave buffed to 4 (from 2). Exludes wide charge.
 					Baseline ult on_interrupt_blast.radius buffed to 4 (from 3). Excludes wide charge.
@@ -139,26 +139,17 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_coo
 	Staggering Force
 ]]
 -- Stagger power decreased to 20% (from 35%)
-mod_api.update_talent("es_knight", 2, 1, {
-	description = "markus_knight_power_level_impact_desc",
-	name = "markus_knight_power_level_impact",
-	buffer = "server",
-	num_ranks = 1,
-	icon = "markus_knight_power_level_impact",
-	description_values = { -- update description
-		{
-			value_type = "percent",
-			value = 0.2 ----BuffTemplates.markus_knight_power_level_impact.multiplier
-		}
-	},
-	buffs = {
-		"markus_knight_power_level_impact"
-	}
-})
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_power_level_impact", {
 	multiplier = 0.2 --0.35
 })
-mod_api.insert_text("markus_knight_power_level_impact_desc", "Increases stagger power by 20%.")
+mod_api.update_talent("es_knight", 2, 1, {
+	description_values = { -- update description
+		{
+			value_type = "percent",
+			value = 0.2, -- buff_tweak_data.markus_knight_power_level_impact.multiplier
+		}
+	},
+})
 
 --[[
 	Have At Thee! 
@@ -171,10 +162,10 @@ mod_api.update_talent("es_knight", 2, 2, { -- update description
 	description_values = {
 		{
 			value_type = "percent",
-			value = 0.15 --BuffTemplates.markus_knight_power_level_on_stagger_elite_buff.multiplier
+			value = 0.15 -- buff_tweak_data.markus_knight_power_level_on_stagger_elite_buff.multiplier
 		},
 		{
-			value = 15 --BuffTemplates.markus_knight_power_level_on_stagger_elite_buff.duration
+			value = 15 -- buff_tweak_data.markus_knight_power_level_on_stagger_elite_buff.duration
 		}
 	},
 })
@@ -190,10 +181,10 @@ mod_api.update_talent("es_knight", 2, 3, { -- update description
 	description_values = {
 		{
 			value_type = "percent",
-			value = 0.15 --BuffTemplates.markus_knight_attack_speed_on_push_buff.multiplier
+			value = 0.15 -- buff_tweak_data.markus_knight_attack_speed_on_push_buff.multiplier
 		},
 		{
-			value = 5 --BuffTemplates.markus_knight_attack_speed_on_push_buff.duration
+			value = 5 -- buff_tweak_data.markus_knight_attack_speed_on_push_buff.duration
 		}
 	},
 })
@@ -225,7 +216,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_bu
 	multiplier = 2, -- 1
 	icon = "markus_knight_improved_passive_defence_aura"
 })
-mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Subjecting an elite enemy to a stagger state grants the player an accelerated cooldown of their career skill by a magnitude of 200%% for 1.5 seconds.")
+mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy accelerates the cooldown of nearby allies by 200%% for 1.5 seconds.")
 
 --[[
 

@@ -87,7 +87,7 @@ mod_api.insert_proc_function("bardin_ranger_scavenge_proc", function (owner_unit
 		end
 	end
 end)
-mod_api.insert_text("career_passive_desc_dr_3a_2", "Whenever a special is killed, Bardin will drop an ammo pickup at his feet. This pickup restores 10% of the player's max ammunition, rounded down. Survivalit drops have a 5% chance to come with an engineer bomb.")
+mod_api.insert_text("career_passive_desc_dr_3a_2", "Whenever a special is killed, Bardin will drop an ammo pickup, with a 5% chance also an engineer bomb. This pickup restores 10% of the player's max ammunition, rounded down.")
 mod_api.insert_text("bardin_ranger_passive_spawn_potions_or_bombs_desc", "Killing a special has a 6%% chance to drop a potion instead of a Survivalist cache.")
 
 
@@ -103,6 +103,7 @@ mod_api.insert_career_passives("dr_3", {
 	"dwarf_ranger_ranged_power",
 	"markus_huntsman_passive_no_damage_dropoff",
 })
+
 mod_api.insert_text("career_passive_desc_dr_3c_2", "Double effective range for ranged weapons, 10% increased ranged power, and 15% increased reload speed.")
 
 --[[
@@ -116,7 +117,14 @@ mod_api.insert_text("career_passive_desc_dr_3c_2", "Double effective range for r
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_attack_speed", {
 	multiplier = 0.15 --0.05
 })
-mod_api.insert_text("bardin_ranger_attack_speed_desc", "Increases attack speed by 15.0%.")
+mod_api.update_talent("dr_ranger", 2, 3, {
+	description_values = { -- update description
+		{
+			value_type = "percent",
+			value = 0.15, -- buff_tweak_data.bardin_ranger_attack_speed.multiplie
+		}
+	},
+})
 
 --[[
 	Drunken Brawler
@@ -144,7 +152,7 @@ mod_api.update_talent("dr_ranger", 5, 2, {
 --[[
 	Parting Gift
 ]]
--- While having party
+-- While having party -- needs fix
 mod:hook(ActionChargedProjectileUtility, "fire_charged_projectile", function (func, projectile_context, ...)
 	local buff_extension = projectile_context.buff_extension
 

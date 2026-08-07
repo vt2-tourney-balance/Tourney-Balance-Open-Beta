@@ -18,7 +18,7 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 ]]
 --Turn green hp into white hp on ult
-mod_api.hook_safe(CareerAbilityWHZealot, "_run_ability", function(self)
+mod:hook_safe(CareerAbilityWHZealot, "_run_ability", function(self)
     local unit = self._owner_unit
     local health_extension = ScriptUnit.extension(unit, "health_system")
     local perm_health = health_extension:current_permanent_health()
@@ -36,7 +36,7 @@ end)
 -- buff_extension:add_buff, so the server could already consider the owner unkillable without ever telling
 -- the client. The client must defer to whatever the server has already synced instead of re-evaluating the
 -- killing blow itself, and the server must use mod_api.add_buff so the invulnerability buff actually replicates.
-mod_api.add_proc_function("victor_zealot_gain_invulnerability", function (owner_unit, buff, params)
+mod_api.insert_proc_function("victor_zealot_gain_invulnerability", function (owner_unit, buff, params)
     local status_extension = ScriptUnit.extension(owner_unit, "status_system")
 
     if not Managers.state.network.is_server and ALIVE[owner_unit] then
@@ -99,10 +99,14 @@ mod_api.update_talent_buff_template("witch_hunter", "victor_zealot_crit_count", 
     Unbending Purpose
 ]]
 -- Now grants 20% melee power.
-mod_api.modify_talent_buff_template("witch_hunter", "victor_zealot_power", {
+mod_api.insert_talent_buff_template("witch_hunter", "victor_zealot_power", {
 	stat_buff = "power_level_melee", -- power_level
 	multiplier = 0.2 -- 0.05
 })
-mod_api.add_text("zealot_unbending_purpose_desc", "Increases melee power by 20.0%.")
+mod_api.update_talent("wh_zealot", 2, 3, {
+    description = "zealot_unbending_purpose_desc",
+    description_values = {},
+})
+mod_api.insert_text("zealot_unbending_purpose_desc", "Increases melee power by 20.0%.")
 
 

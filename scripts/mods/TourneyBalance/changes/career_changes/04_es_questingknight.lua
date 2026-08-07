@@ -66,10 +66,6 @@ end)
 mod_api.update_talent_buff_template("empire_soldier", "markus_questing_knight_health_refund_over_time", {
 	heal_amount_fraction = 0.25 -- 0.5
 })
-mod_api.update_talent("es_questingknight", 5, 1, {
-    description = "markus_questing_knight_health_refund_over_time_desc",
-    description_values = {},
-})
 mod_api.insert_text("markus_questing_knight_health_refund_over_time_desc", "25% of damage taken is regenerated as temporary health after 5 seconds.")
 
 --[[

@@ -16,9 +16,8 @@ function talent_api.update_career_ability_cooldown(hero_id, new_cooldown)
 end
 
 function talent_api.insert_career_passives(hero_id, buffs)
-    local hero_passives = PassiveAbilitySettings[hero_id]
     for _, buff in ipairs(buffs) do
-        hero_passives.buffs[#hero_passives.buffs + 1] = buff
+        table.insert(PassiveAbilitySettings[hero_id].buffs, buff)   
     end
 end
 
@@ -50,11 +49,9 @@ function talent_api.insert_talent_buff_template(hero_name, buff_name, buff_data,
     end
     TalentBuffTemplates[hero_name][buff_name] = new_talent_buff
     BuffTemplates[buff_name] = new_talent_buff
-    if NetworkLookup.buff_templates[buff_name] == nil then
-        local index = #NetworkLookup.buff_templates + 1
-        NetworkLookup.buff_templates[index] = buff_name
-        NetworkLookup.buff_templates[buff_name] = index
-    end
+    local index = #NetworkLookup.buff_templates + 1
+    NetworkLookup.buff_templates[index] = buff_name
+    NetworkLookup.buff_templates[buff_name] = index
 end
 
 function talent_api.update_talent_buff_template(hero_name, buff_name, buff_data, extra_data)
@@ -79,7 +76,7 @@ function talent_api.update_talent_buff_template(hero_name, buff_name, buff_data,
     for i=1, #original_buff.buffs do
         if new_talent_buff.buffs[i] then
             merged_buff.buffs[i] = table.merge(original_buff.buffs[i], new_talent_buff.buffs[i])
-        -- elseif original_buff[i] then -- TODO: dead code???
+        --elseif original_buff[i] then -- needed for passives?
         --    merged_buff.buffs[i] = table.merge(original_buff.buffs[i], new_talent_buff.buffs)
         else
             merged_buff.buffs = table.merge(original_buff.buffs, new_talent_buff.buffs)

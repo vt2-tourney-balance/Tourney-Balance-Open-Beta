@@ -1,6 +1,6 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
-local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_server
+local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_server
 
 --[[
 	$BEGIN_TB
@@ -129,7 +129,11 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_power_lev
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_power_level_on_unharmed_cooldown", {
     duration = 4 -- 10
 })
-mod_api.insert_text("erillian_maidenguard_power_level_on_unharmed_desc", "After not taking damage for 4 seconds, increases Kerillian's melee power by 30.0%. Reset upon taking damage, friendly fire will not reset the buff.")
+mod_api.update_talent("we_maidenguard", 2, 1, {
+    description = "kerillian_maidenguard_power_level_on_unharmed_desc",
+    description_values = {},
+})
+mod_api.insert_text("kerillian_maidenguard_power_level_on_unharmed_desc", "After not taking damage for 4 seconds, increases Kerillian's melee power by 30.0%. Reset upon taking damage, friendly fire will not reset the buff.")
 
 
 --[[
@@ -145,6 +149,8 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_kerilllian_maidenguard_crit_
 	max_stacks = 1
 })
 mod_api.update_talent("we_maidenguard", 2, 2, {
+    description = "kerillian_maidenguard_crit_chance_desc",
+    description_values = {},
     buffs = {
         "tb_kerilllian_maidenguard_crit_power",
 		"kerillian_maidenguard_crit_chance"
@@ -167,7 +173,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_speed_on_
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_speed_on_block_dummy_buff", {
     max_stacks = 3 -- 2
 })
-mod_api.insert_text("kerillian_maidenguard_speed_on_block_desc", "Blocking an attack or pushing an enemy grants the next three strikes 30%% attack speed and 10%% power.")
+mod_api.insert_text("kerillian_maidenguard_speed_on_block_desc", "Blocking an attack or pushing an enemy grants the next 3 strikes 30%% attack speed and 10%% power.")
 
 
 --[[
@@ -178,6 +184,10 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_power_on_
 	duration = 3.5, -- 2
 	multiplier = 0.15 -- 0.1
 })
+mod_api.update_talent("we_maidenguard", 4, 2, {
+    description = "kerillian_maidenguard_versatile_dodge_desc",
+    description_values = {},
+})
 mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 3.5 seconds.")
 
 --[[
@@ -185,6 +195,10 @@ mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_max_health", {
 	multiplier = 0.2 -- 0.15
+})
+mod_api.update_talent("we_maidenguard", 5, 1, {
+    description = "kerillian_maidenguard_max_health_desc",
+    description_values = {},
 })
 mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0%.")
 
@@ -194,6 +208,10 @@ mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max heal
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_max_ammo", {
 	multiplier = 0.7 -- 0.4
+})
+mod_api.update_talent("we_maidenguard", 5, 3, {
+    description = "kerillian_maidenguard_max_ammo_desc",
+    description_values = {},
 })
 mod_api.insert_text("kerillian_maidenguard_max_ammo_desc", "Increases ammunition amount by 70.0%.")
 

@@ -6,7 +6,6 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		title	: 	Huntsman Changes
 		ult		: 	Ultimate reduced to 60s (from 90s). Reload speed buff from ultimate reduced to 25% (from 40%).
 		passives: 	Poacher's Mark - Added 15% increased reload speed.
-					Poacher's Mark - Added ranged weapon zoom using weapon special.
 					Call out Weakness - Aura range increased to 20 (from 5).
 		talent43: 	Burst of Enthusiasm - Ranged kills restore thp equal to a quarter of bloodlust.
 		talent53: 	Longshanks - Makes all ranged attacks pin point accurate and removes aim punch.
@@ -37,8 +36,7 @@ mod_api.insert_talent_buff_template("empire_soldier", "tb_markus_huntsman_reload
 })
 -- ranged weapon zoom
 mod_api.insert_career_passives("es_1", {
-	"tb_markus_huntsman_reload_passive",
-	"kerillian_waywatcher_passive_increased_zoom", -- TODO: Verify - already has this passively: markus_huntsman_passive_increased_zoom
+	"tb_markus_huntsman_reload_passive"
 })
 mod_api.insert_text("career_passive_desc_es_1b", "Double effective range for ranged weapons and 15% increased reload speed.")
 

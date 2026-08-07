@@ -26,7 +26,7 @@ mod_api.update_talent("bw_scholar", 2, 2, {
 	description_values = {
 		{
 			value_type = "percent",
-			value = 0.05, --buff_tweak_data.sienna_scholar_increased_attack_speed.multiplier,
+			value = 0.1, --buff_tweak_data.sienna_scholar_increased_attack_speed.multiplier,
 		},
 	},
 })
@@ -81,6 +81,10 @@ mod_api.update_talent_buff_template("bright_wizard", "sienna_scholar_crit_chance
 mod_api.update_talent_buff_template("bright_wizard", "sienna_scholar_crit_chance_above_health_threshold_buff", {
 	max_stacks = 2, -- 1
 	bonus = 0.05, -- 0.1
+})
+mod_api.update_talent("bw_scholar", 2, 3, {
+    description = "sienna_scholar_crit_chance_above_health_threshold_desc",
+    description_values = {},
 })
 mod_api.insert_text("sienna_scholar_crit_chance_above_health_threshold_desc", "Critical strike chance is increased by 5.0% while above 65.0% health and increased by 10.0% while above 80.0% health.")
 

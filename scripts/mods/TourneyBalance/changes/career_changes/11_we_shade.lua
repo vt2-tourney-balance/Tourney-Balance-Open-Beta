@@ -18,8 +18,12 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Ultimate
 
 ]]
--- Raises the vanilla boss/elite cap on boost_damage_multiplier 
+-- Raises the vanilla boss/elite cap on boost_damage_multiplier
 -- The only source big enough to hit this cap is Shade's ult (shade_melee_boost grants 4)
+-- Force-load Minotaur
+if not Breeds.beastmen_minotaur then
+	dofile("scripts/settings/breeds/breed_beastmen_minotaur")
+end
 local shade_boost_capped_breeds = {
 	"chaos_exalted_sorcerer", -- 1.8
 	"chaos_exalted_sorcerer_drachenfels", -- 1.8
@@ -30,8 +34,9 @@ local shade_boost_capped_breeds = {
 	"skaven_storm_vermin_warlord", -- 1.8
 	"skaven_stormfiend", -- 1.8
 	"skaven_stormfiend_boss", -- 1.8
-	"beastmen_minotaur", -- 1.5 (NEW)
-	"chaos_exalted_champion", -- 1.5 (NEW)
+	"beastmen_minotaur", -- 1.5
+	"chaos_exalted_champion_warcamp", -- 1.5
+	"chaos_exalted_champion_norsca", -- 1.5
 }
 for _, breed_name in ipairs(shade_boost_capped_breeds) do
 	Breeds[breed_name].boost_curve_multiplier_override = 2
@@ -90,6 +95,8 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_increased_cr
 	bonus = 0.05 -- Added 5% crit
 })
 mod_api.update_talent("we_shade", 2, 1, {
+	description = "kerillian_shade_increased_critical_strike_damage_desc",
+	description_values = {},
 	buffs = {
 		"kerillian_shade_increased_critical_strike_damage",
 		"tb_kerillian_shade_increased_critical_strike_damage_chance",
@@ -127,6 +134,10 @@ mod_api.insert_proc_function("ammo_fraction_gain_on_backstab", function (owner_u
 		buff_extension:add_buff("kerillian_shade_backstabs_replenishes_ammunition_cooldown")
 	end
 end)
+mod_api.update_talent("we_shade", 4, 3, {
+	description = "kerillian_shade_backstabs_replenishes_ammunition_desc",
+	description_values = {},
+})
 mod_api.insert_text("kerillian_shade_backstabs_replenishes_ammunition_desc", "Backstabs return 5% of maximum ammunition. 2 second cooldown.")
 
 --[[
@@ -204,6 +215,8 @@ mod_api.insert_proc_function("tb_shimmer_control", function (owner_unit, buff, p
 	end
 end)
 mod_api.update_talent("we_shade", 6, 1, {
+	description = "kerillian_shade_activated_stealth_combo_desc",
+	description_values = {},
 	buffs = {
 		"tb_shimmer_activator", -- adds necessary buffs to shimmer talent to handle having capped uses
 		"tb_shimmer_handler"
