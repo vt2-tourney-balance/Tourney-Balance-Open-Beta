@@ -4,18 +4,21 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 --[[
 	$BEGIN_TB
-		# Mercenary Changes
+		---
+		## Mercenary
 		
-		## Passives
-		### Paced Strikes
+		### Passives
+		**Paced Strikes**
 		- Paced Strikes applies to the team.
 
-		## Talents
-		### Helborg's Tutelage
+		### Talents
+		**Helborg's Tutelage**
 		- Added random crits.
-		### Enhanced Training
+
+		**Enhanced Training**
 		- Decreased required enemies to activate Paced Strikes to 3 (from 4)
-		### Strike Together
+		
+		**Strike Together**
 		- Changed to Paced Strikes activates on hitting 1 enemy.
 	$END_TB
 ]]

@@ -3,27 +3,33 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Sister of the Thorn Changes
-		## Career Ability
+		---
+		## Sister of the Thorn
+		### Career Ability
 		- Increased ultimate cooldown to 70s (from 40s).
 
-		## Passives
-		### A Cluster of Radiants
+		### Passives
+		**A Cluster of Radiants**
 		- Increased passive ultimate cooldown to 70s (from 60s).
-		### A Sustenance of Leechlings
+
+		**A Sustenance of Leechlings**
 		- Decreased temp health siphon from team to 10% (from 100%).
 
-		## Talents
-		### Briar's Malice
+		### Talents
+		**Briar's Malice**
 		- Only consume crit stacks on hit.
-		### Bonded Spirit
-		- Updated description
-		### Radiant Inheritance
+
+		**Bonded Spirit**
+		- Updated description: Internal CD of losing cooldown is  1s.
+
+		**Radiant Inheritance**
 		- Can be activated with Thornwake (regular ult).
 		- Recasting refreshes the and extends the duration to 20s.
-		### Ironbark Thicket
+
+		**Ironbark Thicket**
 		- Reduced wall duration to 6s (from 10s).
-		### Blackvenom Thicket
+
+		**Blackvenom Thicket**
 		- Added 40% cooldown reduction.
 	$END_TB
 ]]

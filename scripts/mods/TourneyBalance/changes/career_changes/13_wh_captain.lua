@@ -3,16 +3,20 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Witch Hunter Captain Changes
-		## Talents
-		### Riposte
+		---
+		## Witch Hunter Captain
+		### Talents
+		**Riposte**
 		- Fix description: crits also applpy to ranged attacks.
-		### Templar's Knowledge
+
+		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
 		- Elites and specials take 25% more direct damage from Saltzpyre.
-		### I Shall Judge You All
+
+		**I Shall Judge You All**
 		- Permanently marks specials. Headshotting tagged enemies refreshes Animosity duration.
-		### Fervency
+
+		**Fervency**
 		- Increased duration to 10s (from 6s).
 		- Added ult makes first hits 20 guaranteed melee crits.
 	$END_TB

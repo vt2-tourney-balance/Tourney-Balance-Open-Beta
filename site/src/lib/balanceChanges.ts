@@ -1,15 +1,11 @@
 import { getCollection } from 'astro:content';
 
-export function slugifyTitle(title: string) {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 export async function getSortedBalanceChanges() {
   const entries = await getCollection('balanceChanges');
-  return entries
-    .map((entry) => ({ entry, slug: slugifyTitle(entry.data.title) }))
-    .sort((a, b) => a.entry.data.order - b.entry.data.order);
+  return entries.sort((a, b) => a.data.order - b.data.order);
+}
+
+// Maps a balanceChanges entry id to its page URL, relative to the site base.
+export function hrefForBalanceChanges(id: string) {
+  return id === 'career-changes' ? 'changes/' : `changes/${id}/`;
 }

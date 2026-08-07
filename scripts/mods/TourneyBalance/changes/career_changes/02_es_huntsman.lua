@@ -3,19 +3,24 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Huntsman Changes
-		## Career Ability
+		---
+		## Huntsman
+		### Career Ability
 		- Ultimate cooldown reduced to 60s (from 90s).
 		- Reload speed buff from ultimate reduced to 25% (from 40%).
-		## Passives
-		### Poacher's Mark
+
+		### Passives
+		**Poacher's Mark**
 		- Added 15% increased reload speed.
-		### Call out Weakness
+
+		**Call out Weakness**
 		- Aura range increased to 20 (from 5).
-		## Talents
-		### Burst of Enthusiasm
+
+		### Talents
+		**Burst of Enthusiasm**
 		- Ranged kills restore thp equal to a quarter of bloodlust.
-		### Longshanks
+		
+		**Longshanks**
 		- Makes all ranged attacks pin point accurate and removes aim punch.
 	$END_TB
 ]]

@@ -3,7 +3,7 @@ import BalanceChangesLayout from '../../layouts/BalanceChangesLayout.astro';
 import { getCollection, render } from 'astro:content';
 
 const entries = await getCollection('balanceChanges');
-const entry = entries.find((e) => e.id === 'career-changes');
+const entry = entries.find((e) => e.id === 'thp-stagger-changes');
 
 let Content = null;
 let headings: { depth: number; slug: string; text: string }[] = [];
@@ -14,14 +14,14 @@ if (entry) {
 }
 ---
 
-<BalanceChangesLayout title="Career Changes" activeId="career-changes" activeHeadings={headings}>
+<BalanceChangesLayout title="THP & Stagger Changes" activeId="thp-stagger-changes" activeHeadings={headings}>
   {
     Content ? (
       <Content />
     ) : (
       <>
-        <h1>Career Changes</h1>
-        <p>No career changes documented yet.</p>
+        <h1>THP &amp; Stagger Changes</h1>
+        <p>No THP &amp; stagger changes documented yet.</p>
       </>
     )
   }

@@ -3,16 +3,19 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Warrior Priest Changes
-		## Career Ability
+		---
+		## Warrior Priest
+		### Career Ability
 		- Reworded tooltip.
 
-		## Talents
-		### Prayer of Flight
+		### Talents
+		**Prayer of Flight**
 		- Grants the party 10% increased movement speed (instead of 25% stagger power).
-		### Unyielding Blessing
+
+		**Unyielding Blessing**
 		- Duration reduced to 7s (from 10s).
-		### United in Prayer
+
+		**United in Prayer**
 		- Duration reduced to 3s (from 5s).
 	$END_TB
 ]]

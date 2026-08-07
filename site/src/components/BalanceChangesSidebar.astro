@@ -1,13 +1,40 @@
 ---
-import { getSortedBalanceChanges } from '../lib/balanceChanges';
+import type { CollectionEntry } from 'astro:content';
+import { hrefForBalanceChanges } from '../lib/balanceChanges';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
 
 interface Props {
-  activeSlug?: string;
+  entries: CollectionEntry<'balanceChanges'>[];
+  activeId?: string;
+  activeHeadings?: Heading[];
 }
-const { activeSlug } = Astro.props;
+const { entries, activeId, activeHeadings = [] } = Astro.props;
 
 const base = import.meta.env.BASE_URL;
-const careers = await getSortedBalanceChanges();
+
+interface GroupNode {
+  slug: string;
+  text: string;
+  items: { slug: string; text: string }[];
+}
+
+// activeHeadings is the active page's own flat heading list, in document
+// order: depth 1 = group (Hero, or a THP/Stagger section), depth 2 = item
+// (Career, or a talent/passive name group). Deeper headings (e.g. Career
+// Ability/Passives/Talents) are intentionally not shown in the nav.
+const groups: GroupNode[] = [];
+for (const h of activeHeadings) {
+  if (h.depth === 1) {
+    groups.push({ slug: h.slug, text: h.text, items: [] });
+  } else if (h.depth === 2) {
+    groups.at(-1)?.items.push({ slug: h.slug, text: h.text });
+  }
+}
 ---
 
 <div class="patch-sidebar-wrapper">
@@ -25,21 +52,32 @@ const careers = await getSortedBalanceChanges();
       type="search"
       id="patch-sidebar-search"
       class="patch-sidebar-search"
-      placeholder="Search careers..."
-      aria-label="Search careers"
+      placeholder="Search balance changes..."
+      aria-label="Search balance changes"
     />
     <ul class="patch-sidebar-list" id="patch-sidebar-list">
       {
-        careers.map(({ entry, slug }) => (
-          <li>
-            <a
-              href={`${base}changes/${slug}/`}
-              class={slug === activeSlug ? 'active' : ''}
-              data-title={entry.data.title.toLowerCase()}
-              data-body={(entry.body ?? '').toLowerCase()}
-            >
-              <span class="patch-sidebar-item-title">{entry.data.title}</span>
+        entries.map((entry) => (
+          <li class="page-item" data-text={entry.data.title.toLowerCase()}>
+            <a href={`${base}${hrefForBalanceChanges(entry.id)}`} class={entry.id === activeId ? 'active' : ''}>
+              {entry.data.title}
             </a>
+            {entry.id === activeId && groups.length > 0 && (
+              <ul class="group-list">
+                {groups.map((group) => (
+                  <li class="group-item" data-text={group.text.toLowerCase()}>
+                    <a href={`#${group.slug}`}>{group.text}</a>
+                    <ul class="item-list">
+                      {group.items.map((item) => (
+                        <li class="item-item" data-text={item.text.toLowerCase()}>
+                          <a href={`#${item.slug}`}>{item.text}</a>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
         ))
       }
@@ -62,16 +100,31 @@ const careers = await getSortedBalanceChanges();
   });
 
   const search = document.getElementById('patch-sidebar-search') as HTMLInputElement | null;
-  const items = document.querySelectorAll<HTMLLIElement>('#patch-sidebar-list li');
 
   search?.addEventListener('input', () => {
     const query = search.value.trim().toLowerCase();
-    items.forEach((item) => {
-      const link = item.querySelector('a');
-      const title = link?.getAttribute('data-title') ?? '';
-      const body = link?.getAttribute('data-body') ?? '';
-      const matches = !query || title.includes(query) || body.includes(query);
-      item.style.display = matches ? '' : 'none';
+
+    document.querySelectorAll<HTMLLIElement>('.page-item').forEach((pageEl) => {
+      const pageMatches = !query || (pageEl.dataset.text ?? '').includes(query);
+      let pageHasVisibleGroup = false;
+
+      pageEl.querySelectorAll<HTMLLIElement>('.group-item').forEach((groupEl) => {
+        const groupMatches = !query || (groupEl.dataset.text ?? '').includes(query);
+        let groupHasVisibleItem = false;
+
+        groupEl.querySelectorAll<HTMLLIElement>('.item-item').forEach((itemEl) => {
+          const itemMatches = !query || (itemEl.dataset.text ?? '').includes(query);
+          const visible = itemMatches || groupMatches || pageMatches;
+          itemEl.style.display = visible ? '' : 'none';
+          groupHasVisibleItem = groupHasVisibleItem || visible;
+        });
+
+        const groupVisible = groupMatches || pageMatches || groupHasVisibleItem;
+        groupEl.style.display = groupVisible ? '' : 'none';
+        pageHasVisibleGroup = pageHasVisibleGroup || groupVisible;
+      });
+
+      pageEl.style.display = pageMatches || pageHasVisibleGroup ? '' : 'none';
     });
   });
 </script>
@@ -104,7 +157,7 @@ const careers = await getSortedBalanceChanges();
   }
 
   .patch-sidebar {
-    width: 240px;
+    width: 260px;
     flex-shrink: 0;
     overflow: hidden;
     transition:
@@ -157,7 +210,7 @@ const careers = await getSortedBalanceChanges();
 
     /* Same toggle class as desktop, but inverted meaning: here it reveals
        the sidebar instead of hiding it (see the isMobile() check in the
-       script below, which keeps aria-expanded correct either way).
+       script above, which keeps aria-expanded correct either way).
        Explicitly overrides width/opacity from the desktop collapsed rule
        above — same selector, so both would otherwise apply at once here. */
     .patch-sidebar-wrapper.collapsed .patch-sidebar {
@@ -186,25 +239,55 @@ const careers = await getSortedBalanceChanges();
     list-style: none;
     margin: 0;
     padding: 0;
-    max-height: 70vh;
+    max-height: 80vh;
     overflow-y: auto;
   }
 
   .patch-sidebar-list a {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.5rem 0.4rem;
+    display: block;
     text-decoration: none;
     color: var(--color-text);
     border-radius: 4px;
-    white-space: nowrap;
   }
   .patch-sidebar-list a:hover {
     background: #1a1a1a;
-  }
-  .patch-sidebar-list a.active {
     color: var(--color-accent);
-    background: #1a1a1a;
+  }
+
+  .page-item {
+    margin-bottom: 0.15rem;
+  }
+  .page-item > a {
+    padding: 0.5rem 0.4rem;
+    font-weight: bold;
+  }
+  .page-item > a.active {
+    color: var(--color-accent);
+  }
+
+  .group-list {
+    list-style: none;
+    margin: 0.15rem 0 0.5rem;
+    padding: 0;
+    border-left: 1px solid #333;
+  }
+  .group-item > a {
+    padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+    font-size: 0.9rem;
+    opacity: 0.9;
+  }
+
+  .item-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .item-item > a {
+    padding: 0.25rem 0.4rem 0.25rem 1.4rem;
+    font-size: 0.8rem;
+    opacity: 0.75;
+  }
+  .item-item > a:hover {
+    opacity: 1;
   }
 </style>

@@ -3,9 +3,10 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Unchained Changes
-		## Talents
-		### Dissipate
+		---
+		## Unchained
+		### Talents
+		**Dissipate**
 		- Reduced overcharge vented from blocking to 20% (from 100%).
 	$END_TB
 ]]

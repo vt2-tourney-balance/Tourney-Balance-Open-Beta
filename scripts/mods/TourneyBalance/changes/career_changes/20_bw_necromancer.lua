@@ -3,21 +3,25 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Necromancer Changes
-		## Career Ability
+		---
+		## Necromancer
+		### Career Ability
 		- Reduced stagger from regular ult to 0 (from 1). Excludes Barrow Blades ult, which has improved stagger.
 
-		## Talents
-		### Death Ascendant
+		### Talents
+		**Death Ascendant**
 		- Changed buff to ranged weapon damage (from ranged power).
-		### Reaping
+
+		**Reaping**
 		- Removed power bonus (from 25%).
-		### Cursed Blood
-		- Reduced explosion damage to 10% (from 25%) of the crit attack triggering the explosion
+
+		**Cursed Blood**
+		- Reduced explosion damage to 10% (from 25%) of the crit attack triggering the explosion.
 		- Added internal cooldown of 0.3s.
 		- Removed stagger from the blood explosion (from 0.08) and crit burst from (0.7).
-		### Lost Souls
-		- Removed stagger from unleashed souls (from 0.25)
+
+		**Lost Souls**
+		- Removed stagger from unleashed souls (from 0.25).
 	$END_TB
 ]]
 --[[

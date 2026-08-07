@@ -3,21 +3,24 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Ironbreaker Changes
-		## Career Ability
+		---
+		## Ironbreaker
+		### Career Ability
 		- Reduced damage reduction during ult to 28.5% (from 50%).
 
-		## Passives
-		### CDR on Damage Taken
+		### Passives
+		**CDR on Damage Taken**
 		- Reduced ult cooldown gain on damage taken to 0.4 (from 0.5).
 
-		## Talents
-		### Under Pressure
-		- Base damage multiplier changed to 80% - 130% from (20% - 120%)
-		- Ranged attack speed multiploer changed to 200% to 100% (from 200% - 50%) depending on overcharge.
-		### Rune-Etched Shield
+		### Talents
+		**Under Pressure**
+		- Base damage multiplier changed to 80% - 130% from (20% - 120%).
+		- Ranged attack speed multiplier changed to 200% to 100% (from 200% - 50%) depending on overcharge.
+
+		**Rune-Etched Shield**
 		- Corrected description to melee power (from power).
-		### Vengeance
+
+		**Vengeance**
 		- Grants 15% attack speed for 20s, when Gromril is lost.
 	$END_TB
 ]]

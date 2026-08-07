@@ -3,28 +3,33 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 
 --[[
-
-	THP Talents
-
 	$BEGIN_TB
-		# THP Talent Changes
-		## Careers
-		### Handmaiden
+		---
+		## THP Talents
+		### Careers
+		**Handmaiden**
 		- Execute (THP on Kill) replaced with Sting (THP on Crits/Headshots).
 
-		## Talents
-		### Execute
+		### Talents
+		**Execute**
 		- Decreased THP from chaos elite kills to 10 (from 15).
 		- Decreased THP from chaos warrior kills to 20 (from 30).
 		- Decreased THP from monster kills to 35 from (from 50).
-		### Reaper
+
+		**Reaper**
 		- Updated description: Max 5 enemies per swing.
-		### Sting
+
+		**Sting**
 		- Removed THP on hit (from 0.5).
 		- Decreased THP on crit to 1.5 (from 2).
 		- Increased THP on headshot to 3 (from 2).
-		### Second Wind
-		- dummy_changes
+
+		**Second Wind**
+		- Reduced stagger THP for pushes.
+		- Reduced stagger THP for shield bashes.
+		- Reduced stagger THP for Billhook.
+		- Reduced stagger THP for Ensorcelled Reaper.
+
 	$END_TB
 ]]
 --[[

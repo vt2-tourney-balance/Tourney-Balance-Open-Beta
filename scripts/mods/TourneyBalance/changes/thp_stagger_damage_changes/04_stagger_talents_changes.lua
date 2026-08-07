@@ -4,45 +4,54 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 local stagger_types = require("scripts/utils/stagger_types")
 
 --[[
-
-	THP Talents
-
 	$BEGIN_TB
-		# Stagger Talent Changes
-		## Careers
-		### Mercenary
+		---
+		## Stagger Talents
+		### Careers
+		**Mercenary**
 		- Replaced Mainstay with Assassin.
-		### Huntsman
+
+		**Huntsman**
 		- Replaced Bulwark with Assassin.
-		### Slayer
+
+		**Slayer**
 		- Replaced Smiter with Assassin.
-		### Waystalker
+
+		**Waystalker**
 		- Replaced Mainstay with Smiter.
-		### Sister of the Thorn
+
+		**Sister of the Thorn**
 		- Replaced Smiter with Bulwark.
-		### Witch Hunter Captain
+
+		**Witch Hunter Captain**
 		- Replaced Mainstay with Smiter.
-		### Zealot
+
+		**Zealot**
 		- Replaced Mainstay with Assassin.
-		### Pyromancer
+
+		**Pyromancer**
 		- Replaced Mainst with Assassin.
 
-		## Talents
-		### Assassin
+		### Talents
+		**Assassin**
 		- Removed damage bonus to apply on crits.
-		### Bulwark
+
+		**Bulwark**
 		- Added 10% Stagger Power.
 		- Increased damage debuff duration to 10s (from 2s).
 		- Damage debuff can be applied with any attack.
-		### Enhanced Power
+
+		**Enhanced Power**
 		- Increased power to 10% (from 7.5%).
-		### Mainstay
+
+		**Mainstay**
 		- Reduced damage bonus on stagger count 1 to 20% (from 40%).
 		- Reduced damage bonus on stagger count 2 to 40% (from 60%).
 		- Added melee hits apply 1 stagger count, regardless of actual stagger from the attack.
 		- Stagger count only applied to first 5 enemies hit and caps at 2 stagger counts.
-		### Smiter
-		- Unchanged.
+
+		**Smiter**
+		- Reformatted description.
 	$END_TB
 ]]
 

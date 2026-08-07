@@ -4,28 +4,35 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 
 --[[
 	$BEGIN_TB
-		# Ranger Veteran Changes
-		## Passives
-		### Survivalist
+		---
+		## Ranger Veteran
+		### Passives
+		**Survivalist**
 		- Added pseudeo-random 5% chance to drop engineer bombs with every survivalist drop (bag size 100 with 5 winning tickets).
-		### Fast Hands
+		
+		**Fast Hands**
 		- Added double effective range for ranged weapons.
 		- Added 10% increased ranged power.
 
-		## Talents
-		### Foe-Feller
-		- Attack speed increased to 15% (from 5%)
-		### Drunken Brawler
-		- Lowered drinking time to 0.8s (from 1.9s)
-		- Pseudo-random 50% (bag size 20 with 10 winning tickets)
-		### Scavenger
+		### Talents
+		**Foe-Feller**
+		- Attack speed increased to 15% (from 5%).
+
+		**Drunken Brawler**
+		- Lowered drinking time to 0.8s (from 1.9s).
+		- Pseudo-random 50% (bag size 20 with 10 winning tickets).
+
+		**Scavenger**
 		- Removed bomb drops and reduced drop chance to pseudo-random 6% (from real-random 20%) (bag size 50 with 3 winning tickets).
 		- Potions drop pseudo-random from bag size 6 with 2 of each potion (speed, strength, cooldown reduction).
-		### Exuberance
-		- Reduced damage reduction to 20% (from 30%)
-		### Surprise Guest
+
+		**Exuberance**
+		- Reduced damage reduction to 20% (from 30%).
+
+		**Surprise Guest**
 		- Added 30% cooldown reduction.
-		### Ranger's Parting Gift
+
+		**Ranger's Parting Gift**
 		- Free bomb only applies to engineer bombs.
 	$END_TB
 ]]

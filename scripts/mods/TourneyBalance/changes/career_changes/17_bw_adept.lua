@@ -3,26 +3,32 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 	$BEGIN_TB
-		# Battle Wizard Changes
-		## Career Ability
+		---
+		## Battle Wizard
+		### Career Ability
 		- Increased cooldown to 60s (from 50s).
 		- Increased fire trail linger time to 1.5s (from 0.25).
 		- Increased time between DOT damages to 0.75s (from 0.25).
 
-		## Talents
-		### Famished Flames
+		### Talents
+		**Famished Flames**
 		- Increased burn damage increase to 150% (from 100%).
 		- Increased non-burn damage decreaseto 30% (from 15%).
-		### Lingering Flames
+
+		**Lingering Flames**
 		- Added burn damage reduction 67%.
-		### Soot Shield
+
+		**Soot Shield**
 		- Decreased damage reduction per stack to 5% (from 8%).
 		- Increased max stacks to 4 (from 3).
-		### Fires from Ash
+
+		**Fires from Ash**
 		- Decreased cooldown reduction to 2% (from 3%).
-		### Immersive Immolation
+
+		**Immersive Immolation**
 		- Decreased required targets for attack speed to 1 (from 4).
-		### Kaboom!
+
+		**Kaboom!**
 		- Added 20% cooldown reduction.
 	$END_TB
 ]]
