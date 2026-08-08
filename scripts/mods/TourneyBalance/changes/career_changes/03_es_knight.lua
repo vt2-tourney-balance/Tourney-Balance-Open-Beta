@@ -31,7 +31,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**It's Hero Time**
 		- Cooldown refund reduced to 70% (from 100%).
 		
-		**Inspiring Blow **
+		**Inspiring Blow**
 		- Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
 	$END_TB
 ]]

@@ -58,17 +58,9 @@ mod:dofile("scripts/mods/TourneyBalance/changes/02_career_changes")
 
 -- Weapon Changes
 mod:dofile("scripts/mods/TourneyBalance/changes/03_weapon_changes")
--- Damage profile linking + weapon defaults MUST run after weapon_changes: they finalize
--- and validate whatever weapon_changes registered into NewDamageProfileTemplates/Weapons,
--- and only fill in a default where weapon_changes left a field unset. Reordering these
--- ahead of weapon_changes will silently break or overwrite its customizations.
--- TODO: once weapon_changes.lua is split up, consider calling these two directly from the
--- end of that refactor instead of relying on dofile order here.
-mod:dofile("scripts/mods/TourneyBalance/changes/_damage_profile_setup")
-mod:dofile("scripts/mods/TourneyBalance/changes/_weapon_defaults_setup")
 
 -- Trait Changes
-mod:dofile("scripts/mods/TourneyBalance/changes/trait_changes")
+mod:dofile("scripts/mods/TourneyBalance/changes/04_trait_and_property_changes")
 
 -- Misc standalone fixes not tied to any other category
 mod:dofile("scripts/mods/TourneyBalance/changes/_misc_fixes")
@@ -89,7 +81,7 @@ mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/mod_checker")
 mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/basic_qol")
 
 -- Ping Color (Accessibility)
-mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/ping_color")
+mod:dofile("scripts/mods/TourneyBalance/accessibility/ping_color")
 
 -- Debugging Tools
 mod:dofile("scripts/mods/TourneyBalance/debugging/stagger_state_visualizer")

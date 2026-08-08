@@ -1,7 +1,7 @@
 local mod = get_mod("TourneyBalance")
 
 --[[
-    Standalone fixes that don't belong to any career/weapon/trait category.
+    Standalone fixes.
 ]]
 
 -- Blocks interacting with the Skulls of Fury 2023 mutator pickup prop.
