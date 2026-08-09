@@ -1,0 +1,63 @@
+    "after_profile": {
+      "armor_modifier": {
+        "attack": [
+          1,
+          0.45,
+          2,
+          1,
+          0.75,
+          0.6
+        ],
+        "impact": [
+          1,
+          0.65,
+          1,
+          1,
+          0.75
+        ]
+      },
+      "charge_value": "heavy_attack",
+      "cleave_distribution": {
+        "attack": 0.075,
+        "impact": 0.075
+      },
+      "critical_strike": {
+        "attack_armor_power_modifer": [
+          1,
+          0.5,
+          2.5,
+          1,
+          1,
+          0.6
+        ],
+        "impact_armor_power_modifer": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "default_target": {
+        "attack_template": "heavy_stab_smiter",
+        "boost_curve_coefficient": 0.75,
+        "boost_curve_coefficient_headshot": 1,
+        "boost_curve_type": "ninja_curve",
+        "power_distribution": {
+          "attack": 0.2,
+          "impact": 0.15
+        }
+      },
+      "targets": [
+        {
+          "attack_template": "heavy_stab_smiter",
+          "boost_curve_coefficient": 0.75,
+          "boost_curve_coefficient_headshot": 2,
+          "boost_curve_type": "ninja_curve",
+          "power_distribution": {
+            "attack": 0.45,
+            "impact": 0.25
+          }
+        }
+      ]
+    },

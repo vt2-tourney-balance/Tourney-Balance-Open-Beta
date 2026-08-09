@@ -3,6 +3,18 @@ local mod = get_mod("TourneyBalance")
 --[[
     Trueshot Volley
 ]]
+-- Added breed prioritization
+Weapons.kerillian_waywatcher_career_skill_weapon.actions.action_career_hold.prioritized_breeds = {
+    skaven_warpfire_thrower = 1,
+    chaos_vortex_sorcerer = 1,
+    skaven_gutter_runner = 1,
+    skaven_pack_master = 1,
+    skaven_poison_wind_globadier = 1,
+    chaos_corruptor_sorcerer = 1,
+    skaven_ratling_gunner = 1,
+    beastmen_standard_bearer = 1,
+}
+
 -- Trueflight FF crit reduced
 DamageProfileTemplates.arrow_sniper_trueflight = {
     charge_value = "projectile",

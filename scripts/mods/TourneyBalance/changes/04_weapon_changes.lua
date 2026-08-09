@@ -1,11 +1,15 @@
 local mod = get_mod("TourneyBalance")
 
+-- general and fixes
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/general_weapon_changes")
+mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/weapon_fixes")
+-- career ability
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/bw_pyromancer_ult")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/we_thornsister_blackvenom")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/we_waystalker_piercing")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/we_waystalker_trueflight")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/wh_bountyhunter_shotgun")
+-- melee
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/1h_axe")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/1h_hammer")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/1h_sword")
@@ -34,6 +38,7 @@ mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_falchion
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_flail")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_hammer_and_tome")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_holy_hammer")
+-- ranged
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_beam")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_bolt")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_conflag")
@@ -50,7 +55,6 @@ mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/we_staff")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/we_swiftbow")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/wh_brace_of_pistols")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/wh_griffin_foot")
-mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/weapon_fixes")
 
 --[[
 	Damage profile linking + weapon defaults MUST run after weapon_changes: they finalize

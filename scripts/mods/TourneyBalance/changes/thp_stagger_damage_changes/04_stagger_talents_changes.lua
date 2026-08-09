@@ -39,7 +39,7 @@ local stagger_types = require("scripts/utils/stagger_types")
 		**Bulwark**
 		- Added 10% Stagger Power.
 		- Increased damage debuff duration to 10s (from 2s).
-		- Damage debuff can be applied with any attack.
+		- Damage debuff can be applied with any form of stagger.
 
 		**Enhanced Power**
 		- Increased power to 10% (from 7.5%).

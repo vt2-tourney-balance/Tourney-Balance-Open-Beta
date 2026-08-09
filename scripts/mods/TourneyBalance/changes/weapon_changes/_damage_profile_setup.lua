@@ -69,9 +69,16 @@ end
 local no_damage_templates = {}
 
 for name, damage_profile in pairs(DamageProfileTemplates) do
-	local no_damage_name = name .. "_no_damage"
+	-- Skip names that are themselves a previously-generated "_no_damage" variant -
+	-- DamageProfileTemplates survives a VMF mod reload, so without this check a
+	-- reload would treat last run's own output as new input and compound the
+	-- suffix (_no_damage_no_damage, then _no_damage_no_damage_no_damage, ...).
+	local is_no_damage_variant = name:sub(-("_no_damage"):len()) == "_no_damage"
 
-	if not DamageProfileTemplates[no_damage_name] then
+	if not is_no_damage_variant then
+		local no_damage_name = name .. "_no_damage"
+
+		if not DamageProfileTemplates[no_damage_name] then
 		local no_damage_template = table.clone(damage_profile)
 
 		if no_damage_template.targets then
@@ -87,6 +94,7 @@ for name, damage_profile in pairs(DamageProfileTemplates) do
 		end
 
 		no_damage_templates[no_damage_name] = no_damage_template
+	end
 	end
 end
 

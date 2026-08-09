@@ -44,9 +44,12 @@ end)
 
 --[[
 
-    Balance Changes 
+    Balance Changes
 
 ]]
+-- Misc standalone fixes not tied to any other category
+mod:dofile("scripts/mods/TourneyBalance/changes/_misc_fixes")
+
 -- Enemies for Spicy
 mod:dofile("scripts/mods/TourneyBalance/changes/00_spicy_enemies")
 
@@ -56,14 +59,16 @@ mod:dofile("scripts/mods/TourneyBalance/changes/01_thp_stagger_damage_changes")
 -- Career Changes (Ultimates/Passives/Talents)
 mod:dofile("scripts/mods/TourneyBalance/changes/02_career_changes")
 
+-- Trait & Property Changes
+mod:dofile("scripts/mods/TourneyBalance/changes/03_trait_and_property_changes")
+
+-- Balance diff export - snapshots Weapons/DamageProfileTemplates/etc. on load
+-- Placed here to only export weapon changes
+mod:dofile("scripts/mods/TourneyBalance/debugging/balance_diff_export")
+
 -- Weapon Changes
-mod:dofile("scripts/mods/TourneyBalance/changes/03_weapon_changes")
+mod:dofile("scripts/mods/TourneyBalance/changes/04_weapon_changes")
 
--- Trait Changes
-mod:dofile("scripts/mods/TourneyBalance/changes/04_trait_and_property_changes")
-
--- Misc standalone fixes not tied to any other category
-mod:dofile("scripts/mods/TourneyBalance/changes/_misc_fixes")
 
 --[[
 

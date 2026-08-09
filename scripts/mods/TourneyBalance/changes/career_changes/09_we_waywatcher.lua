@@ -130,17 +130,6 @@ DamageProfileTemplates.arrow_sniper_trueflight = {
     },
 	max_friendly_damage = 0 -- Added
 }
--- Added breed prioritization
-Weapons.kerillian_waywatcher_career_skill_weapon.actions.action_career_hold.prioritized_breeds = {
-    skaven_warpfire_thrower = 1,
-    chaos_vortex_sorcerer = 1,
-    skaven_gutter_runner = 1,
-    skaven_pack_master = 1,
-    skaven_poison_wind_globadier = 1,
-    chaos_corruptor_sorcerer = 1,
-    skaven_ratling_gunner = 1,
-    beastmen_standard_bearer = 1,
-}
 -- Fix consuming Bloodshot on Ult
 mod_api.insert_proc_function("kerillian_waywatcher_consume_extra_shot_buff", function (player, buff, params)
     local is_career_skill = params[5]
