@@ -1,6 +1,9 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 local color_presets = require("scripts/mods/TourneyBalance/accessibility/_color_presets")
+local shared_utils = require("scripts/mods/TourneyBalance/_api/shared_utils")
+local is_server = shared_utils.is_server
+local is_local = shared_utils.is_local
 
 --[[
 	$BEGIN_TB
@@ -91,7 +94,7 @@ mod_api.insert_text("victor_witchhunter_activated_ability_guaranteed_crit_self_b
 ]]
 -- I Shall Judge You All: headshotting a Witch Hunted enemy refreshes Animosity's duration
 mod_api.insert_proc_function("tb_isjya_refresh_animosity_on_headshot", function (owner_unit, buff, params)
-	if not Unit.alive(owner_unit) or not Managers.state.network.is_server then
+	if not Unit.alive(owner_unit) or not (is_server() or is_local(owner_unit)) then
 		return
 	end
 
@@ -115,13 +118,11 @@ mod_api.insert_proc_function("tb_isjya_refresh_animosity_on_headshot", function 
 		return
 	end
 
-	local buff_system = Managers.state.entity:system("buff_system")
-
 	for i = 1, #player_and_bot_units do
 		local unit = player_and_bot_units[i]
 
 		if HEALTH_ALIVE[unit] and ScriptUnit.extension(unit, "buff_system"):has_buff_type("victor_witchhunter_activated_ability_crit_buff") then
-			buff_system:add_buff(unit, "victor_witchhunter_activated_ability_crit_buff", owner_unit)
+			mod_api.add_buff(unit, "victor_witchhunter_activated_ability_crit_buff")
 		end
 	end
 end)
