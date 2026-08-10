@@ -1,4 +1,5 @@
 local mod = get_mod("TourneyBalance")
+local color_presets = require("scripts/mods/TourneyBalance/accessibility/_color_presets")
 
 --[[
 
@@ -77,6 +78,39 @@ end
 
 -- unit -> { outline_id = ..., state = ... }
 local outlined_units = {}
+
+-- Adjustable from Debugging -> Stagger State Visualizer -> Count 1/2/3+ in the mod menu
+local function apply_stagger_colors()
+	local r1, g1, b1 = color_presets.resolve_color("tb_stagger_count_1_color_group", "tb_stagger_count_1_color_r", "tb_stagger_count_1_color_g", "tb_stagger_count_1_color_b", 0, 255, 0)
+	local color_1 = OutlineSettings.colors.tb_stagger_green.color
+
+	color_1[2], color_1[3], color_1[4] = r1, g1, b1
+
+	local r2, g2, b2 = color_presets.resolve_color("tb_stagger_count_2_color_group", "tb_stagger_count_2_color_r", "tb_stagger_count_2_color_g", "tb_stagger_count_2_color_b", 255, 255, 0)
+	local color_2 = OutlineSettings.colors.tb_stagger_yellow.color
+
+	color_2[2], color_2[3], color_2[4] = r2, g2, b2
+
+	local r3, g3, b3 = color_presets.resolve_color("tb_stagger_count_3_color_group", "tb_stagger_count_3_color_r", "tb_stagger_count_3_color_g", "tb_stagger_count_3_color_b", 255, 0, 0)
+	local color_3 = OutlineSettings.colors.tb_stagger_red.color
+
+	color_3[2], color_3[3], color_3[4] = r3, g3, b3
+
+	-- Force any currently-outlined enemies to redraw immediately with the new color
+	for unit, data in pairs(outlined_units) do
+		if ALIVE[unit] then
+			local outline_extension = ScriptUnit.has_extension(unit, "outline_system")
+
+			if outline_extension then
+				outline_extension:update_outline(table.clone(STAGGER_OUTLINE_TEMPLATES[data.state]), data.outline_id)
+			end
+		end
+	end
+end
+
+apply_stagger_colors()
+
+mod:add_setting_changed_function(apply_stagger_colors)
 
 local function clear_outline(unit)
 	local data = outlined_units[unit]

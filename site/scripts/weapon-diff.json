@@ -15120,6 +15120,7 @@
     "path": "Weapons.drakegun_template_1.actions.action_one.shoot_charged.damage_interval"
   },
   {
+    "after": "None",
     "before": {
       "beastmen_gor": 0.6,
       "beastmen_ungor": 0.6,
@@ -20067,6 +20068,7 @@
     "path": "Weapons.longbow_empire_template.actions.action_one.shoot_charged.allowed_chain_actions"
   },
   {
+    "after": "None",
     "before": 0.5,
     "path": "Weapons.longbow_empire_template.actions.action_one.shoot_charged.override_reload_time"
   },
@@ -20134,6 +20136,7 @@
     "path": "Weapons.longbow_empire_template.actions.action_one.shoot_charged_heavy.allowed_chain_actions"
   },
   {
+    "after": "None",
     "before": 0.5,
     "path": "Weapons.longbow_empire_template.actions.action_one.shoot_charged_heavy.override_reload_time"
   },
@@ -33603,6 +33606,7 @@
     "path": "Weapons.two_handed_axes_template_2.actions.action_one.heavy_attack_down_first.damage_profile"
   },
   {
+    "after": "None",
     "before": {
       "beastmen_gor": 0.6,
       "beastmen_ungor": 0.6,

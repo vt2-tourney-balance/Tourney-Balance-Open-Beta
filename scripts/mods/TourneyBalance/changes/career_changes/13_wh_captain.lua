@@ -1,5 +1,6 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
+local color_presets = require("scripts/mods/TourneyBalance/accessibility/_color_presets")
 
 --[[
 	$BEGIN_TB
@@ -140,15 +141,15 @@ mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc",
 local PING_DURATION = 150
 local marked_enemies = {}
 
-OutlineSettings.colors.tb_judged_special = {
-	pulsate = false,
-	pulse_multiplier = 50,
-	color = {
-		255, -- alpha, r, g, b
-		mod:get("tb_special_tag_color_r"),
-		mod:get("tb_special_tag_color_g"),
-		mod:get("tb_special_tag_color_b") },
-}
+do
+	local r, g, b = color_presets.resolve_color("tb_isjya_ping_outline_color_group", "tb_special_tag_color_r", "tb_special_tag_color_g", "tb_special_tag_color_b", 227, 4, 4)
+
+	OutlineSettings.colors.tb_judged_special = {
+		pulsate = false,
+		pulse_multiplier = 50,
+		color = { 255, r, g, b }, -- alpha, r, g, b
+	}
+end
 OutlineSettings.templates.tb_judged_special = {
 	method = "ai_alive",
 	priority = 15,
@@ -159,10 +160,9 @@ OutlineSettings.templates.tb_judged_special = {
 -- Update outline color only when a setting actually changes
 mod:add_setting_changed_function(function ()
 	local color = OutlineSettings.colors.tb_judged_special.color
+	local r, g, b = color_presets.resolve_color("tb_isjya_ping_outline_color_group", "tb_special_tag_color_r", "tb_special_tag_color_g", "tb_special_tag_color_b", 227, 4, 4)
 
-	color[2] = mod:get("tb_special_tag_color_r")
-	color[3] = mod:get("tb_special_tag_color_g")
-	color[4] = mod:get("tb_special_tag_color_b")
+	color[2], color[3], color[4] = r, g, b
 
 	-- Force already-tagged specials to redraw immediately with the new color, not just future tags
 	for enemy_unit, data in pairs(marked_enemies) do

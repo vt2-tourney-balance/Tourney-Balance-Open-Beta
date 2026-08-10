@@ -160,11 +160,11 @@ mod_api.insert_buff_template("tb_smiter_unbalance", {
 --mod_api.insert_text("enhanced_power_name", "Enhanced Power")
 --mod_api.insert_text("mainstay_name", "Mainstay")
 --mod_api.insert_text("smiter_name", "Smiter")
-mod_api.insert_text("tb_finesse_unbalance_desc", 		"Headshots inflict 40% bonus damage.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
-mod_api.insert_text("tb_linesman_unbalance_desc", 		"Melee hits against the first 5 enemy add another count of stagger for 2s.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
+mod_api.insert_text("tb_finesse_unbalance_desc", 		"Headshots inflict 40% bonus damage.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
+mod_api.insert_text("tb_linesman_unbalance_desc", 		"Melee hits always add a count of stagger lasting 2s. Max 5 enemies.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
 mod_api.insert_text("tb_power_level_unbalance_desc",	"Increases total Power Level by 10%. This is calculated before other buffs are applied.")
-mod_api.insert_text("tb_tank_unbalance_desc", 			"Gain 10% stagger power. Enemies that you stagger with any attack take 10% more damage from all sources for 10 seconds.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
-mod_api.insert_text("tb_smiter_unbalance_desc", 		"The first enemy hit always counts as staggered.\n\nDeal 20% more damage to staggered enemies, increased to 40% against enemies afflicted by more than one stagger effect.")
+mod_api.insert_text("tb_tank_unbalance_desc", 			"Gain 10% stagger power. Enemies that you stagger take 10% more damage for 10 seconds.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
+mod_api.insert_text("tb_smiter_unbalance_desc", 		"The first enemy hit always counts as staggered.\n\nDeal 20% more damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
 
 -- Replacing Stagger Talents
 local FINESSE = 1

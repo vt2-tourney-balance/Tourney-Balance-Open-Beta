@@ -85,8 +85,8 @@ mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/mod_checker")
 -- Basic QOL Features
 mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/basic_qol")
 
--- Ping Color (Accessibility)
-mod:dofile("scripts/mods/TourneyBalance/accessibility/ping_color")
+-- Outline Colors (Accessibility)
+mod:dofile("scripts/mods/TourneyBalance/accessibility/outline_colors")
 
 -- Debugging Tools
 mod:dofile("scripts/mods/TourneyBalance/debugging/stagger_state_visualizer")

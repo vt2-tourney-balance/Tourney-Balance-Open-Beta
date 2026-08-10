@@ -408,11 +408,41 @@ local localization = {
 	accessibility = {
 		en = "Accessibility",
 	},
+	outline_colors = {
+		en = "Outline Colors",
+	},
 	tb_ping_outline_color_group = {
 		en = "Ping Outline Color",
 	},
 	tb_isjya_ping_outline_color_group = {
 		en = "Ping Outline Color - I Shall Judge You All",
+	},
+	tb_color_preset_default_title = {
+		en = "Default",
+	},
+	tb_color_preset_red_title = {
+		en = "Red",
+	},
+	tb_color_preset_green_title = {
+		en = "Green",
+	},
+	tb_color_preset_blue_title = {
+		en = "Blue",
+	},
+	tb_color_preset_white_title = {
+		en = "White",
+	},
+	tb_color_preset_ghost_title = {
+		en = "Ghost",
+	},
+	tb_color_preset_pink_title = {
+		en = "Pink",
+	},
+	tb_color_preset_gold_title = {
+		en = "Gold",
+	},
+	tb_color_preset_custom_title = {
+		en = "Custom",
 	},
 	tb_ping_color_r_title = {
 		en = "Red",
@@ -450,12 +480,99 @@ local localization = {
 	tb_special_tag_color_b_description = {
 		en = "Default: 4",
 	},
+	tb_dangerous_outline_color_group = {
+		en = "Dangerous Enemy Marker Color",
+	},
+	tb_dangerous_color_r_title = {
+		en = "Red",
+	},
+	tb_dangerous_color_r_description = {
+		en = "Default: 227",
+	},
+	tb_dangerous_color_g_title = {
+		en = "Green",
+	},
+	tb_dangerous_color_g_description = {
+		en = "Default: 4",
+	},
+	tb_dangerous_color_b_title = {
+		en = "Blue",
+	},
+	tb_dangerous_color_b_description = {
+		en = "Default: 4",
+	},
+	tb_downed_player_outline_color_group = {
+		en = "Downed Player Indicator Color",
+	},
+	tb_downed_player_outline_color_r_title = {
+		en = "Red",
+	},
+	tb_downed_player_outline_color_r_description = {
+		en = "Default: 227",
+	},
+	tb_downed_player_outline_color_g_title = {
+		en = "Green",
+	},
+	tb_downed_player_outline_color_g_description = {
+		en = "Default: 4",
+	},
+	tb_downed_player_outline_color_b_title = {
+		en = "Blue",
+	},
+	tb_downed_player_outline_color_b_description = {
+		en = "Default: 4",
+	},
+	tb_player_outline_color_group = {
+		en = "Player Outline Color",
+	},
+	tb_player_outline_color_r_title = {
+		en = "Red",
+	},
+	tb_player_outline_color_r_description = {
+		en = "Default: 118",
+	},
+	tb_player_outline_color_g_title = {
+		en = "Green",
+	},
+	tb_player_outline_color_g_description = {
+		en = "Default: 186",
+	},
+	tb_player_outline_color_b_title = {
+		en = "Blue",
+	},
+	tb_player_outline_color_b_description = {
+		en = "Default: 0",
+	},
+	tb_skeleton_outline_color_group = {
+		en = "Skeleton Outline Color",
+	},
+	tb_skeleton_outline_color_r_title = {
+		en = "Red",
+	},
+	tb_skeleton_outline_color_r_description = {
+		en = "Default: 89",
+	},
+	tb_skeleton_outline_color_g_title = {
+		en = "Green",
+	},
+	tb_skeleton_outline_color_g_description = {
+		en = "Default: 218",
+	},
+	tb_skeleton_outline_color_b_title = {
+		en = "Blue",
+	},
+	tb_skeleton_outline_color_b_description = {
+		en = "Default: 158",
+	},
 
 	-- Debugging
 	debugging = {
 		en = "Debugging",
 	},
 	stagger_state_visualizer_title = {
+		en = "Stagger State Visualizer",
+	},
+	stagger_state_visualizer_group = {
 		en = "Stagger State Visualizer",
 	},
 	stagger_state_visualizer_description = {
@@ -473,6 +590,72 @@ local localization = {
 	},
 	stagger_state_visualizer_include_mainstay_description = {
 		en = "Include the Mainstay talent's marked stagger count (from the target's dummy_stagger buff) in the visualized sum.",
+	},
+	outline_colors_stagger_state_visualizer = {
+		en = "Outline Colors",
+	},
+	tb_stagger_count_1_color_group = {
+		en = "Stagger Count 1 Outline Color",
+	},
+	tb_stagger_count_1_color_r_title = {
+		en = "Red",
+	},
+	tb_stagger_count_1_color_r_description = {
+		en = "Default: 0",
+	},
+	tb_stagger_count_1_color_g_title = {
+		en = "Green",
+	},
+	tb_stagger_count_1_color_g_description = {
+		en = "Default: 255",
+	},
+	tb_stagger_count_1_color_b_title = {
+		en = "Blue",
+	},
+	tb_stagger_count_1_color_b_description = {
+		en = "Default: 0",
+	},
+	tb_stagger_count_2_color_group = {
+		en = "Stagger Count 2 Outline Color",
+	},
+	tb_stagger_count_2_color_r_title = {
+		en = "Red",
+	},
+	tb_stagger_count_2_color_r_description = {
+		en = "Default: 255",
+	},
+	tb_stagger_count_2_color_g_title = {
+		en = "Green",
+	},
+	tb_stagger_count_2_color_g_description = {
+		en = "Default: 255",
+	},
+	tb_stagger_count_2_color_b_title = {
+		en = "Blue",
+	},
+	tb_stagger_count_2_color_b_description = {
+		en = "Default: 0",
+	},
+	tb_stagger_count_3_color_group = {
+		en = "Stagger Count 3+ Outline Color",
+	},
+	tb_stagger_count_3_color_r_title = {
+		en = "Red",
+	},
+	tb_stagger_count_3_color_r_description = {
+		en = "Default: 255",
+	},
+	tb_stagger_count_3_color_g_title = {
+		en = "Green",
+	},
+	tb_stagger_count_3_color_g_description = {
+		en = "Default: 0",
+	},
+	tb_stagger_count_3_color_b_title = {
+		en = "Blue",
+	},
+	tb_stagger_count_3_color_b_description = {
+		en = "Default: 0",
 	},
 }
 

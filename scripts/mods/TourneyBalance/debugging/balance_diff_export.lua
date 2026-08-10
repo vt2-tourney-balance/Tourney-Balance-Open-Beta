@@ -22,7 +22,7 @@ local mod = get_mod("TourneyBalance")
 
 ]]
 
-local ENABLED = true --false
+local ENABLED = false
 
 if not ENABLED then
 	return
@@ -194,8 +194,10 @@ local ATOMIC_ENTRY_FIELD_NAMES = {
 
 -- cjson drops a table key whose value is Lua nil (there's nothing to encode), so a
 -- brand new field would otherwise show up in the JSON as "before" simply missing from
--- the entry rather than explicitly documented as "there was nothing here before".
-local function coerce_before(value)
+-- the entry (instead of explicitly "there was nothing here before"), and symmetrically
+-- a removed field would show up as "after" simply missing (instead of explicitly
+-- "nothing is here anymore").
+local function coerce_missing(value)
 	if value == nil then
 		return "None"
 	end
@@ -256,8 +258,8 @@ local function diff_into(path, before, after, out, before_damage_profiles, after
 		if not deep_equal(before, after) then
 			out[#out + 1] = {
 				path = path,
-				before = coerce_before(before),
-				after = after,
+				before = coerce_missing(before),
+				after = coerce_missing(after),
 			}
 		end
 		return
@@ -286,8 +288,8 @@ local function diff_into(path, before, after, out, before_damage_profiles, after
 	else
 		local entry = {
 			path = path,
-			before = coerce_before(before),
-			after = after,
+			before = coerce_missing(before),
+			after = coerce_missing(after),
 		}
 
 		-- Not a simple value change - the string itself changed identity, not just
@@ -349,8 +351,8 @@ local function diff_snapshots(before, after)
 				if not deep_equal(before_entry, after_entry) then
 					out[#out + 1] = {
 						path = global_name .. "." .. name,
-						before = coerce_before(before_entry),
-						after = after_entry,
+						before = coerce_missing(before_entry),
+						after = coerce_missing(after_entry),
 					}
 				end
 			end
