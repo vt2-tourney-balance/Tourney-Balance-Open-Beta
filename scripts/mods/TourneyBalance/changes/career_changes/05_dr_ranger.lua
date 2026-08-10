@@ -15,6 +15,9 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		- Added 10% increased ranged power.
 
 		### Talents
+		**Last Resort**
+		- Now triggers when the weapon's clip is empty, instead of when totally out of ammo.
+
 		**Foe-Feller**
 		- Attack speed increased to 15% (from 5%).
 
@@ -26,8 +29,19 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		- Removed bomb drops and reduced drop chance to pseudo-random 6% (from real-random 20%) (bag size 50 with 3 winning tickets).
 		- Potions drop pseudo-random from bag size 6 with 2 of each potion (speed, strength, cooldown reduction).
 
+		**No Dawdling**
+		- Also grants 35% movement speed for 5 seconds on picking up a Survivalist pouch.
+
 		**Exuberance**
 		- Reduced damage reduction to 20% (from 30%).
+
+		**Firing Fury**
+		- Also procs on picking up Survivalist pouches.
+
+		**Exhilarating Vapours**
+		- Increased attack speed to 10% (from 8%).
+		- Increased heal-over-time tick amount to 4 (from 3).
+		- Fixed a bug where repeatedly stepping in and out of the smoke cloud granted extra temp health.
 
 		**Surprise Guest**
 		- Added 30% cooldown reduction.
@@ -129,6 +143,17 @@ mod_api.insert_text("career_passive_desc_dr_3c_2", "Double effective range for r
 
 ]]
 --[[
+	Last Resort
+]]
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_increased_melee_damage_on_no_ammo_add", {
+	event = "on_ammo_clip_used", -- on_last_ammo_used
+})
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_increased_melee_damage_on_no_ammo_remove", {
+	event = "on_reload", -- on_gained_ammo_from_no_ammo
+})
+mod_api.insert_text("bardin_ranger_increased_melee_damage_on_no_ammo_desc", "Increases power by 25%% while the weapon's clip is empty.")
+
+--[[
 	Foe Feller
 ]]
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_attack_speed", {
@@ -165,6 +190,59 @@ mod_api.update_talent("dr_ranger", 5, 2, {
 		}
 	},
 })
+
+--[[
+	No Dawdling
+	Firing Fury
+]]
+mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_ranger_movement_speed_on_pouch_pickup", {
+	apply_buff_func = "apply_movement_buff",
+	remove_buff_func = "remove_movement_buff",
+	duration = 5,
+	icon = "bardin_ranger_movement_speed",
+	max_stacks = 1,
+	multiplier = 1.35,
+	path_to_movement_setting_to_modify = {
+		"move_speed",
+	},
+})
+mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10.0%.. Picking up a Survivalist pouch increases movement speed by additional 35% for 5 seconds.")
+mod_api.update_talent("dr_ranger", 5, 1, {
+	description_values = {}
+})
+
+mod:hook(SimpleInventoryExtension, "add_ammo_from_pickup", function (func, self, pickup_settings, ...)
+	func(self, pickup_settings, ...)
+
+	if not pickup_settings.ranger_ammo then
+		return
+	end
+
+	local owner_unit = self._unit
+
+	if not Unit.alive(owner_unit) then
+		return
+	end
+
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+	if not talent_extension then
+		return
+	end
+
+	local buff_extension
+
+	if talent_extension:has_talent("bardin_ranger_reload_speed_on_multi_hit") then 	-- Firing Fury
+		buff_extension = buff_extension or ScriptUnit.extension(owner_unit, "buff_system")
+
+		buff_extension:add_buff("bardin_ranger_reload_speed_on_multi_hit_buff")
+	elseif talent_extension:has_talent("bardin_ranger_movement_speed") then -- No Dawdling
+		buff_extension = buff_extension or ScriptUnit.extension(owner_unit, "buff_system")
+
+		buff_extension:add_buff("tb_bardin_ranger_movement_speed_on_pouch_pickup")
+	end
+end)
+mod_api.insert_text("bardin_ranger_reload_speed_on_multi_hit_desc", "Hitting 2 enemies with one ranged attack or picking up a Survivalist pouch increases speed of Bardin's reload speed by 35.0%% for 2s.")
 
 --[[
 	Parting Gift
@@ -212,6 +290,58 @@ mod:hook(ActionChargedProjectileUtility, "fire_charged_projectile", function (fu
 end)
 mod_api.insert_text("bardin_ranger_ability_free_grenade_desc", "Activating Disengage causes the next engineer bomb Bardin throws to not be consumed. Does not stack.")
 
+--[[
+	Smoke Attack
+]]
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_smoke_attack_buff", {
+	multiplier = 0.1 -- 0.08
+})
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_smoke_heal_buff", {
+	heal_amount = 4 -- 3
+})
+mod_api.update_talent("dr_ranger", 6, 1, {
+	description_values = {
+		{
+			value_type = "percent",
+			value = 0.1, -- buff_tweak_data.bardin_ranger_smoke_attack_buff.multiplier
+		},
+		{
+			value = 4, -- buff_tweak_data.bardin_ranger_smoke_heal_buff.heal_amount
+		},
+	},
+})
+-- Fix: Increased thp gain by stepping in and out of the smoke repeatedly.
+local smoke_heal_next_tick = setmetatable({}, { __mode = "k" })
+
+mod_api.insert_buff_function("bardin_ranger_heal_smoke", function (unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local t = params.t
+	local buff_template = buff.template
+	local next_heal_tick = smoke_heal_next_tick[unit] or 0
+
+	if next_heal_tick < t and HEALTH_ALIVE[unit] then
+		local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+
+		if talent_extension then
+			local status_extension = ScriptUnit.has_extension(unit, "status_system")
+
+			if not status_extension then
+				return
+			end
+
+			local heal_amount = buff_template.heal_amount
+
+			if not status_extension:is_knocked_down() and not status_extension:is_assisted_respawning() then
+				DamageUtils.heal_network(unit, unit, heal_amount, "heal_from_proc")
+			end
+		end
+
+		smoke_heal_next_tick[unit] = t + buff_template.time_between_heals
+	end
+end)
 
 --[[
 	Surprise Guest
