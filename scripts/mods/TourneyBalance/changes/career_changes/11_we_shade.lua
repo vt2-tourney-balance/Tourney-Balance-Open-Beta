@@ -184,7 +184,7 @@ mod_api.insert_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_en
 	Bloodfletcher
 ]]
 mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_backstabs_replenishes_ammunition", {
-	buff_func = "ammo_fraction_gain_on_backstab_tb",
+	buff_func = "tb_ammo_fraction_gain_on_backstab",
 	event = "on_backstab",
 	ammo_bonus_fraction = 0.05,
 })
@@ -192,7 +192,7 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_backstabs_re
 	icon = "kerillian_shade_backstabs_replenishes_ammunition",
 	duration = 2,
 })
-mod_api.insert_proc_function("ammo_fraction_gain_on_backstab", function (owner_unit, buff, params)
+mod_api.insert_proc_function("tb_ammo_fraction_gain_on_backstab", function (owner_unit, buff, params)
     local player = Managers.player:owner(owner_unit)
 
     if player and player.remote then
