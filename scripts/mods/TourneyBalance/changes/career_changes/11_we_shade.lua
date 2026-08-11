@@ -182,13 +182,25 @@ mod_api.insert_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_en
 --[[
 	Bloodfletcher
 ]]
-mod_api.insert_talent_buff_template("wood_elf", "kerillian_shade_backstabs_replenishes_ammunition", {
-	ammo_bonus_fraction = 0.05, -- Added 5% ammo on backstab
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_backstabs_replenishes_ammunition", {
+	buff_func = "ammo_fraction_gain_on_backstab_tb",
+	event = "on_backstab",
+	ammo_bonus_fraction = 0.05,
+})
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_backstabs_replenishes_ammunition_cooldown", {
+	icon = "kerillian_shade_backstabs_replenishes_ammunition",
+	duration = 2,
 })
 mod_api.insert_proc_function("ammo_fraction_gain_on_backstab", function (owner_unit, buff, params)
+    local player = Managers.player:owner(owner_unit)
+
+    if player and player.remote then
+        return
+    end
+
 	local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
 
-	if buff_extension and not buff_extension:has_buff_type("kerillian_shade_backstabs_replenishes_ammunition_cooldown") then
+	if buff_extension and not buff_extension:has_buff_type("tb_kerillian_shade_backstabs_replenishes_ammunition_cooldown") then
 		if ALIVE[owner_unit] then
 			local buff_template = buff.template
 			local weapon_slot = "slot_ranged"
@@ -206,12 +218,15 @@ mod_api.insert_proc_function("ammo_fraction_gain_on_backstab", function (owner_u
 			end
 		end
 
-		buff_extension:add_buff("kerillian_shade_backstabs_replenishes_ammunition_cooldown")
+		buff_extension:add_buff("tb_kerillian_shade_backstabs_replenishes_ammunition_cooldown")
 	end
 end)
 mod_api.update_talent("we_shade", 4, 3, {
 	description = "kerillian_shade_backstabs_replenishes_ammunition_desc",
 	description_values = {},
+	buffs = {
+		"tb_kerillian_shade_backstabs_replenishes_ammunition",
+	},
 })
 mod_api.insert_text("kerillian_shade_backstabs_replenishes_ammunition_desc", "Backstabs return 5% of maximum ammunition. 2 second cooldown.")
 

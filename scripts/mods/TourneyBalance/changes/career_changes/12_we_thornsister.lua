@@ -71,29 +71,9 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_
 --[[
 	Briar's Malice
 ]]
--- consume only on hit, and only once per attack even if it cleaves into multiple enemies
-mod_api.insert_proc_function("tb_briars_malice_consume_on_hit", function (owner_unit, buff, params)
-	local target_number = params[4]
-
-	if ALIVE[owner_unit] and target_number == 1 then
-		local buff_template = buff.template
-		local buff_name = buff_template.buff_to_remove
-		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
-		local buffs = buff_extension:get_stacking_buff(buff_name)
-
-		if buffs then
-			local num_stacks = #buffs
-
-			if num_stacks > 0 then
-				local buff_id = buffs[num_stacks].id
-
-				buff_extension:remove_buff(buff_id)
-			end
-		end
-	end
-end)
+-- consume only on hit
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_crit_on_any_ability_handler", {
-	buff_func = "tb_briars_malice_consume_on_hit"
+	event = "on_hit",
 })
 
 --[[
