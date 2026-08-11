@@ -338,10 +338,39 @@ mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function(current_damage, a
 			end
 
 			if attacked_buff_extension then
-				local has_poison_or_bleed = attacked_buff_extension:has_buff_perk("poisoned") or attacked_buff_extension:has_buff_perk("bleeding")
+				-- Shade's Exploit Weakness: poison/bleed/burn each individually add 20%, stacking additively (up to 60% for all three)
+				if attacker_unit_buff_extension:has_buff_perk("kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy") then
+					local exploit_weakness_bonus = 0
 
-				if has_poison_or_bleed then
-					damage = attacker_unit_buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_poisoned_or_bleeding")
+					if attacked_buff_extension:has_buff_perk("poisoned") then
+						exploit_weakness_bonus = exploit_weakness_bonus + 0.2
+					end
+
+					if attacked_buff_extension:has_buff_perk("bleeding") then
+						exploit_weakness_bonus = exploit_weakness_bonus + 0.2
+					end
+
+					if Managers.state.status_effect:unit_is_burning(attacked_unit) then
+						exploit_weakness_bonus = exploit_weakness_bonus + 0.2
+					end
+
+					damage = damage * (1 + exploit_weakness_bonus)
+				else
+					local has_poison_or_bleed = attacked_buff_extension:has_buff_perk("poisoned") or attacked_buff_extension:has_buff_perk("bleeding")
+
+					if has_poison_or_bleed then
+						damage = attacker_unit_buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_poisoned_or_bleeding")
+					end
+				end
+
+				-- Shade's Elthrai's Mockery: 20% more damage to enemies Kerillian has taunted
+				if attacker_unit_buff_extension:has_buff_perk("tb_kerillian_shade_elthrais_mockery") then
+					local hit_ai_extension = ScriptUnit.has_extension(attacked_unit, "ai_system")
+					local hit_blackboard = hit_ai_extension and hit_ai_extension:blackboard()
+
+					if hit_blackboard and hit_blackboard.taunt_unit == attacker_unit and hit_blackboard.taunt_end_time and hit_blackboard.taunt_end_time > Managers.time:time("game") then
+						damage = damage * 1.2
+					end
 				end
 			end
 

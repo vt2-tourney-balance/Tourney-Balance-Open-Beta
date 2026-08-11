@@ -39,8 +39,6 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		- Also procs on picking up Survivalist pouches.
 
 		**Exhilarating Vapours**
-		- Increased attack speed to 10% (from 8%).
-		- Increased heal-over-time tick amount to 4 (from 3).
 		- Fixed a bug where repeatedly stepping in and out of the smoke cloud granted extra temp health.
 
 		**Surprise Guest**
@@ -291,25 +289,8 @@ end)
 mod_api.insert_text("bardin_ranger_ability_free_grenade_desc", "Activating Disengage causes the next engineer bomb Bardin throws to not be consumed. Does not stack.")
 
 --[[
-	Smoke Attack
+	Exhilarating Vapours
 ]]
-mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_smoke_attack_buff", {
-	multiplier = 0.1 -- 0.08
-})
-mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_smoke_heal_buff", {
-	heal_amount = 4 -- 3
-})
-mod_api.update_talent("dr_ranger", 6, 1, {
-	description_values = {
-		{
-			value_type = "percent",
-			value = 0.1, -- buff_tweak_data.bardin_ranger_smoke_attack_buff.multiplier
-		},
-		{
-			value = 4, -- buff_tweak_data.bardin_ranger_smoke_heal_buff.heal_amount
-		},
-	},
-})
 -- Fix: Increased thp gain by stepping in and out of the smoke repeatedly.
 local smoke_heal_next_tick = setmetatable({}, { __mode = "k" })
 

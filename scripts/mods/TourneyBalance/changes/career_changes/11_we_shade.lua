@@ -1,5 +1,6 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
+local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_server
 
 --[[
 	$BEGIN_TB
@@ -7,21 +8,41 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		## Shade
 		### Career Ability
 		- Lord and Boss boost_curve_multiplier_override incresed to 2 (from 1.8/1.5).
-		- Reduced stealth duration to 2.5s (from 5).
+		- Reduced stealth duration to 3s (from 5).
 
 		### Passives
+		**Assassin's Blade**
+		- Added Spring-Heeled Assassin and Gladerunner as one passive.
+		- Increased movement speed by 10%. Critical hits and entering stealth further increase movement speed by 10% for 5s.
+
 		**Blur**
 		- Increased parry window to 0.75s (from 0.5s).
+
 
 		### Talents
 		**Cruelty**
 		- Increased crit damage bonus to 80% (from 50%) and crit rate bonus to 5% (from 0%).
 
+		**Exploit Weakness**
+		- Poison, Bleed, and Burn each individually increase damage dealt by 20%. Stacks additive, up to 60% against a target suffering from all three.
+
 		**Bloodfetcher**
 		- Changed ammo refund to 5% (from 1 ammo).
 
+		**Blood Drinker**
+		- Also triggers when entering stealth.
+
+		**Elthrai's Mockery** (new, replaces Spring-Heeled Assassin)
+		- Hitting enemies taunts them for 5s. Deals 20% more damage to enemies Kerillian has taunted.
+
+		**Lingering Shadow** (new, replaces Gladerunner)
+		- Increases Blur's invisibility duration by 0.5s. Attacking from Blur's stealth no longer ends it.
+
 		**Shimmer Strike**
 		- Limited extending stealth duration to 4s (from uncapped).
+
+		**Hungry Wind**
+		- Additionally after leaving infiltrate all attacks are considered backstabs.
 	$END_TB
 ]]
 
@@ -57,6 +78,8 @@ end
 --[[
 	Infiltrate
 	Shimmer Strike
+	Hungry Wind
+	Cloak of Pain
 ]]
 -- Reduce ult stealth duration
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_activated_ability", {
@@ -90,6 +113,31 @@ mod_api.insert_text("career_active_desc_we_1_2", "Kerillian becomes undetectable
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_passive_stealth_parry", {
 	event = "on_timed_block_long", -- "on_timed_block"
 })
+--[[
+	Spring-Heeled Gladerunner
+]]
+-- Move Spring-Heeled Assassin (movement speed on crit) and Gladerunner (flat movement speed) onto the base passive
+mod_api.insert_career_passives("we_1", {
+	"kerillian_shade_movement_speed_on_critical_hit",
+	"kerillian_shade_movement_speed",
+})
+-- Also triggers the crit movement speed burst when Blur activates, not just on critical hit
+-- (re-inserted with the original on-crit entry kept by reference, since a 2nd entry can't be merged in via update_talent_buff_template)
+local original_movement_speed_on_critical_hit_entry = TalentBuffTemplates.wood_elf.kerillian_shade_movement_speed_on_critical_hit.buffs[1]
+mod_api.insert_talent_buff_template("wood_elf", "kerillian_shade_movement_speed_on_critical_hit", {
+	original_movement_speed_on_critical_hit_entry,
+	{
+		buff_func = "add_buff",
+		buff_to_add = "kerillian_shade_movement_speed_on_critical_hit_buff",
+		event = "on_invisible",
+	},
+})
+-- Reduced the proc's own movement speed bonus, since it now also fires whenever Kerillian enters any stealth (not just on crit)
+mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_movement_speed_on_critical_hit_buff", {
+	multiplier = 1.1 -- 1.2
+})
+mod_api.insert_text("career_passive_desc_we_1b_2", "Double damage when attacking enemies from behind with melee attacks. Kerillian moves 10.0% faster. Critical hits or entering stealth increases movement speed by a further 10.0% for 5 seconds.")
+mod_api.insert_career_perk_descriptions("we_1", "tb_we_1_gladerunner")
 
 --[[
 
@@ -115,6 +163,21 @@ mod_api.update_talent("we_shade", 2, 1, {
 	},
 })
 mod_api.insert_text("kerillian_shade_increased_critical_strike_damage_desc", "Increases critical strike damage bonus by 80.0% and critical strike chance by 5.0%.")
+
+--[[
+	Exploit Weakness
+]]
+-- Marker perk so the shared damage hook (thp_stagger_damage_changes/02_damage_taken_changes.lua) can detect this talent and apply the split poison/bleed/burn bonus instead of the vanilla single poison-or-bleed bonus
+mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy", {
+	perks = {
+		"kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy",
+	},
+})
+mod_api.update_talent("we_shade", 2, 2, {
+	description = "kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy_desc",
+	description_values = {},
+})
+mod_api.insert_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy_desc", "Increases damage by 20.0% for each negative status effect (poison, bleed, or burn) afflicting the enemy.")
 
 --[[
 	Bloodfletcher
@@ -151,6 +214,122 @@ mod_api.update_talent("we_shade", 4, 3, {
 	description_values = {},
 })
 mod_api.insert_text("kerillian_shade_backstabs_replenishes_ammunition_desc", "Backstabs return 5% of maximum ammunition. 2 second cooldown.")
+
+--[[
+	Blood Drinker
+]]
+-- Also triggers the damage reduction buff when Blur activates, not just on critical hit
+-- (re-inserted with the original on-crit entry kept by reference, since a 2nd entry can't be merged in via update_talent_buff_template)
+local original_damage_reduction_on_critical_hit_entry = TalentBuffTemplates.wood_elf.kerillian_shade_damage_reduction_on_critical_hit.buffs[1]
+mod_api.insert_talent_buff_template("wood_elf", "kerillian_shade_damage_reduction_on_critical_hit", {
+	original_damage_reduction_on_critical_hit_entry,
+	{
+		buff_func = "add_buff",
+		buff_to_add = "kerillian_shade_damage_reduction_on_critical_hit_buff",
+		event = "on_invisible",
+	},
+})
+mod_api.update_talent("we_shade", 5, 1, {
+	description = "kerillian_shade_damage_reduction_on_critical_hit_desc",
+	description_values = {},
+})
+mod_api.insert_text("kerillian_shade_damage_reduction_on_critical_hit_desc", "Critical hits or entering stealth reduce damage taken by 20.0% for 5 seconds.")
+
+--[[
+	Elthrai's Mockery (new, replaces Spring-Heeled Assassin, which moved to the passive as part of Spring-Heeled Gladerunner)
+]]
+mod_api.insert_proc_function("tb_shade_taunt_on_hit", function (owner_unit, buff, params)
+	if not is_server() then
+		return
+	end
+
+	local hit_unit = params[1]
+
+	if not hit_unit or not HEALTH_ALIVE[hit_unit] then
+		return
+	end
+
+	local ai_extension = ScriptUnit.has_extension(hit_unit, "ai_system")
+
+	if not ai_extension then
+		return
+	end
+
+	local breed = ai_extension:breed()
+
+	if breed.ignore_taunts then
+		return
+	end
+
+	local blackboard = ai_extension:blackboard()
+	local t = Managers.time:time("game")
+
+	blackboard.taunt_unit = owner_unit
+	blackboard.taunt_end_time = t + buff.template.taunt_duration
+	blackboard.target_unit = owner_unit
+	blackboard.target_unit_found_time = t
+end)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_taunt_on_hit", {
+	buff_func = "tb_shade_taunt_on_hit",
+	event = "on_hit",
+	taunt_duration = 5,
+	perks = {
+		"tb_kerillian_shade_elthrais_mockery", -- marker perk read by the shared damage hook for the +20% taunted-enemy damage bonus
+	},
+})
+mod_api.insert_talent("we_shade", 5, 2, "tb_kerillian_shade_elthrais_mockery", {
+	buffer = "server",
+	icon = "kerillian_shade_movement_speed_on_critical_hit", -- reuse Spring-Heeled Assassin's old icon, since this replaces it in this slot
+	buffs = {
+		"tb_kerillian_shade_taunt_on_hit",
+	},
+})
+mod_api.insert_talent_text("tb_kerillian_shade_elthrais_mockery", "Elthrai's Mockery", "Hitting enemies taunts them for 5 seconds. Deals 20.0% more damage to enemies Kerillian has taunted.")
+
+--[[
+	Lingering Shadow (new, replaces Gladerunner, which moved to the passive as part of Spring-Heeled Gladerunner)
+]]
+mod_api.insert_proc_function("tb_shade_extend_blur_duration", function (owner_unit, buff, params)
+	if not ALIVE[owner_unit] then
+		return
+	end
+
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+	local blur_buff = buff_extension:get_non_stacking_buff("kerillian_shade_dash_stealth_active")
+
+	-- end_time isn't always populated on initial apply (only on an explicit refresh), so derive it from
+	-- start_time + duration instead of incrementing a field that may still be nil
+	if blur_buff and blur_buff.duration and blur_buff.start_time then
+		blur_buff.duration = blur_buff.duration + 1.5
+		blur_buff.end_time = blur_buff.start_time + blur_buff.duration
+	end
+end)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_lingering_shadow_duration", {
+	buff_func = "tb_shade_extend_blur_duration",
+	event = "on_invisible",
+})
+-- Overrides the vanilla proc so attacking from Blur's stealth no longer ends it, but only for players with this talent
+mod_api.insert_proc_function("shade_short_stealth_on_hit", function (owner_unit, buff, params)
+	if ALIVE[owner_unit] then
+		local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
+
+		if talent_extension:has_talent("tb_kerillian_shade_lingering_shadow") then
+			return
+		end
+
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+
+		buff_extension:remove_buff(buff.id)
+	end
+end)
+mod_api.insert_talent("we_shade", 5, 3, "tb_kerillian_shade_lingering_shadow", {
+	buffer = "both",
+	icon = "kerillian_shade_movement_speed", -- reuse Gladerunner's old icon, since this replaces it in this slot
+	buffs = {
+		"tb_kerillian_shade_lingering_shadow_duration",
+	},
+})
+mod_api.insert_talent_text("tb_kerillian_shade_lingering_shadow", "Lingering Shadow", "Increases the duration of invisibility granted by Blur by 0.5 seconds. Attacking while in Blur's stealth no longer ends it.")
 
 --[[
 	Shimmer Strike
@@ -235,5 +414,20 @@ mod_api.update_talent("we_shade", 6, 1, {
 	}
 })
 mod_api.insert_text("kerillian_shade_activated_stealth_combo_desc", "Leaving Infiltrate grants stealth for 3 seconds. Killing an Elite or Special extends this duration by 1 second up to a maximum of 4 times.")
+
+--[[
+	Hungry Wind
+]]
+-- All attacks count as backstabs for that same 10s window
+mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_power_buff", {
+	perks = {
+		"guaranteed_backstab",
+	},
+})
+mod_api.update_talent("we_shade", 6, 2, {
+	description = "kerillian_shade_activated_ability_phasing_desc",
+	description_values = {},
+})
+mod_api.insert_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10% movement speed and 15% Power with the ability to pass through enemies for 10 seconds. All attacks are considered backstabs for the duration. Infiltrate no longer grants bonus damage.")
 
 
