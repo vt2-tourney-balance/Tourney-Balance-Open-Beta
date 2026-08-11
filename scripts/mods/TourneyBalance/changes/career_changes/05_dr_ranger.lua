@@ -17,6 +17,7 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		### Talents
 		**Last Resort**
 		- Now triggers when the weapon's clip is empty, instead of when totally out of ammo.
+		- Fixed a bug where the buff would never trigger for non-host players.
 
 		**Foe-Feller**
 		- Attack speed increased to 15% (from 5%).
@@ -150,6 +151,35 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_increased_mel
 	event = "on_reload", -- on_gained_ammo_from_no_ammo
 })
 mod_api.insert_text("bardin_ranger_increased_melee_damage_on_no_ammo_desc", "Increases power by 25%% while the weapon's clip is empty.")
+
+-- buff is handled server-side
+-- explicitly forwards to the server via rpc_proc_event
+local event_index = #NetworkLookup.proc_events + 1
+
+NetworkLookup.proc_events[event_index] = "on_ammo_clip_used"
+NetworkLookup.proc_events.on_ammo_clip_used = event_index
+
+mod:hook(GenericAmmoUserExtension, "_check_ammo", function (func, self, ...)
+	local will_empty_clip = self._shots_fired > 0 and self._current_ammo - self._shots_fired == 0
+
+	func(self, ...)
+
+	if not will_empty_clip or self._is_server or LEVEL_EDITOR_TEST then
+		return
+	end
+
+	local owner_player = Managers.player:owner(self.owner_unit)
+
+	if not owner_player or owner_player.bot_player then
+		return
+	end
+
+	local peer_id = owner_player:network_id()
+	local local_player_id = owner_player:local_player_id()
+	local event_id = NetworkLookup.proc_events.on_ammo_clip_used
+
+	Managers.state.network.network_transmit:send_rpc_server("rpc_proc_event", peer_id, local_player_id, event_id)
+end)
 
 --[[
 	Foe Feller
