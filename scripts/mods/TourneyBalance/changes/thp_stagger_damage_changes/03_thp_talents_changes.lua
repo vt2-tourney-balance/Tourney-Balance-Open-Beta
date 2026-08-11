@@ -184,10 +184,10 @@ mod_api.insert_buff_template("tb_vanguard", {
 	Text Localization
 
 ]]
---mod_api.insert_text("bloodlust_name", "Execute")
---mod_api.insert_text("reaper_name", 	"Carve")
---mod_api.insert_text("regrowth_name", 	"Sting")
---mod_api.insert_text("vanguard_name", 	"Second Wind")
+mod_api.insert_text("bloodlust_name", "Execute")
+mod_api.insert_text("reaper_name", 	"Carve")
+mod_api.insert_text("regrowth_name", 	"Sting")
+mod_api.insert_text("vanguard_name", 	"Second Wind")
 mod_api.insert_text("tb_bloodlust_desc",	"Killing an enemy with a Melee Attack grants Temporary Health based on the health of the slain enemy.")
 mod_api.insert_text("tb_reaper_desc", 		"Damaging multiple enemies in one Melee Attack grants Temporary Health. Max 5 enemies.")
 mod_api.insert_text("tb_regrowth_desc", 	"Melee Critical Strikes grant 1.5 Temporary Health. Melee Headshots grant 3 Temporary Health. Melee Critical Headshots grant 4.5 Temporary Health.")
@@ -200,23 +200,23 @@ local BLOODLUST = 3
 local REGROWTH = 4
 local THP_TALENT_OPTIONS = {
 	[BLOODLUST] = {
-		--display_name = "bloodlust_name",
+		display_name = "bloodlust_name",
 		description = "tb_bloodlust_desc",
 		buffs = { "tb_bloodlust" },
 	},
 	[REAPER] = {
-		--display_name = "reaper_name",
+		display_name = "reaper_name",
 		description = "tb_reaper_desc",
 		buffs = { "tb_reaper" },
 	},
 	[REGROWTH] = {
-		--display_name = "regrowth_name",
+		display_name = "regrowth_name",
 		description = "tb_regrowth_desc",
 		buffs = { "tb_regrowth" },
 		description_values = {},
 	},
 	[VANGUARD] = {
-		--display_name = "vanguard_name",
+		display_name = "vanguard_name",
 		description = "tb_vanguard_desc",
 		buffs = { "tb_vanguard" },
 	},

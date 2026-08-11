@@ -155,11 +155,11 @@ mod_api.insert_buff_template("tb_smiter_unbalance", {
 	Text Localization
 
 ]]
---mod_api.insert_text("assassin_name", "Assassin")
---mod_api.insert_text("bulwark_name", "Bulwark")
---mod_api.insert_text("enhanced_power_name", "Enhanced Power")
---mod_api.insert_text("mainstay_name", "Mainstay")
---mod_api.insert_text("smiter_name", "Smiter")
+mod_api.insert_text("assassin_name", "Assassin")
+mod_api.insert_text("bulwark_name", "Bulwark")
+mod_api.insert_text("enhanced_power_name", "Enhanced Power")
+mod_api.insert_text("mainstay_name", "Mainstay")
+mod_api.insert_text("smiter_name", "Smiter")
 mod_api.insert_text("tb_finesse_unbalance_desc", 		"Melee headshots inflict 40% bonus damage.												\n\nDeal 20% more melee damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
 mod_api.insert_text("tb_linesman_unbalance_desc", 		"Melee hits always add a count of stagger lasting 2s. Max 5 enemies.					\n\nDeal 20% more melee damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
 mod_api.insert_text("tb_power_level_unbalance_desc",	"Increases total Power Level by 10%. This is calculated before other buffs are applied.")
@@ -174,31 +174,31 @@ local MAINSTAY = 4
 local SMITER = 5
 local TALENT_OPTIONS = {
 	[FINESSE] = { -- Assassin
-		--name = "assassin_name",
+		name = "assassin_name",
 		description = "tb_finesse_unbalance_desc",
 		buffs = { "tb_finesse_unbalance" },
 		description_values = {},
 	},
 	[TANK] = { -- Bulwark
-		--name = "bulwark_name",
+		name = "bulwark_name",
 		description = "tb_tank_unbalance_desc",
 		buffs = { "tb_tank_unbalance" },
 		description_values = {},
 	},
 	[ENHANCED_POWER] = { -- Enhanced Power
-		--name = "enhanced_power_name",
+		name = "enhanced_power_name",
 		description = "tb_power_level_unbalance_desc",
 		buffs = { "tb_power_level_unbalance" },
 		description_values = {},
 	},
 	[MAINSTAY] = { -- Mainstay
-		--name = "mainstay_name",
+		name = "mainstay_name",
 		description = "tb_linesman_unbalance_desc",
 		buffs = { "tb_linesman_unbalance" },
 		description_values = {},
 	},
 	[SMITER] = { -- Smiter
-		--name = "smiter_name",
+		name = "smiter_name",
 		description = "tb_smiter_unbalance_desc",
 		buffs = { "tb_smiter_unbalance" },
 		description_values = {},

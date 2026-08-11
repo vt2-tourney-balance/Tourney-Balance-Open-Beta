@@ -197,6 +197,7 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_ranger_movement_s
 	apply_buff_func = "apply_movement_buff",
 	remove_buff_func = "remove_movement_buff",
 	duration = 5,
+	refresh_durations = true,
 	icon = "bardin_ranger_movement_speed",
 	max_stacks = 1,
 	multiplier = 1.35,
