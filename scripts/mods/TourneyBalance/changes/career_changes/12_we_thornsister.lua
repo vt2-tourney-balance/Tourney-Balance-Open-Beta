@@ -32,7 +32,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Ironbark Thicket**
 		- Reduced wall duration to 6s (from 10s).
 		- When holding cast, pressing weapon special key toggles a flat-wall mode (Ironbark Thicket icon)
-		- A flat wall no longer blocks movement, but enemies touching it are slowed by 50% for 10s.
+		- A flat wall no longer blocks movement, but enemies touching it are slowed by 70% for 10s.
 
 		**Blackvenom Thicket**
 		- Added 40% cooldown reduction.
@@ -142,7 +142,7 @@ end
 -- Flat wall segments, weak-keyed; set in spawn_func below, read by the enemy-slow hook further down.
 local tb_flat_wall_units = setmetatable({}, { __mode = "k" })
 -- 1% of normal speed. Shared by both slow mechanisms below.
-local TB_FLAT_WALL_ENEMY_SLOW_MULTIPLIER = 0.5
+local TB_FLAT_WALL_ENEMY_SLOW_MULTIPLIER = 0.3 -- 70% slowdown
 
 -- AI movement has two independent code paths, so the slow is applied in two places:
 -- (1) navbot-driven pathing (normal walk/run), via AINavigationExtension's movement-modifier stack - same

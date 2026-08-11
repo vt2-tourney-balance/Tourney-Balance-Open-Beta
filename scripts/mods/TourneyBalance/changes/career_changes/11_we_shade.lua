@@ -33,10 +33,11 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		- Also triggers when entering stealth.
 
 		**Elthrai's Mockery** (new, replaces Spring-Heeled Assassin)
-		- Hitting enemies taunts them for 5s. Deals 20% more damage to enemies Kerillian has taunted.
+		- Hitting enemies taunts them for 5s. Deals 25% more damage to enemies Kerillian has taunted.
 
 		**Lingering Shadow** (new, replaces Gladerunner)
-		- Increases Blur's invisibility duration by 0.5s. Attacking from Blur's stealth no longer ends it.
+		- Attacking from Blur's stealth no longer ends it.
+		- Increases the duration of invisibility granted by Blur by 0.5 seconds.
 
 		**Shimmer Strike**
 		- Limited extending stealth duration to 4s (from uncapped).
@@ -315,7 +316,7 @@ mod_api.insert_proc_function("tb_shade_extend_blur_duration", function (owner_un
 	-- end_time isn't always populated on initial apply (only on an explicit refresh), so derive it from
 	-- start_time + duration instead of incrementing a field that may still be nil
 	if blur_buff and blur_buff.duration and blur_buff.start_time then
-		blur_buff.duration = blur_buff.duration + 1.5
+		blur_buff.duration = blur_buff.duration + 0.5
 		blur_buff.end_time = blur_buff.start_time + blur_buff.duration
 	end
 end)
