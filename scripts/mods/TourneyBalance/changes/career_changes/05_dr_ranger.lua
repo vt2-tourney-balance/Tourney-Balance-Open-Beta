@@ -105,7 +105,7 @@ mod_api.insert_proc_function("bardin_ranger_scavenge_proc", function (owner_unit
 			elseif talent_extension:has_talent("bardin_ranger_passive_improved_ammo") then
 				pickup_system:buff_spawn_pickup("ammo_ranger_improved", player_pos, raycast_down)
 			elseif talent_extension:has_talent("bardin_ranger_passive_ale") then
-				if random_utils.roll_virtual_bag(potion_spawn_bag_state, 20, 10) then
+				if random_utils.roll_virtual_bag(ale_bag_state, 20, 10) then
 					pickup_system:buff_spawn_pickup("bardin_survival_ale", player_pos + offset_position_1, raycast_down)
 					pickup_system:buff_spawn_pickup("ammo_ranger", player_pos + offset_position_2, raycast_down)
 				else
@@ -235,7 +235,7 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_ranger_movement_s
 		"move_speed",
 	},
 })
-mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10.0%.. Picking up a Survivalist pouch increases movement speed by additional 35% for 5 seconds.")
+mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10.0%. Picking up a Survivalist pouch increases movement speed by additional 35% for 5 seconds.")
 mod_api.update_talent("dr_ranger", 5, 1, {
 	description_values = {}
 })
