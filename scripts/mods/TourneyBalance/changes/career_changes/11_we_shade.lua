@@ -43,6 +43,7 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		- Limited extending stealth duration to 4s (from uncapped).
 
 		**Hungry Wind**
+		- Reduced the post-Infiltrate movement speed/Power/pass-through window to 6s (from 10s).
 		- Additionally after leaving infiltrate all attacks are considered backstabs.
 	$END_TB
 ]]
@@ -434,8 +435,16 @@ mod_api.insert_text("kerillian_shade_activated_stealth_combo_desc", "Leaving Inf
 --[[
 	Hungry Wind
 ]]
--- All attacks count as backstabs for that same 10s window
+-- Reduce the post-Infiltrate movement speed/Power/pass-through window
+mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_phasing_buff", {
+	duration = 6 -- 10
+})
+mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_movespeed_buff", {
+	duration = 6 -- 10
+})
+-- All attacks count as backstabs for that same window
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_power_buff", {
+	duration = 6, -- 10
 	perks = {
 		"guaranteed_backstab",
 	},
@@ -444,6 +453,6 @@ mod_api.update_talent("we_shade", 6, 2, {
 	description = "kerillian_shade_activated_ability_phasing_desc",
 	description_values = {},
 })
-mod_api.insert_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10% movement speed and 15% Power with the ability to pass through enemies for 10 seconds. All attacks are considered backstabs for the duration. Infiltrate no longer grants bonus damage.")
+mod_api.insert_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10% movement speed and 15% Power with the ability to pass through enemies for 6 seconds. All attacks are considered backstabs for the duration. Infiltrate no longer grants bonus damage.")
 
 
