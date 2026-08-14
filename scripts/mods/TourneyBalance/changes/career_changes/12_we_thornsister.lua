@@ -90,6 +90,7 @@ end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_big_bleed", {
 	buff_func = "tb_thorn_sister_add_bleed_on_headshot"
 })
+mod_api.insert_text("kerillian_thorn_sister_crit_big_bleed_desc_2", "Melee headshots against poisoned targets make them bleed.")
 
 --[[
 	Bonded Spirit
