@@ -154,7 +154,10 @@ mod_api.insert_text("bardin_ranger_increased_melee_damage_on_no_ammo_desc", "Inc
 
 -- buff is handled server-side
 -- explicitly forwards to the server via rpc_proc_event
-local event_index = #NetworkLookup.proc_events + 1
+-- fixed index (not #NetworkLookup.proc_events + 1): vanilla ships exactly 7 entries, so this
+-- always claims slot 8 regardless of what other mods append to the table on either peer -
+-- a dynamic index desyncs host/client if the table's length differs between them at load time
+local event_index = 8
 
 NetworkLookup.proc_events[event_index] = "on_ammo_clip_used"
 NetworkLookup.proc_events.on_ammo_clip_used = event_index
