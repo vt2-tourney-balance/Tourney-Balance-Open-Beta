@@ -261,19 +261,22 @@ mod:hook(ActionCareerWEThornsisterTargetWall, "finish", function (func, self, re
 
 	if targeting_data then
 		targeting_data.wall_short_mode_angle = self._wall_short_mode_angle or 0
-	else
-		-- vanilla only returns targeting_data when the aim actually hands off into a cast (reason ==
-		-- "new_interupting_action" with a valid target); nil here means the cast was cancelled/interrupted
-		-- and _spawn_wall - where the toggle normally resets - will never run, so reset it here instead.
-		local owner_unit = self.owner_unit
+	end
 
-		tb_short_wall_toggle_state[owner_unit] = nil
+	-- Reset unconditionally: finish() is the one guaranteed exit point for this action, cast or not. Vanilla's
+	-- targeting_data is non-nil whenever a valid target was ever found, even if the actual interrupting action
+	-- turns out not to be the fire action (e.g. cancelling via a weapon swap after aiming at a valid spot) - so
+	-- branching on it here would miss that case, and _spawn_wall would never run to reset it either. Safe to do
+	-- unconditionally: a genuine cast's angle was already copied onto targeting_data above, as a plain number
+	-- disconnected from this table from this point on.
+	local owner_unit = self.owner_unit
 
-		local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+	tb_short_wall_toggle_state[owner_unit] = nil
 
-		if buff_extension then
-			tb_remove_buff_type(buff_extension, "tb_short_wall_mode_active")
-		end
+	local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+	if buff_extension then
+		tb_remove_buff_type(buff_extension, "tb_short_wall_mode_active")
 	end
 
 	return targeting_data
@@ -291,17 +294,6 @@ mod:hook(ActionCareerWEThornsisterWall, "_spawn_wall", function (func, self, num
 	local final_wall_rotation = short_mode_angle > 0 and tb_signal_short_mode_rotation(wall_rotation, short_mode_angle) or wall_rotation
 
 	func(self, num_segments, segments, final_wall_rotation)
-
-	-- Reset the toggle after every actual cast, so player has to re-toggle it each time they want it.
-	local owner_unit = self.owner_unit
-
-	tb_short_wall_toggle_state[owner_unit] = nil
-
-	local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
-
-	if buff_extension then
-		tb_remove_buff_type(buff_extension, "tb_short_wall_mode_active")
-	end
 end)
 
 local WALL_TYPES = table.enum("default", "bleed")
@@ -324,7 +316,6 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 			aoe_dot_damage = 0,
 			radius = 0.3,
 			area_damage_template = "we_thornsister_thorn_wall",
-			invisible_unit = false,
 			nav_tag_volume_layer = "temporary_wall",
 			create_nav_tag_volume = not is_short_mode,
 			aoe_init_damage = 0,
@@ -375,6 +366,15 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 				hit_reaction_template = "level_object"
 			}
 		}
+		-- Invisibility is set via extension_init_data.area_damage_system.invisible_unit (read by
+		-- AreaDamageExtension.init, which network-replicated for this unit type) rather than a raw
+		-- Unit.set_unit_visibility call - that call would only affect the server's own local unit, since
+		-- spawn_func only ever runs server-side (it's invoked from the RPC handler for a client's spawn
+		-- request), while extension_init_data.invisible_unit gets independently re-applied by
+		-- AreaDamageExtension.init wherever the extension is (re)created, including on each client rebuilding
+		-- its own copy from the networked snapshot.
+		area_damage_params.invisible_unit = is_short_mode
+
 		local wall_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, position, rotation)
 		local random_spin = Quaternion(Vector3.up(), math.random() * 2 * math.pi - math.pi)
 
@@ -386,11 +386,12 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 			local collision_rotation = tb_signal_short_mode_rotation(rotation, TB_SHORT_WALL_COLLISION_TILT_ANGLE)
 
 			Unit.set_local_rotation(wall_unit, 0, Quaternion.multiply(collision_rotation, random_spin))
-			Unit.set_unit_visibility(wall_unit, false)
 
 			-- Separate, purely cosmetic companion: wall_unit above is what actually governs gameplay. Flipped
 			-- 180 degrees (root end on top) and raised so only TB_SHORT_WALL_VISIBLE_HEIGHT of the root end
 			-- pokes above ground; the rest (including its own collision, which moves with it) stays buried.
+			area_damage_params.invisible_unit = false
+
 			local cosmetic_position = position + Vector3.up() * TB_SHORT_WALL_VISIBLE_HEIGHT
 			local cosmetic_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, cosmetic_position, rotation)
 
@@ -432,7 +433,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		end
 	end
 }
-mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall. While casting, press weapon special to switch to Thorn Bush. Enemies walking through Thorn Bush are slowed by 50% for 10s.")
+mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall. While casting, press weapon special to switch to Thorn Bush. Enemies walking through Thorn Bush are slowed by 50.0%% for 10s.")
 
 -- Registered last on purpose: piggybacks on the wall's own per-tick area-effect to slow nearby enemies, for
 -- segments tracked as short-mode above. If registering a hook on this particular table
