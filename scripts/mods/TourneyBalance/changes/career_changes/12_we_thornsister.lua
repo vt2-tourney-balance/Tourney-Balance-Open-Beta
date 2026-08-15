@@ -153,12 +153,6 @@ local function tb_signal_short_mode_rotation(wall_rotation, short_mode_angle)
 	return Quaternion.look(tilted_forward, tilted_up)
 end
 
--- Short wall segments, weak-keyed; set in spawn_func below, read by the enemy-slow hook further down.
-local tb_short_wall_units = setmetatable({}, { __mode = "k" })
--- The cosmetic companion (see spawn_func) shares the same extension_init_data, so it gets its own
--- AreaDamageExtension and independently ticks into the same hook - tracked here so that hook can recognize
--- and fully ignore it (the paired collision unit, spawned just below it, already handles everything it needs to).
-local tb_short_wall_cosmetic_units = setmetatable({}, { __mode = "k" })
 -- Shared by both slow mechanisms below.
 local TB_SHORT_WALL_ENEMY_SLOW_MULTIPLIER = 0.5 -- 50% slowdown
 
@@ -375,31 +369,32 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		-- its own copy from the networked snapshot.
 		area_damage_params.invisible_unit = is_short_mode
 
-		local wall_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, position, rotation)
+		-- Rotation is baked directly into each spawn_network_unit call below, not set afterward via
+		-- Unit.set_local_rotation: clients rebuild their own copy of the unit from a network snapshot captured
+		-- at spawn time, so a large post-spawn rotation change (a full 90/180 degree tilt/flip, as opposed to a
+		-- minor cosmetic spin) doesn't reliably reach them - confirmed against the older single-unit "flat
+		-- wall" version, which displayed correctly for clients precisely because it baked its full tilt into
+		-- the rotation passed to spawn_network_unit up front, only ever applying a small extra spin afterward.
 		local random_spin = Quaternion(Vector3.up(), math.random() * 2 * math.pi - math.pi)
+		local wall_spawn_rotation = random_spin
+
+		-- wall_unit becomes the invisible collision backbone when short mode is on: tilted a full 90 degrees so
+		-- attacks aimed at normal swing height pass over it (see header comment for why tilt, not scale).
+		if is_short_mode then
+			wall_spawn_rotation = Quaternion.multiply(tb_signal_short_mode_rotation(rotation, TB_SHORT_WALL_COLLISION_TILT_ANGLE), random_spin)
+		end
+
+		local wall_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, position, wall_spawn_rotation)
 
 		if is_short_mode then
-			tb_short_wall_units[wall_unit] = true
-
-			-- wall_unit becomes the invisible collision backbone: tilted so attacks aimed at normal swing
-			-- height pass over it (see header comment for why tilt, not scale).
-			local collision_rotation = tb_signal_short_mode_rotation(rotation, TB_SHORT_WALL_COLLISION_TILT_ANGLE)
-
-			Unit.set_local_rotation(wall_unit, 0, Quaternion.multiply(collision_rotation, random_spin))
-
 			-- Separate, purely cosmetic companion: wall_unit above is what actually governs gameplay. Flipped
 			-- 180 degrees (root end on top) and raised so only TB_SHORT_WALL_VISIBLE_HEIGHT of the root end
 			-- pokes above ground; the rest (including its own collision, which moves with it) stays buried.
 			area_damage_params.invisible_unit = false
 
 			local cosmetic_position = position + Vector3.up() * TB_SHORT_WALL_VISIBLE_HEIGHT
-			local cosmetic_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, cosmetic_position, rotation)
-
-			tb_short_wall_cosmetic_units[cosmetic_unit] = true
-
-			local flipped_rotation = tb_signal_short_mode_rotation(rotation, TB_SHORT_WALL_FLIP_ANGLE)
-
-			Unit.set_local_rotation(cosmetic_unit, 0, Quaternion.multiply(flipped_rotation, random_spin))
+			local cosmetic_spawn_rotation = Quaternion.multiply(tb_signal_short_mode_rotation(rotation, TB_SHORT_WALL_FLIP_ANGLE), random_spin)
+			local cosmetic_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, cosmetic_position, cosmetic_spawn_rotation)
 
 			-- Belt-and-suspenders: shouldn't matter now that the cosmetic unit's own collision is buried, but
 			-- harmless to keep.
@@ -414,8 +409,6 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 			if cosmetic_props_extension then
 				cosmetic_props_extension.group_spawn_index = group_spawn_index
 			end
-		else
-			Unit.set_local_rotation(wall_unit, 0, random_spin)
 		end
 
 		local buff_extension = ScriptUnit.has_extension(wall_unit, "buff_system")
@@ -435,28 +428,42 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 }
 mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall. While casting, press weapon special to switch to Thorn Bush. Enemies walking through Thorn Bush are slowed by 50.0%% for 10s.")
 
--- Registered last on purpose: piggybacks on the wall's own per-tick area-effect to slow nearby enemies, for
--- segments tracked as short-mode above. If registering a hook on this particular table
--- (AreaDamageTemplates.templates[name], not AreaDamageTemplates[name] directly) ever breaks, keeping it last
--- means that failure can't silently prevent the rest of this section from loading.
+-- Registered last on purpose: piggybacks on the wall's own per-tick area-effect to slow nearby enemies. If
+-- registering a hook on this particular table (AreaDamageTemplates.templates[name], not
+-- AreaDamageTemplates[name] directly) ever breaks, keeping it last means that failure can't silently prevent
+-- the rest of this section from loading.
 --
 -- Also swaps who the wall slows, standing vs short: vanilla's own client.update (func) is what slows nearby
 -- allies - only call it for standing walls (which still fully block enemies, so there's nothing for the enemy
 -- slow to compensate for) and skip it for short walls (movement isn't blocked there, so players shouldn't pay
 -- the ally-slow tax just for being near it - enemies get the tb_short_wall_enemy_slow debuff instead).
+--
+-- Which case applies is read from aoe_unit's own rotation rather than a lookup table populated in spawn_func:
+-- spawn_func only ever runs on the server, so a table it populates is empty on every client, meaning this hook
+-- would always take the "standing wall" branch there regardless of who cast the ability - exactly why clients
+-- kept getting ally-slowed by short-mode walls. Rotation is read identically on every peer instead: a standing
+-- wall's up vector stays near world-up (up.z ~= 1), the collision unit's 90-degree tilt puts it at up.z ~= 0,
+-- and the cosmetic companion's 180-degree flip puts it at up.z ~= -1 exactly (see tb_signal_short_mode_rotation
+-- above) - random_spin never disturbs this, since it only rotates around the world up axis, which by
+-- definition can't change that axis's own up.z.
 local tb_short_wall_last_check_t = setmetatable({}, { __mode = "k" })
 local TB_SHORT_WALL_CHECK_INTERVAL = 0.1 -- fixed interval; per-frame scanning got expensive with many enemies nearby
 local TB_SHORT_WALL_ENEMY_SLOW_RADIUS = 0.5 -- kept separate from the 0.3 "radius" param (ally-slow/nav-tag)
+local TB_SHORT_WALL_UP_Z_STANDING_THRESHOLD = 0.5
+local TB_SHORT_WALL_UP_Z_COSMETIC_THRESHOLD = -0.5
 mod:hook(AreaDamageTemplates.templates.we_thornsister_thorn_wall.client, "update", function (func, world, radius, aoe_unit, ...)
-	if tb_short_wall_cosmetic_units[aoe_unit] then
-		return -- purely visual; the paired collision unit just below it handles everything
+	local up_z = Quaternion.up(Unit.local_rotation(aoe_unit, 0)).z
+
+	if up_z < TB_SHORT_WALL_UP_Z_COSMETIC_THRESHOLD then
+		return -- cosmetic companion (flipped, up.z ~= -1): purely visual, the collision unit handles everything
 	end
 
-	if not tb_short_wall_units[aoe_unit] then
-		func(world, radius, aoe_unit, ...) -- standing wall: vanilla ally-slow only, no enemy-slow scan below
+	if up_z > TB_SHORT_WALL_UP_Z_STANDING_THRESHOLD then
+		func(world, radius, aoe_unit, ...) -- standing wall (up.z ~= 1): vanilla ally-slow only, no enemy-slow scan below
 		return
 	end
 
+	-- short-mode collision unit (tilted, up.z ~= 0)
 	local t = Managers.time:time("game")
 	local last_check_t = tb_short_wall_last_check_t[aoe_unit]
 
