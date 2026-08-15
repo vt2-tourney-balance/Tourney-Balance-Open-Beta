@@ -261,6 +261,19 @@ mod:hook(ActionCareerWEThornsisterTargetWall, "finish", function (func, self, re
 
 	if targeting_data then
 		targeting_data.wall_short_mode_angle = self._wall_short_mode_angle or 0
+	else
+		-- vanilla only returns targeting_data when the aim actually hands off into a cast (reason ==
+		-- "new_interupting_action" with a valid target); nil here means the cast was cancelled/interrupted
+		-- and _spawn_wall - where the toggle normally resets - will never run, so reset it here instead.
+		local owner_unit = self.owner_unit
+
+		tb_short_wall_toggle_state[owner_unit] = nil
+
+		local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+		if buff_extension then
+			tb_remove_buff_type(buff_extension, "tb_short_wall_mode_active")
+		end
 	end
 
 	return targeting_data
