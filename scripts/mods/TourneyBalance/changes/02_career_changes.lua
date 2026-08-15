@@ -244,6 +244,12 @@ mod_api.insert_buff_template("burning_dot_fire_grenade", {
 DamageProfileTemplates.burning_dot_firegrenade.default_target.armor_modifier.attack[6] = 0.25 -- 0.5
 
 -- Remove Stam-Tech
+local DOUBLE_TAP_DODGES = {
+	move_left_pressed = Vector3Box(-Vector3.right()),
+	move_right_pressed = Vector3Box(Vector3.right()),
+	move_back_pressed = Vector3Box(-Vector3.forward()),
+}
+
 mod:hook_origin(CharacterStateHelper, "check_to_start_dodge", function (unit, input_extension, status_extension, t)
 	if status_extension:dodge_locked() or not status_extension:can_dodge(t) then
 		return false

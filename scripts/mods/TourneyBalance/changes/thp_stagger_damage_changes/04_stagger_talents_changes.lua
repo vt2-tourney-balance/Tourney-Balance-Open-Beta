@@ -30,7 +30,7 @@ local stagger_types = require("scripts/utils/stagger_types")
 		- Replaced Mainstay with Assassin.
 
 		**Pyromancer**
-		- Replaced Mainst with Assassin.
+		- Replaced Mainstay with Assassin.
 
 		### Talents
 		**Assassin**
@@ -50,7 +50,7 @@ local stagger_types = require("scripts/utils/stagger_types")
 		- Added melee hits apply 1 stagger count, regardless of actual stagger from the attack.
 		- Stagger count only applied to first 5 enemies hit and caps at 2 stagger counts.
 
-		**Smiter**
+		**Assassin/Bulwark/Mainstay/Smiter**
 		- Reformatted description.
 	$END_TB
 ]]

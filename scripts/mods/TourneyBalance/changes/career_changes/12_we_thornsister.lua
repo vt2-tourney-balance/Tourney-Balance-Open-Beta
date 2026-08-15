@@ -127,26 +127,20 @@ mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming 
 	Ironbark Thicket
 ]]
 -- Only kerillian_thorn_sister_tanky_wall gets this. action_three toggles "short mode" while aiming (unused by
--- this weapon otherwise). Off = vanilla upright wall. On = spawns as TWO units instead of one:
---   - an invisible "collision" unit, tilted a full 90 degrees - the exact mechanism already proven to shrink
---     the actual hitbox (both for movement-blocking and weapon sweeps), since rotation reliably propagates to
---     collision here where scale does not (Unit.set_local_scale doesn't reliably resize Havok collision
---     shapes, especially non-uniformly - confirmed by attacks still landing at the old, unscaled height when
---     we tried scale alone). This unit alone governs everything gameplay-relevant (enemy-slow, walkability) -
---     the rest of this comment block only concerns how the OTHER unit looks; nothing below changes this one.
---   - a visible "cosmetic" unit for looks only. Originally scaled short while staying upright, but that hit
---     the same scale-doesn't-move-collision problem: attacks were still landing at its old, unscaled height,
---     since filter_trigger alone didn't reliably stop weapon-sweep hit detection either. Fixed the same way as
---     the collision unit - not by trying to disable its collision, but by physically relocating it: flipped a
---     full 180 degrees (root end now on top) and raised so only the root end pokes above ground -
---     TB_SHORT_WALL_VISIBLE_HEIGHT above ground, TB_SHORT_WALL_HEIGHT - TB_SHORT_WALL_VISIBLE_HEIGHT buried
---     below it, so wherever its collision actually is, it's out of the way rather than relying on a filter.
+-- this weapon otherwise). Off = vanilla upright wall. On = spawns TWO units instead of one:
+--   - an invisible "collision" unit, tilted a full 90 degrees. Rotation reliably shrinks the hitbox (both for
+--     movement-blocking and weapon sweeps); Unit.set_local_scale does not reliably resize Havok collision
+--     shapes, especially non-uniformly. This unit alone governs everything gameplay-relevant (enemy-slow,
+--     walkability) - the rest of this comment only concerns how the OTHER unit looks.
+--   - a visible "cosmetic" unit for looks only, flipped a full 180 degrees (root end now on top) and raised so
+--     only the root end pokes above ground - TB_SHORT_WALL_VISIBLE_HEIGHT above ground, the remainder buried
+--     below it. Same scale-doesn't-move-collision limitation applies here, and filter_trigger alone doesn't
+--     reliably stop weapon-sweep hit detection, so its collision is kept out of the way by burying it rather
+--     than by filtering it.
 -- Both units share the same wall_index, so they despawn together via ThornSisterWallExtension's group logic.
 local TB_SHORT_WALL_SIGNAL_ANGLE = math.rad(2) -- imperceptible; only used to smuggle "short mode" through the RPC (see note below)
 local TB_SHORT_WALL_COLLISION_TILT_ANGLE = math.pi / 2 -- full tilt for the invisible collision unit
 local TB_SHORT_WALL_FLIP_ANGLE = math.pi -- 180 degrees, for the cosmetic unit
--- Assumes ~3 unit base mesh height (matches the targeting decal's own Z-scale).
-local TB_SHORT_WALL_HEIGHT = 3
 local TB_SHORT_WALL_VISIBLE_HEIGHT = 0.5 -- how much of the flipped cosmetic unit pokes up above the ground
 local function tb_signal_short_mode_rotation(wall_rotation, short_mode_angle)
 	local up = Vector3.up()
@@ -163,7 +157,7 @@ end
 local tb_short_wall_units = setmetatable({}, { __mode = "k" })
 -- The cosmetic companion (see spawn_func) shares the same extension_init_data, so it gets its own
 -- AreaDamageExtension and independently ticks into the same hook - tracked here so that hook can recognize
--- and fully ignore it (the paired collision unit at the same position already handles everything it needs to).
+-- and fully ignore it (the paired collision unit, spawned just below it, already handles everything it needs to).
 local tb_short_wall_cosmetic_units = setmetatable({}, { __mode = "k" })
 -- Shared by both slow mechanisms below.
 local TB_SHORT_WALL_ENEMY_SLOW_MULTIPLIER = 0.5 -- 50% slowdown
@@ -276,14 +270,25 @@ mod:hook(ActionCareerWEThornsisterWall, "client_owner_start_action", function (f
 
 	func(self, new_action, t, chain_action_data, power_level, action_init_data)
 end)
--- Fold the short-mode signal into wall_rotation here so it survives request_spawn_template_unit's RPC - a
--- plain Lua variable doesn't, since spawn_func runs later from the RPC handler, not synchronously inside this.
+-- Fold the short-mode signal into wall_rotation here so it survives request_spawn_template_unit's RPC
+-- Plain Lua variable doesn't, since spawn_func runs later from the RPC handler, not synchronously inside this.
 mod:hook(ActionCareerWEThornsisterWall, "_spawn_wall", function (func, self, num_segments, segments, wall_rotation)
 	local wants_short_mode = self.talent_extension:has_talent("kerillian_thorn_sister_tanky_wall")
 	local short_mode_angle = wants_short_mode and self._wall_short_mode_angle or 0
 	local final_wall_rotation = short_mode_angle > 0 and tb_signal_short_mode_rotation(wall_rotation, short_mode_angle) or wall_rotation
 
 	func(self, num_segments, segments, final_wall_rotation)
+
+	-- Reset the toggle after every actual cast, so player has to re-toggle it each time they want it.
+	local owner_unit = self.owner_unit
+
+	tb_short_wall_toggle_state[owner_unit] = nil
+
+	local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+	if buff_extension then
+		tb_remove_buff_type(buff_extension, "tb_short_wall_mode_active")
+	end
 end)
 
 local WALL_TYPES = table.enum("default", "bleed")
@@ -333,7 +338,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 				local life_time_mult = 1
 				local life_time_bonus = 4.2
 				area_damage_params.life_time = area_damage_params.life_time * life_time_mult + life_time_bonus
-				props_params.life_time = (6/10) *(props_params.life_time * life_time_mult + life_time_bonus)
+				props_params.life_time = (6 / 10) * (props_params.life_time * life_time_mult + life_time_bonus)
 			elseif source_talent_extension:has_talent("kerillian_thorn_sister_debuff_wall") then
 				local life_time_mult = 0.17
 				local life_time_bonus = 0
@@ -363,18 +368,16 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		if is_short_mode then
 			tb_short_wall_units[wall_unit] = true
 
-			-- wall_unit becomes the invisible collision backbone: fully tilted (proven to correctly shrink
-			-- both movement-blocking and attack-hit collision, unlike scale) so attacks aimed at normal swing
-			-- height pass over it.
+			-- wall_unit becomes the invisible collision backbone: tilted so attacks aimed at normal swing
+			-- height pass over it (see header comment for why tilt, not scale).
 			local collision_rotation = tb_signal_short_mode_rotation(rotation, TB_SHORT_WALL_COLLISION_TILT_ANGLE)
 
 			Unit.set_local_rotation(wall_unit, 0, Quaternion.multiply(collision_rotation, random_spin))
 			Unit.set_unit_visibility(wall_unit, false)
 
 			-- Separate, purely cosmetic companion: wall_unit above is what actually governs gameplay. Flipped
-			-- 180 (root end on top) and raised so only the root end - TB_SHORT_WALL_VISIBLE_HEIGHT of it -
-			-- sticks up; the rest (including its own collision, moving with it since this is rotation/position,
-			-- not scale) is buried below ground where it can't interfere with attacks or movement.
+			-- 180 degrees (root end on top) and raised so only TB_SHORT_WALL_VISIBLE_HEIGHT of the root end
+			-- pokes above ground; the rest (including its own collision, which moves with it) stays buried.
 			local cosmetic_position = position + Vector3.up() * TB_SHORT_WALL_VISIBLE_HEIGHT
 			local cosmetic_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, cosmetic_position, rotation)
 
@@ -384,7 +387,8 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 
 			Unit.set_local_rotation(cosmetic_unit, 0, Quaternion.multiply(flipped_rotation, random_spin))
 
-			-- Belt-and-suspenders: shouldn't matter now that the collision itself is buried, but harmless to keep.
+			-- Belt-and-suspenders: shouldn't matter now that the cosmetic unit's own collision is buried, but
+			-- harmless to keep.
 			local cosmetic_actor = Unit.actor(cosmetic_unit, "c_simple")
 
 			if cosmetic_actor then
@@ -415,7 +419,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		end
 	end
 }
-mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall. While casting, press weapon special to switch to Thorn Bush. Enemies walking through Thron Bush are slowed by 50% for 10s.")
+mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall. While casting, press weapon special to switch to Thorn Bush. Enemies walking through Thorn Bush are slowed by 50% for 10s.")
 
 -- Registered last on purpose: piggybacks on the wall's own per-tick area-effect to slow nearby enemies, for
 -- segments tracked as short-mode above. If registering a hook on this particular table
@@ -431,7 +435,7 @@ local TB_SHORT_WALL_CHECK_INTERVAL = 0.1 -- fixed interval; per-frame scanning g
 local TB_SHORT_WALL_ENEMY_SLOW_RADIUS = 0.5 -- kept separate from the 0.3 "radius" param (ally-slow/nav-tag)
 mod:hook(AreaDamageTemplates.templates.we_thornsister_thorn_wall.client, "update", function (func, world, radius, aoe_unit, ...)
 	if tb_short_wall_cosmetic_units[aoe_unit] then
-		return -- purely visual; the paired collision unit at the same position handles everything
+		return -- purely visual; the paired collision unit just below it handles everything
 	end
 
 	if not tb_short_wall_units[aoe_unit] then
