@@ -233,7 +233,7 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_ranger_movement_s
 	refresh_durations = true,
 	icon = "bardin_ranger_movement_speed",
 	max_stacks = 1,
-	multiplier = 1.35,
+	multiplier = 1.15,
 	path_to_movement_setting_to_modify = {
 		"move_speed",
 	},
