@@ -31,7 +31,7 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		- Potions drop pseudo-random from bag size 6 with 2 of each potion (speed, strength, cooldown reduction).
 
 		**No Dawdling**
-		- Also grants 35% movement speed for 5 seconds on picking up a Survivalist pouch.
+		- Also grants 15% movement speed for 5 seconds on picking up a Survivalist pouch.
 
 		**Exuberance**
 		- Reduced damage reduction to 20% (from 30%).

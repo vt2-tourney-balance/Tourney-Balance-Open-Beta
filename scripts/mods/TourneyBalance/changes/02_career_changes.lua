@@ -250,7 +250,10 @@ local DOUBLE_TAP_DODGES = {
 	move_back_pressed = Vector3Box(-Vector3.forward()),
 }
 
-mod:hook_origin(CharacterStateHelper, "check_to_start_dodge", function (unit, input_extension, status_extension, t)
+-- Stam-Tech: Internal Cooldown
+local STAM_TECH_COOLDOWN = 120
+
+CharacterStateHelper.check_to_start_dodge = function (unit, input_extension, status_extension, t)
 	if status_extension:dodge_locked() or not status_extension:can_dodge(t) then
 		return false
 	end
@@ -313,6 +316,17 @@ mod:hook_origin(CharacterStateHelper, "check_to_start_dodge", function (unit, in
 
 	if start_dodge then
 		Managers.state.entity:system("play_go_tutorial_system"):register_dodge(dodge_direction)
+
+		-- Stam-Tech Internal CD check
+		-- fatigue can only exceed MAX_FATIGUE via the unclamped wield-swap rescale in GenericStatusExtension.update
+		if status_extension.fatigue > PlayerUnitStatusSettings.MAX_FATIGUE then
+			local last_stam_tech_t = status_extension._stam_tech_last_t
+			if not last_stam_tech_t or t - last_stam_tech_t >= STAM_TECH_COOLDOWN then
+				status_extension._stam_tech_last_t = t
+				status_extension:add_fatigue_points("action_dodge")
+			end
+		end
+
 		status_extension:set_dodge_locked(true)
 		status_extension:add_dodge_cooldown()
 
@@ -320,4 +334,4 @@ mod:hook_origin(CharacterStateHelper, "check_to_start_dodge", function (unit, in
 	end
 
 	return start_dodge, dodge_direction
-end)
+end

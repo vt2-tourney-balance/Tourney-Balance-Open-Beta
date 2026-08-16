@@ -32,7 +32,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Ironbark Thicket**
 		- Reduced wall duration to 6s (from 10s).
 		- When holding cast, pressing weapon special key toggles a flat-wall mode (Ironbark Thicket icon)
-		- A flat wall no longer blocks movement, but enemies touching it are slowed by 50% for 10s.
+		- A flat wall no longer blocks enemy movement, but enemies touching it are slowed by 50% for 10s.
 
 		**Blackvenom Thicket**
 		- Added 40% cooldown reduction.
