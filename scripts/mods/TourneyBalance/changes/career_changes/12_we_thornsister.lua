@@ -16,6 +16,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Decreased temp health siphon from team to 10% (from 100%).
 
 		### Talents
+		**Surge of Malice**
+		- Lowered required health threshold to 80% (from 90%).
+
 		**Briar's Malice**
 		- Only consume crit stacks on hit, and at most 1 stack per attack (even against multiple enemies).
 
@@ -28,6 +31,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Radiant Inheritance**
 		- Can be activated with Thornwake (regular ult).
 		- Recasting refreshes the and extends the duration to 20s.
+
+		**Repel**
+		- Additionally grants passive 100% increased stamina recovery.
 
 		**Ironbark Thicket**
 		- Reduced wall duration to 6s (from 10s).
@@ -69,12 +75,17 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_
 
 ]]
 --[[
-	Briar's Malice
+	Surge of Malice
 ]]
--- consume only on hit
-mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_crit_on_any_ability_handler", {
-	event = "on_hit",
+mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_attack_speed_on_full", {
+	health_threshold = 0.8, -- 0.9
 })
+mod_api.update_talent("we_thornsister", 2, 1, {
+	description = "kerillian_thorn_sister_attack_speed_on_full_desc",
+	description_values = {},
+})
+mod_api.insert_text("kerillian_thorn_sister_attack_speed_on_full_desc", "While above 80% health Kerilian gains 15% Attack Speed.")
+
 
 --[[
 	Atharti's Delight
@@ -91,6 +102,24 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_big_blee
 	buff_func = "tb_thorn_sister_add_bleed_on_headshot"
 })
 mod_api.insert_text("kerillian_thorn_sister_crit_big_bleed_desc_2", "Melee headshots against poisoned targets make them bleed.")
+
+--[[
+	Briar's Malice
+]]
+-- consume 1 stack only on hit
+mod_api.insert_proc_function("tb_thorn_sister_remove_crit_stack_on_first_hit", function (owner_unit, buff, params)
+	local target_number = params[4]
+
+	if target_number and target_number > 1 then
+		return
+	end
+
+	return ProcFunctions.remove_ref_buff_stack_woods(owner_unit, buff, params)
+end)
+mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_crit_on_any_ability_handler", {
+	event = "on_hit",
+	buff_func = "tb_thorn_sister_remove_crit_stack_on_first_hit",
+})
 
 --[[
 	Bonded Spirit
@@ -122,6 +151,23 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_
 	event = "on_ability_cooldown_started",
 })
 mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 10 seconds. Duration can stack 2 times.")
+
+--[[
+	Repel
+]]
+mod_api.insert_talent_buff_template("wood_elf", "tb_repel_stamina_recovery", {
+	stat_buff = "fatigue_regen",
+	multiplier = 1.0,
+})
+mod_api.update_talent("we_thornsister", 5, 3, {
+	description = "kerillian_thorn_sister_big_push_desc",
+	description_values = {},
+	buffs = {
+		"kerillian_thorn_sister_big_push",
+		"tb_repel_stamina_recovery",
+	},
+})
+mod_api.insert_text("kerillian_thorn_sister_big_push_desc", "Pushing at full stamina increases the strength and range of the push by 100%. Increases stamina recovery by 100%.")
 
 --[[
 	Ironbark Thicket
