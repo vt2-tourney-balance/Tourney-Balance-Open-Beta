@@ -30,6 +30,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Ricochet**
 		- On its first ricochet, the bounced projectile becomes homing like Trueshot Volley arrows.
+		- Doing so applies a refreshing debuff: -100% ability cooldown regeneration for 5s.
 
 		**Piercing Shot**
 		- Cooldown refund when headshotting enemy works when piercing through team mate first.
@@ -303,38 +304,27 @@ mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", 
 --[[
 	Richochet
 ]]
-mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Kerillian's arrows now ricochet, bouncing up to 3 times or until it hits an enemy. Ricochet projectiles are imbued with true-flight.")
+mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Kerillian's arrows now ricochet, bouncing up to 3 times or until it hits an enemy. Ricochet grants projectiles true-flight at the cost of cooldown degeneration for 5 seconds.")
+
+-- Cooldown regeneration debuff
+mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
+	stat_buff = "cooldown_regen",
+	multiplier = -2,
+	duration = 5,
+	max_stacks = 1,
+	refresh_durations = true,
+	debuff = true,
+	icon = "kerillian_waywatcher_projectile_ricochet",
+})
 
 -- On first ricochet bounce of projectile, convert it into Trueshot Volley (true-flight/homing) arrow: despawn
 -- the original (now-bounced, non-homing) projectile and spawn a trueflight one in its place, at the same point
 -- and heading in the same post-bounce direction. item_name/item_template_name point at the career skill's own
--- weapon ("kerillian_waywatcher_career_skill_weapon" - registered in ItemMasterList/WeaponTemplates under that
--- same name) so the spawned arrow gets its homing/impact behavior, independent of whichever physical bow is
+-- weapon so the spawned arrow gets its homing/impact behavior, independent of whichever physical bow is
 -- actually equipped.
---
--- This must go through ActionUtils.spawn_true_flight_projectile (ProjectileSystem.spawn_true_flight_projectile),
--- NOT the more generic ActionUtils.spawn_player_projectile that ActionRangedBase.fire_projectile uses for
--- regular arrows - spawn_player_projectile spawns a plain "player_projectile_unit" with the generic
--- ProjectileLocomotionExtension, which has no homing behavior at all (confirmed the cause of arrows flying
--- straight instead of homing). The career skill's own action (ActionTrueFlightBow.fire, action_true_flight_bow.lua)
--- calls spawn_true_flight_projectile with target_unit = nil for every extra/spread shot - ProjectileTrueFlight-
--- LocomotionExtension.update seeks its own target via broadphase each tick when target_unit isn't already set
--- (find_new_target/find_broadphase_target), so nil here is fine and matches vanilla, not a missing feature.
---
--- Despawning the original via Managers.state.unit_spawner:mark_for_deletion only queues it (removal happens on
--- the next tick's commit_and_remove_pending_units, same as every other despawn path in this game) - it's safe
--- to call inline here, and matches how projectile_system.lua itself calls it directly with no grace period.
---
--- Converting is a one-shot event per original arrow: after conversion, the trueflight arrow's own bounces carry
--- impact_data.bounce_on_level_units = true (baked into the career skill's action), which the guard below
--- excludes - so it keeps bouncing (up to its own max_bounces = 2, independent of and on top of the one bounce
--- the original arrow already used to trigger the conversion) without ever re-triggering another conversion.
 local TB_RICOCHET_SPAWN_ITEM = "kerillian_waywatcher_career_skill_weapon"
 local TB_RICOCHET_SPAWN_ACTION = "action_career_release"
 local TB_RICOCHET_SPAWN_SUB_ACTION = "default"
--- Resolved lazily on first use rather than at module load time - mods load before the game's own weapon/
--- true-flight template tables are guaranteed populated, so reading them here at file-scope risked erroring
--- out (silently aborting the rest of this file, hook included) until the next in-session mod reload.
 local tb_ricochet_spawn_speed
 local tb_ricochet_spawn_true_flight_template_id
 
@@ -349,26 +339,13 @@ local function tb_ricochet_ensure_spawn_data()
 	tb_ricochet_spawn_true_flight_template_id = TrueFlightTemplates[weapon_action.true_flight_template].lookup_id
 end
 
--- Give the spawned trueflight arrow the original bouncing arrow's own damage_profile/aoe instead of the career
--- skill's fixed "arrow_sniper_trueflight" (no aoe) - so e.g. a Hagbane charged shot's poison explosion
--- (impact_data.aoe/aoe_on_bounce, shortbows_hagbane.lua) carries over onto the converted arrow too, while
--- weapons with no aoe simply carry over nil, a no-op. spawn_true_flight_projectile has no impact_data override
--- parameter - the profile is resolved purely from (item_template_name, action_name, sub_action_name) inside
--- PlayerProjectileUnitExtension.init, as a direct reference to the shared static weapon_template table
--- (player_projectile_unit_extension.lua:74,88 - impact_data = current_action.impact_data, no clone). Mutating
--- that shared table would corrupt every future use of the career skill for the rest of the session.
---
--- Instead this scopes the override to just this one spawn via a flag set immediately before the spawn call
--- (cleared right after - spawning is synchronous, so no other unit's init can interleave) and hooks
--- initialize_projectile (called from inside init, right after init already cached the shared impact_data onto
--- self._impact_data/self._impact_damage_profile_id at lines 88-92) to swap in a fresh per-instance copy before
--- initialize_projectile computes self._max_mass from it (lines 139-146) - patching only after init finishes
--- (e.g. via hook_safe on init) would be too late for that cleave/max-targets calculation, only fixing the
--- damage numbers applied at hit time and not how many targets the arrow can punch through.
+-- Give the spawned trueflight arrow the original bouncing arrow's own damage_profile/aoe (hagbane explosion)
+-- Mutating shared table would corrupt every future use of the career skill for the rest of the session.
 local tb_ricochet_impact_data_override
 
 mod:hook(PlayerProjectileUnitExtension, "initialize_projectile", function (func, self, projectile_info, impact_data)
 	if tb_ricochet_impact_data_override and impact_data then
+		self._tb_ricochet_converted = true
 		impact_data = table.shallow_copy(impact_data)
 
 		for key, value in pairs(tb_ricochet_impact_data_override) do
@@ -382,15 +359,22 @@ mod:hook(PlayerProjectileUnitExtension, "initialize_projectile", function (func,
 	func(self, projectile_info, impact_data)
 end)
 
+-- Marks the spawned arrow as ricochet-converted 
+local tb_ricochet_last_hit_was_converted = false
+mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, ...)
+	tb_ricochet_last_hit_was_converted = not not self._tb_ricochet_converted
+
+	func(self, ...)
+
+	tb_ricochet_last_hit_was_converted = false
+end)
+
 mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, level_index, has_ranged_boost, ranged_boost_curve_multiplier)
 	local num_bounces_before = self._num_bounces
 
 	func(self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, level_index, has_ranged_boost, ranged_boost_curve_multiplier)
 
-	-- impact_data.bounce_on_level_units means this projectile bounces natively (e.g. the career skill's own
-	-- arrows, or an arrow this same hook already spawned) - only a regular shot bouncing purely because of the
-	-- Ricochet talent's perk should convert, otherwise each spawned arrow's own bounces would recursively
-	-- convert/spawn more arrows without end.
+	-- impact_data.bounce_on_level_units to prevent career ability bounces (piercing shot) to spawn converted arrow
 	if not self._is_server or impact_data.bounce_on_level_units or self._num_bounces <= num_bounces_before then
 		return
 	end
@@ -427,19 +411,20 @@ mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, 
 		aoe_on_bounce = impact_data.aoe_on_bounce,
 	}
 
-	-- Stops this now-doomed unit from processing any further impacts still queued in this frame's batch (e.g.
-	-- simultaneous hits) before mark_for_deletion actually removes it next tick - handle_impacts checks this
-	-- flag between each impact in a batch (player_projectile_unit_extension.lua ~445), so without it a second
-	-- impact this same frame could reach this code again and spawn a second trueflight arrow.
+	-- Prevent spawning second trueflight arrow.
 	self._stop_impacts = true
 
 	Managers.state.unit_spawner:mark_for_deletion(self._projectile_unit)
 
+	local owner_buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+	if owner_buff_extension then
+		owner_buff_extension:add_buff("tb_ricochet_true_flight_cooldown_debuff")
+	end
+
 	tb_ricochet_ensure_spawn_data()
 
-	-- pcall guarantees the flag always gets cleared, even if the spawn call errors - otherwise a stuck override
-	-- would silently leak onto the next unrelated projectile spawned anywhere (any player, any weapon) after
-	-- this one, since the flag is a single shared module-level variable, not scoped to this specific unit.
+	-- pcall guarantees the flag always gets cleared, even if the spawn call errors
 	tb_ricochet_impact_data_override = impact_data_override
 
 	local success, err = pcall(ActionUtils.spawn_true_flight_projectile, owner_unit, target_unit, tb_ricochet_spawn_true_flight_template_id, bounce_pos, rotation, angle, bounce_dir, tb_ricochet_spawn_speed, TB_RICOCHET_SPAWN_ITEM, TB_RICOCHET_SPAWN_ITEM, TB_RICOCHET_SPAWN_ACTION, TB_RICOCHET_SPAWN_SUB_ACTION, scale, is_critical_strike, power_level)
@@ -460,7 +445,8 @@ ProcFunctions.kerillian_waywatcher_reduce_activated_ability_cooldown = function 
         local hit_zone = params[3]
         local buff_type = params[5]
 
-        if buff_type == "RANGED_ABILITY" and (hit_zone == "head" or hit_zone == "neck" or hit_zone == "weakspot") then
+        -- Prevent ricochete refunding Piercing Shot.
+        if buff_type == "RANGED_ABILITY" and (hit_zone == "head" or hit_zone == "neck" or hit_zone == "weakspot") and not tb_ricochet_last_hit_was_converted then
             local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 
             career_extension:reduce_activated_ability_cooldown_percent(buff.multiplier)
