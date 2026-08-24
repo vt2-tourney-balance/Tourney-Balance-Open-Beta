@@ -324,14 +324,11 @@ local TB_RICOCHET_RANGED_ATTACK_TYPES = {
 	projectile = true,
 	heavy_instant_projectile = true,
 }
--- Set from the hit_enemy hook further below (impact_data.aoe, only ever set on Hagbane's charged shot among Kerillian's arrows),
--- synchronously readable here since this proc fires from inside that same call.
-local tb_ricochet_last_hit_had_explosion = false
 
 mod_api.insert_proc_function("tb_ricochet_reduce_activated_ability_cooldown", function (owner_unit, buff, params)
 	local attack_type = params[2]
 	local target_number = params[4]
-	local is_ranged_direct_hit = target_number == 1 and TB_RICOCHET_RANGED_ATTACK_TYPES[attack_type] and not tb_ricochet_last_hit_had_explosion
+	local is_ranged_direct_hit = target_number == 1 and TB_RICOCHET_RANGED_ATTACK_TYPES[attack_type]
 
 	if is_ranged_direct_hit then
 		local owner_buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
@@ -360,10 +357,8 @@ mod_api.insert_buff_template("tb_ricochet_charged_shot_ready", {
 	icon = "kerillian_waywatcher_projectile_ricochet",
 })
 
--- Shared by every charge-phase class is called every frame past the 1s threshold - refresh_durations above
--- means this keeps the same buff alive (and the bar icon visible) for as long as the player keeps holding,
--- while the popup itself still only plays once per continuous hold.
-local function tb_ricochet_maybe_show_charged_popup(self, t)
+-- Show popup buff and buff icon when trueflight is ready
+local function tb_ricochet_show_charged_popup(self, t)
 	if not self._tb_charge_start_t or t - self._tb_charge_start_t < TB_RICOCHET_HOLD_TIME_REQUIRED then
 		return
 	end
@@ -386,11 +381,9 @@ mod:hook_safe(ActionAim, "client_owner_start_action", function (self, new_action
 	self._tb_charge_start_t = t
 end)
 mod:hook_safe(ActionAim, "client_owner_post_update", function (self, dt, t, world, can_damage)
-	tb_ricochet_maybe_show_charged_popup(self, t)
+	tb_ricochet_show_charged_popup(self, t)
 end)
--- finish()'s return value becomes chain_action_data for the next chained action (ActionBow.client_owner_start_action
--- below) - this is how the base game itself threads charge_level between ActionAim and its follow-up action.
--- ActionAim.finish currently returns nothing, so replacing that with our own table is safe.
+-- Longbow/Hagbane/Swiftbow
 mod:hook(ActionAim, "finish", function (func, self, reason)
 	func(self, reason)
 
@@ -429,7 +422,7 @@ mod:hook_safe(ActionMeleeStart, "client_owner_start_action", function (self, new
 	self._tb_charge_start_t = t
 end)
 mod:hook_safe(ActionMeleeStart, "client_owner_post_update", function (self, dt, t, world)
-	tb_ricochet_maybe_show_charged_popup(self, t)
+	tb_ricochet_show_charged_popup(self, t)
 end)
 mod:hook(ActionMeleeStart, "finish", function (func, self, reason, data)
 	func(self, reason, data)
@@ -449,11 +442,8 @@ mod:hook(ActionThrownProjectile, "_fire", function (func, self, add_spread)
 	tb_ricochet_pending_held_1s = false
 end)
 
--- On first ricochet bounce of projectile, convert it into Trueshot Volley (true-flight/homing) arrow: despawn
--- the original (now-bounced, non-homing) projectile and spawn a trueflight one in its place, at the same point
--- and heading in the same post-bounce direction. item_name/item_template_name point at the career skill's own
--- weapon so the spawned arrow gets its homing/impact behavior, independent of whichever physical bow is
--- actually equipped.
+-- On first ricochet bounce of projectile, convert it into Trueshot Volley (true-flight/homing) arrow:
+-- Despawn the original (now-bounced, non-homing) projectile and spawn a trueflight one in its place
 local TB_RICOCHET_SPAWN_ITEM = "kerillian_waywatcher_career_skill_weapon"
 local TB_RICOCHET_SPAWN_ACTION = "action_career_release"
 local TB_RICOCHET_SPAWN_SUB_ACTION = "default"
@@ -495,7 +485,6 @@ end)
 local tb_ricochet_last_hit_was_converted = false
 mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impact_data, ...)
 	tb_ricochet_last_hit_was_converted = not not self._tb_ricochet_converted
-	tb_ricochet_last_hit_had_explosion = not not impact_data.aoe
 
 	-- Prevent further ricochets after cleaving enemy
 	if not impact_data.bounce_on_level_units then
@@ -505,7 +494,6 @@ mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impac
 	func(self, impact_data, ...)
 
 	tb_ricochet_last_hit_was_converted = false
-	tb_ricochet_last_hit_had_explosion = false
 end)
 
 mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, level_index, has_ranged_boost, ranged_boost_curve_multiplier)
