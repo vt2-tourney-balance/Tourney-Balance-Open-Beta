@@ -30,7 +30,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Ricochet**
 		- On its first ricochet, the bounced projectile becomes homing like Trueshot Volley arrows.
-		- Doing so applies a refreshing debuff: -100% ability cooldown regeneration for 5s.
+		- Refreshing debuff: -160% ability cooldown regeneration for 10s.
 
 		**Piercing Shot**
 		- Cooldown refund when headshotting enemy works when piercing through team mate first.
@@ -304,17 +304,46 @@ mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", 
 --[[
 	Richochet
 ]]
-mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Kerillian's arrows now ricochet, bouncing up to 3 times or until it hits an enemy. Ricochet grants projectiles true-flight at the cost of cooldown degeneration for 5 seconds.")
+mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Kerillian's arrows now ricochet, bouncing up to 3 times or until it hits an enemy. Ricocheted projectiles gain true-flight, but drain 20.0%% cooldown over 10 seconds.")
 
 -- Cooldown regeneration debuff
 mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
 	stat_buff = "cooldown_regen",
-	multiplier = -2,
-	duration = 5,
+	multiplier = -1.6,
+	duration = 10,
 	max_stacks = 1,
 	refresh_durations = true,
 	debuff = true,
 	icon = "kerillian_waywatcher_projectile_ricochet",
+})
+
+-- While under ricochet debuff, Waystalker generates no ult from ranged attacks
+local TB_RICOCHET_RANGED_ATTACK_TYPES = {
+	instant_projectile = true,
+	projectile = true,
+	heavy_instant_projectile = true,
+}
+-- Set from the hit_enemy hook further below (impact_data.aoe, only ever set on Hagbane's charged shot among Kerillian's arrows),
+-- synchronously readable here since this proc fires from inside that same call.
+local tb_ricochet_last_hit_had_explosion = false
+
+mod_api.insert_proc_function("tb_ricochet_reduce_activated_ability_cooldown", function (owner_unit, buff, params)
+	local attack_type = params[2]
+	local target_number = params[4]
+	local is_ranged_direct_hit = target_number == 1 and TB_RICOCHET_RANGED_ATTACK_TYPES[attack_type] and not tb_ricochet_last_hit_had_explosion
+
+	if is_ranged_direct_hit then
+		local owner_buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+		if owner_buff_extension and owner_buff_extension:has_buff_type("tb_ricochet_true_flight_cooldown_debuff") then
+			return
+		end
+	end
+
+	return ProcFunctions.reduce_activated_ability_cooldown(owner_unit, buff, params)
+end)
+mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_ability_cooldown_on_hit", {
+	buff_func = "tb_ricochet_reduce_activated_ability_cooldown",
 })
 
 -- On first ricochet bounce of projectile, convert it into Trueshot Volley (true-flight/homing) arrow: despawn
@@ -359,14 +388,21 @@ mod:hook(PlayerProjectileUnitExtension, "initialize_projectile", function (func,
 	func(self, projectile_info, impact_data)
 end)
 
--- Marks the spawned arrow as ricochet-converted 
+-- Marks the spawned arrow as ricochet-converted
 local tb_ricochet_last_hit_was_converted = false
-mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, ...)
+mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impact_data, ...)
 	tb_ricochet_last_hit_was_converted = not not self._tb_ricochet_converted
+	tb_ricochet_last_hit_had_explosion = not not impact_data.aoe
 
-	func(self, ...)
+	-- Prevent further ricochets after cleaving enemy
+	if not impact_data.bounce_on_level_units then
+		self._num_bounces = math.huge
+	end
+
+	func(self, impact_data, ...)
 
 	tb_ricochet_last_hit_was_converted = false
+	tb_ricochet_last_hit_had_explosion = false
 end)
 
 mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, level_index, has_ranged_boost, ranged_boost_curve_multiplier)
@@ -388,6 +424,14 @@ mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, 
 	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
 
 	if not talent_extension or not talent_extension:has_talent("kerillian_waywatcher_projectile_ricochet") then
+		return
+	end
+
+	-- Don't grant trueflight/debuff, if ability bar is below X% charged
+	local career_extension = ScriptUnit.extension(owner_unit, "career_system")
+	local ability_bar_fill = 1 - career_extension:current_ability_cooldown_percentage(1)
+
+	if ability_bar_fill < 0.2 then
 		return
 	end
 
