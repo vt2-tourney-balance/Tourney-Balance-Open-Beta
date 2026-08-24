@@ -132,19 +132,6 @@ DamageProfileTemplates.arrow_sniper_trueflight = {
     },
 	max_friendly_damage = 0 -- Added
 }
--- Fix consuming Bloodshot on Ult
-mod_api.insert_proc_function("kerillian_waywatcher_consume_extra_shot_buff", function (player, buff, params)
-    local is_career_skill = params[5]
-    local should_consume_shot = nil
-
-    if is_career_skill == "RANGED_ABILITY" or is_career_skill == nil then
-        should_consume_shot = false
-    else
-        should_consume_shot = true
-    end
-
-    return should_consume_shot
-end)
 
 --[[
 
@@ -305,32 +292,15 @@ mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", 
 --[[
 	Richochet
 ]]
-mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Fully charging for 1 second imbues ricochets with trueflight, but drains 20.0%% cooldown over 10 seconds.")
-
--- Cooldown regeneration debuff extend duration
-local function tb_ricochet_cooldown_duration_modifier(unit, sub_buff_template, duration, buff_extension, params)
-	local existing_buff = buff_extension:get_buff_type(sub_buff_template.name)
-
-	if existing_buff then
-		local now = Managers.time:time("game")
-		local end_time = existing_buff.duration and existing_buff.start_time + existing_buff.duration
-		local remaining = end_time and math.max(end_time - now, 0) or 0
-
-		return duration + remaining
-	end
-
-	return duration
-end
+mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Staying at full charge for 1 second imbues trueflight to ricochets, but drains 20.0%% cooldown over 10 seconds.")
 
 mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
 	stat_buff = "cooldown_regen",
 	multiplier = -1.6,
 	duration = 10,
-	max_stacks = 1,
-	refresh_durations = true,
+	max_stacks = 99,
 	debuff = true,
 	icon = "kerillian_waywatcher_projectile_ricochet",
-	duration_modifier_func = tb_ricochet_cooldown_duration_modifier,
 })
 
 -- Ricochet conversion additionally requires the shot to have been held (charged) for >= 1 real second before firing.
