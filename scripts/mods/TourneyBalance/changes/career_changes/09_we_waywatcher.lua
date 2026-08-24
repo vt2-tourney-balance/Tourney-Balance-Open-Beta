@@ -307,7 +307,21 @@ mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", 
 ]]
 mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Fully charging for 1 second imbues ricochets with trueflight, but drains 20.0%% cooldown over 10 seconds.")
 
--- Cooldown regeneration debuff
+-- Cooldown regeneration debuff extend duration
+local function tb_ricochet_cooldown_duration_modifier(unit, sub_buff_template, duration, buff_extension, params)
+	local existing_buff = buff_extension:get_buff_type(sub_buff_template.name)
+
+	if existing_buff then
+		local now = Managers.time:time("game")
+		local end_time = existing_buff.duration and existing_buff.start_time + existing_buff.duration
+		local remaining = end_time and math.max(end_time - now, 0) or 0
+
+		return duration + remaining
+	end
+
+	return duration
+end
+
 mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
 	stat_buff = "cooldown_regen",
 	multiplier = -1.6,
@@ -316,32 +330,7 @@ mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
 	refresh_durations = true,
 	debuff = true,
 	icon = "kerillian_waywatcher_projectile_ricochet",
-})
-
--- While under ricochet debuff, Waystalker generates no ult from ranged attacks
-local TB_RICOCHET_RANGED_ATTACK_TYPES = {
-	instant_projectile = true,
-	projectile = true,
-	heavy_instant_projectile = true,
-}
-
-mod_api.insert_proc_function("tb_ricochet_reduce_activated_ability_cooldown", function (owner_unit, buff, params)
-	local attack_type = params[2]
-	local target_number = params[4]
-	local is_ranged_direct_hit = target_number == 1 and TB_RICOCHET_RANGED_ATTACK_TYPES[attack_type]
-
-	if is_ranged_direct_hit then
-		local owner_buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
-
-		if owner_buff_extension and owner_buff_extension:has_buff_type("tb_ricochet_true_flight_cooldown_debuff") then
-			return
-		end
-	end
-
-	return ProcFunctions.reduce_activated_ability_cooldown(owner_unit, buff, params)
-end)
-mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_ability_cooldown_on_hit", {
-	buff_func = "tb_ricochet_reduce_activated_ability_cooldown",
+	duration_modifier_func = tb_ricochet_cooldown_duration_modifier,
 })
 
 -- Ricochet conversion additionally requires the shot to have been held (charged) for >= 1 real second before firing.
