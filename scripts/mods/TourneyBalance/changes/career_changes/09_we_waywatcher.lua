@@ -29,8 +29,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Additionally allows Kerillian to pass through enemies for 10s.
 
 		**Ricochet**
-		- On its first ricochet, the bounced projectile becomes homing like Trueshot Volley arrows.
-		- Refreshing debuff: -160% ability cooldown regeneration for 10s.
+		- Fully charging for 1 second grants ricochet projectiles true-flight.
+		- Applying true-flight costs 20% ult cooldown drained over 10 seconds.
+		- Fixed ricocheting after enemy cleave.
 
 		**Piercing Shot**
 		- Cooldown refund when headshotting enemy works when piercing through team mate first.
@@ -304,7 +305,7 @@ mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", 
 --[[
 	Richochet
 ]]
-mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Kerillian's arrows now ricochet, bouncing up to 3 times or until it hits an enemy. Ricocheted projectiles gain true-flight, but drain 20.0%% cooldown over 10 seconds.")
+mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Fully charging for 1 second imbues ricochets with trueflight, but drains 20.0%% cooldown over 10 seconds.")
 
 -- Cooldown regeneration debuff
 mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
@@ -345,6 +346,108 @@ end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_ability_cooldown_on_hit", {
 	buff_func = "tb_ricochet_reduce_activated_ability_cooldown",
 })
+
+-- Ricochet conversion additionally requires the shot to have been held (charged) for >= 1 real second before firing.
+local TB_RICOCHET_HOLD_TIME_REQUIRED = 1
+local tb_ricochet_pending_held_1s = false
+
+-- Center-screen popup + persistent icon while trueflight is imbued
+mod_api.insert_buff_template("tb_ricochet_charged_shot_ready", {
+	max_stacks = 1,
+	duration = 0.5,
+	refresh_durations = true,
+	priority_buff = true,
+	icon = "kerillian_waywatcher_projectile_ricochet",
+})
+
+-- Shared by every charge-phase class is called every frame past the 1s threshold - refresh_durations above
+-- means this keeps the same buff alive (and the bar icon visible) for as long as the player keeps holding,
+-- while the popup itself still only plays once per continuous hold.
+local function tb_ricochet_maybe_show_charged_popup(self, t)
+	if not self._tb_charge_start_t or t - self._tb_charge_start_t < TB_RICOCHET_HOLD_TIME_REQUIRED then
+		return
+	end
+
+	local owner_unit = self.owner_unit
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+	if not talent_extension or not talent_extension:has_talent("kerillian_waywatcher_projectile_ricochet") then
+		return
+	end
+
+	local owner_buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+	if owner_buff_extension then
+		owner_buff_extension:add_buff("tb_ricochet_charged_shot_ready")
+	end
+end
+
+mod:hook_safe(ActionAim, "client_owner_start_action", function (self, new_action, t)
+	self._tb_charge_start_t = t
+end)
+mod:hook_safe(ActionAim, "client_owner_post_update", function (self, dt, t, world, can_damage)
+	tb_ricochet_maybe_show_charged_popup(self, t)
+end)
+-- finish()'s return value becomes chain_action_data for the next chained action (ActionBow.client_owner_start_action
+-- below) - this is how the base game itself threads charge_level between ActionAim and its follow-up action.
+-- ActionAim.finish currently returns nothing, so replacing that with our own table is safe.
+mod:hook(ActionAim, "finish", function (func, self, reason)
+	func(self, reason)
+
+	return {
+		_tb_charge_start_t = self._tb_charge_start_t,
+	}
+end)
+mod:hook_safe(ActionBow, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level, action_init_data)
+	self._tb_ricochet_held_1s = not not (chain_action_data and chain_action_data._tb_charge_start_t and (t - chain_action_data._tb_charge_start_t) >= TB_RICOCHET_HOLD_TIME_REQUIRED)
+end)
+mod:hook(ActionBow, "fire", function (func, self, current_action, add_spread)
+	tb_ricochet_pending_held_1s = self._tb_ricochet_held_1s or false
+
+	func(self, current_action, add_spread)
+
+	tb_ricochet_pending_held_1s = false
+end)
+mod:hook_safe(PlayerProjectileUnitExtension, "init", function (self, extension_init_context, unit, extension_init_data)
+	self._tb_ricochet_held_1s = tb_ricochet_pending_held_1s
+end)
+
+-- Moonfire Bow
+mod:hook(ActionAimEnergy, "finish", function (func, self, reason)
+	func(self, reason)
+
+	return {
+		_tb_charge_start_t = self._tb_charge_start_t,
+	}
+end)
+mod:hook_safe(ActionBowEnergy, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level, action_init_data)
+	self._tb_ricochet_held_1s = not not (chain_action_data and chain_action_data._tb_charge_start_t and (t - chain_action_data._tb_charge_start_t) >= TB_RICOCHET_HOLD_TIME_REQUIRED)
+end)
+
+-- Javelin
+mod:hook_safe(ActionMeleeStart, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level, action_init_data)
+	self._tb_charge_start_t = t
+end)
+mod:hook_safe(ActionMeleeStart, "client_owner_post_update", function (self, dt, t, world)
+	tb_ricochet_maybe_show_charged_popup(self, t)
+end)
+mod:hook(ActionMeleeStart, "finish", function (func, self, reason, data)
+	func(self, reason, data)
+
+	return {
+		_tb_charge_start_t = self._tb_charge_start_t,
+	}
+end)
+mod:hook_safe(ActionThrownProjectile, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level)
+	self._tb_ricochet_held_1s = not not (chain_action_data and chain_action_data._tb_charge_start_t and (t - chain_action_data._tb_charge_start_t) >= TB_RICOCHET_HOLD_TIME_REQUIRED)
+end)
+mod:hook(ActionThrownProjectile, "_fire", function (func, self, add_spread)
+	tb_ricochet_pending_held_1s = self._tb_ricochet_held_1s or false
+
+	func(self, add_spread)
+
+	tb_ricochet_pending_held_1s = false
+end)
 
 -- On first ricochet bounce of projectile, convert it into Trueshot Volley (true-flight/homing) arrow: despawn
 -- the original (now-bounced, non-homing) projectile and spawn a trueflight one in its place, at the same point
@@ -415,6 +518,11 @@ mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, 
 		return
 	end
 
+	-- Only a shot held (charged) for >= 1s is eligible to convert - see the ActionAim/ActionBow hooks above.
+	if not self._tb_ricochet_held_1s then
+		return
+	end
+
 	local owner_unit = self._owner_unit
 
 	if not owner_unit or not ALIVE[owner_unit] then
@@ -427,7 +535,7 @@ mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, 
 		return
 	end
 
-	-- Don't grant trueflight/debuff, if ability bar is below X% charged
+	-- True-flight imbue requires at least 20% ult cd
 	local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 	local ability_bar_fill = 1 - career_extension:current_ability_cooldown_percentage(1)
 
