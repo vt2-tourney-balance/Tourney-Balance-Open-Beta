@@ -9,6 +9,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Damage cleave buff.
 		- Prioritizes specials now.
 		- Does not consume Bloodshot anymore.
+		- Conservative Shooter trait can proc limited to 1 ammo per arrow.
 
 		### Passives
 		**Amaranthe**
@@ -132,6 +133,59 @@ DamageProfileTemplates.arrow_sniper_trueflight = {
     },
 	max_friendly_damage = 0 -- Added
 }
+
+-- Add Conservative Shooter to Trueshot Volley/Piercing Shot
+local TB_CONSERVATIVE_SHOOTER_ULT_ITEMS = {
+	kerillian_waywatcher_career_skill_weapon = true,
+	kerillian_waywatcher_career_skill_weapon_piercing_shot = true,
+}
+
+local function tb_conservative_shooter_has_trait(owner_unit)
+	local inventory_extension = ScriptUnit.has_extension(owner_unit, "inventory_system")
+	local slot_data = inventory_extension and inventory_extension:get_slot_data("slot_ranged")
+	local backend_id = slot_data and slot_data.item_data and slot_data.item_data.backend_id
+	local backend_item = backend_id and Managers.backend:get_interface("items"):get_item_from_id(backend_id)
+	local traits = backend_item and backend_item.traits
+
+	return not not (traits and table.find(traits, "ranged_replenish_ammo_headshot"))
+end
+
+local function tb_conservative_shooter_grant_ult_ammo(self, owner_unit, hit_unit, hit_actor)
+	if self._tb_conservative_shooter_ammo_granted or not TB_CONSERVATIVE_SHOOTER_ULT_ITEMS[self.item_name] then
+		return
+	end
+
+	local has_trait = tb_conservative_shooter_has_trait(owner_unit)
+
+	if not has_trait then
+		return
+	end
+
+	local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")
+	local career_name = career_extension and career_extension:career_name()
+
+	if career_name ~= "we_waywatcher" then
+		return
+	end
+
+	local breed = AiUtils.unit_breed(hit_unit)
+	local hit_zone = breed and breed.hit_zones_lookup[Actor.node(hit_actor)]
+	local hit_zone_name = hit_zone and hit_zone.name
+
+	if hit_zone_name ~= "head" then
+		return
+	end
+
+	local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
+	local slot_data = inventory_extension:get_slot_data("slot_ranged")
+	local ammo_extension = GearUtils.get_ammo_extension(slot_data.right_unit_1p, slot_data.left_unit_1p)
+
+	if ammo_extension then
+		ammo_extension:add_ammo_to_reserve(1)
+	end
+
+	self._tb_conservative_shooter_ammo_granted = true
+end
 
 --[[
 
@@ -442,7 +496,7 @@ end)
 
 -- Marks the spawned arrow as ricochet-converted
 local tb_ricochet_last_hit_was_converted = false
-mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impact_data, ...)
+mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, breed, has_ranged_boost, ranged_boost_curve_multiplier)
 	tb_ricochet_last_hit_was_converted = not not self._tb_ricochet_converted
 
 	-- Prevent further ricochets after cleaving enemy
@@ -450,7 +504,13 @@ mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impac
 		self._num_bounces = math.huge
 	end
 
-	func(self, impact_data, ...)
+	local owner_unit = self._owner_unit
+
+	if owner_unit and ALIVE[owner_unit] and HEALTH_ALIVE[hit_unit] then
+		tb_conservative_shooter_grant_ult_ammo(self, owner_unit, hit_unit, hit_actor)
+	end
+
+	func(self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, breed, has_ranged_boost, ranged_boost_curve_multiplier)
 
 	tb_ricochet_last_hit_was_converted = false
 end)
@@ -582,3 +642,5 @@ mod_api.update_talent("we_waywatcher", 6, 3, {
 		},
 	},
 })
+
+
