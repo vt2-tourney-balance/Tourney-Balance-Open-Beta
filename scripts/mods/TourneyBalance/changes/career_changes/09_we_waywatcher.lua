@@ -13,18 +13,18 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		### Passives
 		**Amaranthe**
-		- Additionally regen 1 ammo every tick.
+		- Additionally regen 3 ammo while below 50% ammo every tick.
 		- Heath regen no longer replaces temp health.
 
 		### Talents
 		**Drakira's Alacrity**
-		- Increased attack speed to 20% (from 15%) and duration to 10s (from 5s).
+		- Increased duration to 10s (from 5s).
 
 		**Isha's Embrace**
 		- Increased health regen bonus to 100% (from 50%) and health regen cap to 100% max health.
-		- No longer grants Amaranthe's ammo regen.
+
 		**Spirit Arrows**
-		- Additionally increases Amaranthes ammo regen by 1 ammo regen per tick (to total of 2 ammo per tick).
+		- Increased cooldown reduction to 10% (from 5%).
 
 		**Fervent Huntress**
 		- Additionally allows Kerillian to pass through enemies for 10s.
@@ -198,9 +198,9 @@ end
 	Spirit Arrows
 	Rejuvenating Locus
 ]]
-mod_api.insert_text("career_passive_desc_we_3a_2", "Kerillian regenerates 3 health when below 50.0% health and 1 ammo every 10 seconds. This does not replace temp health.")
-mod_api.insert_text("kerillian_waywatcher_improved_regen_desc_2", "Increases Kerillian's health regenerated from Amaranthe by 100%%. Health regeneration caps at 100%%. No longer restores ammo.")
-mod_api.insert_text("kerillian_waywatcher_passive_cooldown_restore_desc", "Amaranthe reduces the cooldown of Trueflight Volley by 5.0%% and restores 1 additional ammo every tick. No longer restores health.")
+mod_api.insert_text("career_passive_desc_we_3a_2", "Kerillian regenerates 3 health/ammo when below 50.0% health/ammo every 10 seconds. This does not replace temp health.")
+mod_api.insert_text("kerillian_waywatcher_improved_regen_desc_2", "Increases Kerillian's health regenerated from Amaranthe by 100%%. Health regeneration caps at 100%%.")
+mod_api.insert_text("kerillian_waywatcher_passive_cooldown_restore_desc", "Amaranthe reduces the cooldown of Trueflight Volley by 10.0%%. No longer restores health.")
 mod_api.insert_buff_function("update_kerillian_waywatcher_regen", function (unit, buff, params)
     local t = params.t
     local buff_template = buff.template
@@ -216,32 +216,27 @@ mod_api.insert_buff_function("update_kerillian_waywatcher_regen", function (unit
 		
         local cooldown_talent = talent_extension:has_talent("kerillian_waywatcher_passive_cooldown_restore", "wood_elf", true)
 		if cooldown_talent then
-			local cooldown_reduction = 0.05
+			local cooldown_reduction = 0.1
 			local career_extension = ScriptUnit.extension(unit, "career_system")
 
 			career_extension:reduce_activated_ability_cooldown_percent(cooldown_reduction)
 		end
 
-		-- Ammo Regen (if not Isha's Embrace)
-		if not talent_extension:has_talent("kerillian_waywatcher_improved_regen", "wood_elf", true) then
-			local weapon_slot = "slot_ranged"
-			local inventory_extension = ScriptUnit.extension(unit, "inventory_system")
-			local slot_data = inventory_extension:get_slot_data(weapon_slot)
+		-- Passive Ammo Regen
+		local weapon_slot = "slot_ranged"
+		local inventory_extension = ScriptUnit.extension(unit, "inventory_system")
+		local slot_data = inventory_extension:get_slot_data(weapon_slot)
 
-			if slot_data then
-				local right_unit_1p = slot_data.right_unit_1p
-				local left_unit_1p = slot_data.left_unit_1p
-				local right_hand_ammo_extension = ScriptUnit.has_extension(right_unit_1p, "ammo_system")
-				local left_hand_ammo_extension = ScriptUnit.has_extension(left_unit_1p, "ammo_system")
-				local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
+		if slot_data then
+			local right_unit_1p = slot_data.right_unit_1p
+			local left_unit_1p = slot_data.left_unit_1p
+			local right_hand_ammo_extension = ScriptUnit.has_extension(right_unit_1p, "ammo_system")
+			local left_hand_ammo_extension = ScriptUnit.has_extension(left_unit_1p, "ammo_system")
+			local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
 
-				if ammo_extension then
-					local ammo_amount = 1
-					if cooldown_talent then
-						ammo_amount = ammo_amount + 1
-					end
-					ammo_extension:add_ammo_to_reserve(ammo_amount)
-				end
+			if ammo_extension and ammo_extension:total_ammo_fraction() < regen_cap then
+				local ammo_amount = 3
+				ammo_extension:add_ammo_to_reserve(ammo_amount)
 			end
 		end
 
@@ -271,7 +266,8 @@ mod_api.insert_buff_function("update_kerillian_waywatcher_regen", function (unit
                             local health_extension = ScriptUnit.extension(player_and_bot_units[i], "health_system")
                             local status_extension = ScriptUnit.extension(player_and_bot_units[i], "status_system")
 
-                            if health_extension:current_permanent_health_percent() <= regen_cap and not status_extension:is_knocked_down() and not status_extension:is_assisted_respawning() and health_extension:is_alive() then
+							-- Corrected <= to < check.
+                            if health_extension:current_permanent_health_percent() < regen_cap and not status_extension:is_knocked_down() and not status_extension:is_assisted_respawning() and health_extension:is_alive() then
 								-- Give THP first so it doesn't grant GHP + THP resulting in double regen
 								DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "heal_from_proc")
 								DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "career_passive")
@@ -300,13 +296,13 @@ end)
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_attack_speed_on_ranged_headshot_buff", {
     duration = 10, -- 5
-	multiplier = 0.20 -- 0.15
+	multiplier = 0.15
 })
 mod_api.update_talent("we_waywatcher", 2, 3, {
     description_values = {
         {
             value_type = "baked_percent",
-            value = 1.20 -- 1.15
+            value = 1.15
         },
         {
             value = 10 -- 5

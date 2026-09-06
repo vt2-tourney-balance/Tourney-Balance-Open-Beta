@@ -8,14 +8,8 @@ local stagger_types = require("scripts/utils/stagger_types")
 		---
 		## Stagger Talents
 		### Careers
-		**Mercenary**
-		- Replaced Mainstay with Assassin.
-
 		**Huntsman**
 		- Replaced Bulwark with Assassin.
-
-		**Slayer**
-		- Replaced Smiter with Assassin.
 
 		**Waystalker**
 		- Replaced Mainstay with Smiter.
@@ -25,12 +19,6 @@ local stagger_types = require("scripts/utils/stagger_types")
 
 		**Witch Hunter Captain**
 		- Replaced Mainstay with Smiter.
-
-		**Zealot**
-		- Replaced Mainstay with Assassin.
-
-		**Pyromancer**
-		- Replaced Mainstay with Assassin.
 
 		### Talents
 		**Assassin**
