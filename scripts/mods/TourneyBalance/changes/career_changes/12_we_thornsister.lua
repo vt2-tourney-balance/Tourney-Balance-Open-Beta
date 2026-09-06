@@ -128,9 +128,31 @@ mod_api.insert_proc_function("tb_thorn_sister_remove_crit_stack_on_first_hit", f
 
 	return ProcFunctions.remove_ref_buff_stack_woods(owner_unit, buff, params)
 end)
-mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_crit_on_any_ability_handler", {
-	event = "on_hit",
-	buff_func = "tb_thorn_sister_remove_crit_stack_on_first_hit",
+-- Deepwood Staff's Lift consumes crit stack
+mod_api.insert_proc_function("tb_thorn_sister_remove_crit_stack_on_lift", function (owner_unit, buff, params)
+	local action_kind = params[1]
+
+	if action_kind ~= "spirit_storm" then
+		return
+	end
+
+	return ProcFunctions.remove_ref_buff_stack_woods(owner_unit, buff, params)
+end)
+mod_api.insert_talent_buff_template("wood_elf", "kerillian_thorn_sister_crit_on_any_ability_handler", {
+	{
+		name = "kerillian_thorn_sister_crit_on_any_ability_handler",
+		buff_func = "tb_thorn_sister_remove_crit_stack_on_first_hit",
+		buff_to_remove = "kerillian_thorn_sister_crit_on_any_ability_buff",
+		event = "on_hit",
+		max_stacks = 1,
+	},
+	{
+		name = "kerillian_thorn_sister_crit_on_any_ability_handler_lift",
+		buff_func = "tb_thorn_sister_remove_crit_stack_on_lift",
+		buff_to_remove = "kerillian_thorn_sister_crit_on_any_ability_buff",
+		event = "on_critical_action",
+		max_stacks = 1,
+	},
 })
 
 --[[

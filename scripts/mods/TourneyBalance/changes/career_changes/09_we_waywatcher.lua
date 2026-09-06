@@ -598,7 +598,7 @@ end)
 	Piercing Shot
 ]]
 -- Fix no refund on headshot through teammate
-ProcFunctions.kerillian_waywatcher_reduce_activated_ability_cooldown = function (owner_unit, buff, params)
+mod_api.insert_proc_function("kerillian_waywatcher_reduce_activated_ability_cooldown", function (owner_unit, buff, params)
     if ALIVE[owner_unit] then
         local hit_zone = params[3]
         local buff_type = params[5]
@@ -610,7 +610,7 @@ ProcFunctions.kerillian_waywatcher_reduce_activated_ability_cooldown = function 
             career_extension:reduce_activated_ability_cooldown_percent(buff.multiplier)
         end
     end
-end
+end)
 
 --[[
 	Loaded Bow
@@ -631,7 +631,7 @@ mod_api.insert_text("kerillian_waywatcher_activated_ability_additional_projectil
 	Kurnous' Reward
 ]]
 -- Fix ricochet-converted trueflight arrows proccing ammo refund on special/elite kill
-ProcFunctions.kerillian_waywatcher_restore_ammo_on_career_skill_special_kill = function (owner_unit, buff, params)
+mod_api.insert_proc_function("kerillian_waywatcher_restore_ammo_on_career_skill_special_kill", function (owner_unit, buff, params)
 	local killing_blow_table = params[1]
 	local killer_unit = killing_blow_table[DamageDataIndex.ATTACKER]
 	local damage_source = killing_blow_table[DamageDataIndex.DAMAGE_SOURCE_NAME]
@@ -670,7 +670,7 @@ ProcFunctions.kerillian_waywatcher_restore_ammo_on_career_skill_special_kill = f
 			energy_extension:add_energy(energy_amount)
 		end
 	end
-end
+end)
 
 mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_activated_ability_restore_ammo_on_career_skill_special_kill", {
 	ammo_bonus_fraction = 0.2, -- 0.3
