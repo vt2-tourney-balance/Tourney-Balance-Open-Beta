@@ -510,9 +510,8 @@ mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impac
 		tb_conservative_shooter_grant_ult_ammo(self, owner_unit, hit_unit, hit_actor)
 	end
 
+	-- Note: intentionally not reset back to false after this call
 	func(self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, breed, has_ranged_boost, ranged_boost_curve_multiplier)
-
-	tb_ricochet_last_hit_was_converted = false
 end)
 
 mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, level_index, has_ranged_boost, ranged_boost_curve_multiplier)
@@ -631,6 +630,48 @@ mod_api.insert_text("kerillian_waywatcher_activated_ability_additional_projectil
 --[[
 	Kurnous' Reward
 ]]
+-- Fix ricochet-converted trueflight arrows proccing ammo refund on special/elite kill
+ProcFunctions.kerillian_waywatcher_restore_ammo_on_career_skill_special_kill = function (owner_unit, buff, params)
+	local killing_blow_table = params[1]
+	local killer_unit = killing_blow_table[DamageDataIndex.ATTACKER]
+	local damage_source = killing_blow_table[DamageDataIndex.DAMAGE_SOURCE_NAME]
+	local breed_data = params[2]
+	local can_trigger
+
+	if breed_data then
+		can_trigger = breed_data.elite or breed_data.special
+	end
+
+	-- Prevent ricochet refunding Kurnous' Reward.
+	if ALIVE[owner_unit] and can_trigger and owner_unit == killer_unit and damage_source == "kerillian_waywatcher_career_skill_weapon" and not tb_ricochet_last_hit_was_converted then
+		local buff_template = buff.template
+		local weapon_slot = "slot_ranged"
+		local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
+		local slot_data = inventory_extension:get_slot_data(weapon_slot)
+		local right_unit_1p = slot_data.right_unit_1p
+		local left_unit_1p = slot_data.left_unit_1p
+		local right_hand_ammo_extension = ScriptUnit.has_extension(right_unit_1p, "ammo_system")
+		local left_hand_ammo_extension = ScriptUnit.has_extension(left_unit_1p, "ammo_system")
+		local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
+		local ammo_bonus_fraction = buff_template.ammo_bonus_fraction
+
+		if ammo_extension then
+			local ammo_amount = math.max(math.round(ammo_extension:max_ammo() * ammo_bonus_fraction), 1)
+
+			ammo_extension:add_ammo_to_reserve(ammo_amount)
+		end
+
+		local energy_extension = ScriptUnit.has_extension(owner_unit, "energy_system")
+
+		if energy_extension then
+			local max_energy = energy_extension:get_max()
+			local energy_amount = ammo_bonus_fraction * max_energy
+
+			energy_extension:add_energy(energy_amount)
+		end
+	end
+end
+
 mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_activated_ability_restore_ammo_on_career_skill_special_kill", {
 	ammo_bonus_fraction = 0.2, -- 0.3
 })
