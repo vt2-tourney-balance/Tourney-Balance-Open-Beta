@@ -10,6 +10,9 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		- Increased hitbox width for non-bleed ult to 5.0 (from 1.5).
 
 		### Passives
+		**Dance of Season**
+		- Added effect: Blocking starts immediately, even mid-attack (the attack animation still plays out).
+
 		**Renewal**
 		- Stam regen aura range increased to 20 (from 5).
 
@@ -35,9 +38,7 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 
 		**Heart of Oak**
 		- Increased health bonus to 20% (from 15%).
-
-		**Birch Stance**
-		- Blocking starts immediately: pressing block now raises the block state instantly, even mid-attack (the attack animation still plays out).
+		- Added 40% increased healing received.
 
 		**Quiver of Plenty**
 		- Increased ammo bonus to 70% (from 40%).
@@ -128,6 +129,67 @@ mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_stamina_regen_aura", {
 	range = 20 -- 5
 })
+
+--[[
+    Dance of Season - the base passive that already grants +15% dodge range/speed, now also with instant block
+]]
+-- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
+-- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
+-- Always active for the career (not tied to a talent pick), matching the other always-on base passives.
+local function tb_instant_block_wielding_blockable_melee(inventory_extension)
+    local equipment = inventory_extension:equipment()
+    local wielded = equipment.wielded
+    local weapon_template_name = wielded and (wielded.template or wielded.temporary_template)
+    local weapon_template = weapon_template_name and WeaponUtils.get_weapon_template(weapon_template_name)
+    local action_two = weapon_template and weapon_template.actions and weapon_template.actions.action_two
+
+    return action_two ~= nil and action_two.default ~= nil and action_two.default.kind == "block"
+end
+
+local function tb_instant_block_set_blocking(unit, status_extension, blocking, t)
+    status_extension:set_blocking(blocking)
+
+    if blocking then
+        status_extension.timed_block = t + 0.5
+    end
+
+    local network_manager = Managers.state.network
+    local game = network_manager:game()
+    local go_id = game and network_manager:unit_game_object_id(unit)
+
+    if go_id then
+        if is_server() then
+            network_manager.network_transmit:send_rpc_clients("rpc_set_blocking", go_id, blocking)
+        else
+            network_manager.network_transmit:send_rpc_server("rpc_set_blocking", go_id, blocking)
+        end
+    end
+end
+
+-- Let the real weapon action system go first every frame, so its own (vanilla) handling of things like
+-- push chaining back into block on continued hold happens completely untouched. Our forced early block
+-- only ever fills the remaining gap: input held, wielding a blockable melee weapon, but the real system still
+-- hasn't (e.g. because it's mid-attack and not yet at a chainable point).
+mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit, input_extension, inventory_extension, health_extension)
+    func(t, unit, input_extension, inventory_extension, health_extension)
+
+    local career_extension = ScriptUnit.has_extension(unit, "career_system")
+
+    if career_extension and career_extension:career_name() == "we_maidenguard" and tb_instant_block_wielding_blockable_melee(inventory_extension) then
+        local status_extension = ScriptUnit.extension(unit, "status_system")
+        local wants_block = input_extension:get("action_two_hold")
+
+        if wants_block and not status_extension.blocking then
+            tb_instant_block_set_blocking(unit, status_extension, true, t)
+
+            status_extension._tb_instant_block_forced_block = true
+        elseif status_extension._tb_instant_block_forced_block and not wants_block then
+            tb_instant_block_set_blocking(unit, status_extension, false, t)
+
+            status_extension._tb_instant_block_forced_block = false
+        end
+    end
+end)
 
 --[[
 
@@ -339,67 +401,20 @@ end
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_max_health", {
 	multiplier = 0.2 -- 0.15
 })
+-- Also grants 40% increased healing received
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_heart_of_oak_healing_received", {
+	stat_buff = "healing_received",
+	multiplier = 0.4,
+})
 mod_api.update_talent("we_maidenguard", 5, 1, {
     description = "kerillian_maidenguard_max_health_desc",
     description_values = {},
+    buffs = {
+        "kerillian_maidenguard_max_health",
+        "tb_kerillian_maidenguard_heart_of_oak_healing_received",
+    },
 })
-mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0%. Blocking starts immediately.")
--- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
--- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
-local function tb_birch_stance_wielding_blockable_melee(inventory_extension)
-    local equipment = inventory_extension:equipment()
-    local wielded = equipment.wielded
-    local weapon_template_name = wielded and (wielded.template or wielded.temporary_template)
-    local weapon_template = weapon_template_name and WeaponUtils.get_weapon_template(weapon_template_name)
-    local action_two = weapon_template and weapon_template.actions and weapon_template.actions.action_two
-
-    return action_two ~= nil and action_two.default ~= nil and action_two.default.kind == "block"
-end
-
-local function tb_birch_stance_set_blocking(unit, status_extension, blocking, t)
-    status_extension:set_blocking(blocking)
-
-    if blocking then
-        status_extension.timed_block = t + 0.5
-    end
-
-    local network_manager = Managers.state.network
-    local game = network_manager:game()
-    local go_id = game and network_manager:unit_game_object_id(unit)
-
-    if go_id then
-        if is_server() then
-            network_manager.network_transmit:send_rpc_clients("rpc_set_blocking", go_id, blocking)
-        else
-            network_manager.network_transmit:send_rpc_server("rpc_set_blocking", go_id, blocking)
-        end
-    end
-end
-
--- Let the real weapon action system go first every frame, so its own (vanilla) handling of things like
--- push chaining back into block on continued hold happens completely untouched. Our forced early block
--- only ever fills the remaining gap: input held, talent's weapon can block, but the real system still
--- hasn't (e.g. because it's mid-attack and not yet at a chainable point).
-mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit, input_extension, inventory_extension, health_extension)
-    func(t, unit, input_extension, inventory_extension, health_extension)
-
-    local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
-
-    if talent_extension and talent_extension:has_talent("kerillian_maidenguard_max_health") and tb_birch_stance_wielding_blockable_melee(inventory_extension) then
-        local status_extension = ScriptUnit.extension(unit, "status_system")
-        local wants_block = input_extension:get("action_two_hold")
-
-        if wants_block and not status_extension.blocking then
-            tb_birch_stance_set_blocking(unit, status_extension, true, t)
-
-            status_extension._tb_birch_stance_forced_block = true
-        elseif status_extension._tb_birch_stance_forced_block and not wants_block then
-            tb_birch_stance_set_blocking(unit, status_extension, false, t)
-
-            status_extension._tb_birch_stance_forced_block = false
-        end
-    end
-end)
+mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0% and healing received by 40.0%.")
 
 --[[
     Birch Stance

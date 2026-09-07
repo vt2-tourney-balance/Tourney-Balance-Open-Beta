@@ -360,6 +360,11 @@ end)
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on_stagger_elite", {
 	buff_func = "buff_on_stagger_enemy"
 })
+mod:modify_talent_buff_template("empire_soldier", "markus_knight_cooldown_buff", {
+	duration = 0.5,
+	multiplier = 1,
+	icon = "markus_knight_improved_passive_defence_aura" -- added icon
+})
 mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Inflicting stagger counts on an elite enemy accelerates the cooldown of nearby allies by 100%% for 0.5 seconds.")
 
 --[[
@@ -367,12 +372,12 @@ mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Inflicting 
 ]]
 -- Invulnerability on ult duration increased to 10s
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_invulnerability_buff", {
-	duration = 6 -- 3
+	duration = 5 -- 3
 })
 mod_api.update_talent("es_knight", 6, 1, {
 	description_values = {
 		{
-			value = 6 -- 3
+			value = 5 -- 3
 		}
 	},
 })
