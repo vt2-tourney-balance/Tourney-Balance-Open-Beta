@@ -30,7 +30,7 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		- Increased stacks gained to 3 (from 2).
 
 		**Dance of Blades**
-		- Dodging starts immediately: dodging can now be canceled into another dodge, or started while airborne (jumping or falling), with real air momentum, not just the visual sidestep.
+		- Dodging starts immediately: dodging can now be canceled into another dodge (1s internal cooldown), or started while airborne (jumping or falling), with real air momentum, not just the visual sidestep.
 		- Increased power to 15% (from 10%) and duration to 6s (from 2s).
 
 		**Heart of Oak**
@@ -251,22 +251,33 @@ local function tb_always_on_ground()
     return true
 end
 
--- Dodging starts immediately: let a dodge input interrupt an in-progress dodge (dodge-cancel)
+local DANCE_OF_BLADES_CANCEL_COOLDOWN = 1
+
+-- Dodging starts immediately: let a dodge input interrupt an in-progress dodge (dodge-cancel), gated by its own
+-- 1s internal cooldown so it can't be chained every frame -- only the cancel-into-a-new-dodge path is gated;
+-- starting a dodge fresh from walking/standing/falling/jumping is untouched.
 mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, input, dt, context, t)
     local talent_extension = ScriptUnit.extension(unit, "talent_system")
     local has_dance_of_blades = talent_extension:has_talent("kerillian_maidenguard_versatile_dodge")
 
     if has_dance_of_blades and not self.csm.state_next then
-        local start_dodge, dodge_direction = CharacterStateHelper.check_to_start_dodge(unit, self.input_extension, self.status_extension, t)
+        local status_extension = self.status_extension
+        local cancel_ready = t >= (status_extension._tb_dance_of_blades_cancel_cd or 0)
 
-        if start_dodge then
-            local params = self.temp_params
+        if cancel_ready then
+            local start_dodge, dodge_direction = CharacterStateHelper.check_to_start_dodge(unit, self.input_extension, status_extension, t)
 
-            params.dodge_direction = dodge_direction
+            if start_dodge then
+                local params = self.temp_params
 
-            self.csm:change_state("dodging", params)
+                params.dodge_direction = dodge_direction
 
-            return
+                status_extension._tb_dance_of_blades_cancel_cd = t + DANCE_OF_BLADES_CANCEL_COOLDOWN
+
+                self.csm:change_state("dodging", params)
+
+                return
+            end
         end
     end
 
@@ -332,18 +343,7 @@ mod_api.update_talent("we_maidenguard", 5, 1, {
     description = "kerillian_maidenguard_max_health_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0%.")
-
-
---[[
-    Birch Stance
-]]
-mod_api.update_talent("we_maidenguard", 5, 2, {
-    description = "kerillian_maidenguard_block_cost_desc",
-    description_values = {},
-})
-mod_api.insert_text("kerillian_maidenguard_block_cost_desc", "Reduces block cost by 30.0%. Blocking starts immediately.")
-
+mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0%. Blocking starts immediately.")
 -- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
 -- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
 local function tb_birch_stance_wielding_blockable_melee(inventory_extension)
@@ -385,7 +385,7 @@ mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit,
 
     local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
 
-    if talent_extension and talent_extension:has_talent("kerillian_maidenguard_block_cost") and tb_birch_stance_wielding_blockable_melee(inventory_extension) then
+    if talent_extension and talent_extension:has_talent("kerillian_maidenguard_max_health") and tb_birch_stance_wielding_blockable_melee(inventory_extension) then
         local status_extension = ScriptUnit.extension(unit, "status_system")
         local wants_block = input_extension:get("action_two_hold")
 
@@ -400,6 +400,15 @@ mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit,
         end
     end
 end)
+
+--[[
+    Birch Stance
+]]
+mod_api.update_talent("we_maidenguard", 5, 2, {
+    description = "kerillian_maidenguard_block_cost_desc",
+    description_values = {},
+})
+mod_api.insert_text("kerillian_maidenguard_block_cost_desc", "Reduces block cost by 30.0%.")
 
 
 --[[

@@ -6,12 +6,11 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Foot Knight
 		### Career Ability
-		- Ultimate cooldown increased to 40s (from 30s).
 		- Baseline ult damage/stagger cleave buffed to 4 (from 2). Exludes wide charge.
 		- Baseline ult on_interrupt_blast.radius buffed to 4 (from 3). Excludes wide charge.
 		
 		### Passives
-		**No Guts, No Glory**
+		**Protective Presence**
 		- Aura radius increased to 20 (from 5).
 		- Aura damage reduction reduced to 10% (from 15%).
 
@@ -23,16 +22,26 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Stagger power decreased to 20% (from 35%).
 
 		**Have At Thee!**
-		- Duration increased to 15s (from 10s).
+		- Now also procs when Mainstay marks an elite with a stagger count, even if the hit doesn't actually stagger it.
 
 		**Crowd Clearer**
 		- Duration increased to 5s (from 3s).
 
+		**Rock of Reikland**
+		- Global team passive
+		- Increased block cost reduction to 30% (from 20%)
+		- Added 30% stamina recovery
+
 		**It's Hero Time**
-		- Cooldown refund reduced to 70% (from 100%).
+		- Added a 30 second internal cooldown on the refund.
+		- No longer refunds if the ultimate is already fully charged.
 		
 		**Inspiring Blow**
 		- Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
+		- Now also procs when Mainstay marks an elite with a stagger count, even if the hit doesn't actually stagger it.
+
+		**Numb to Pain**
+		- Invulnerability duration on ult increased to 10s (from 3s).
 	$END_TB
 ]]
 
@@ -42,7 +51,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 ]]
 -- cooldown increase
-mod_api.update_career_ability_cooldown("es_2", 40)
+-- mod_api.update_career_ability_cooldown("es_2", 40)
 
 -- reuse static tables instead of allocating new ones
 local charge_cleave_distribution_buffed = {
@@ -84,7 +93,7 @@ end)
 
 ]]
 --[[
-	No Guts, No Glory
+	Protective Presence
 ]]
 -- Increase aura range - Repeat for all lvl 20 talents, because game creates snapshot of original values at load time
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive", {
@@ -97,17 +106,66 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive_def
 mod_api.insert_text("career_passive_desc_es_2a_2", "Aura that reduces damage taken by 10%")
 
 --[[
-	Rock of Reikland - Adjustment from Passive
+	Rock of Reikland - global passive
 ]]
-mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive_defence_aura_range", {
-	multiplier = -0.1 -- -0.15
+mod_api.insert_talent_buff_template("empire_soldier", "tb_markus_knight_rock_of_reikland_buff", {
+	{ 
+		name = "tb_markus_knight_rock_of_reikland_buff", 
+		max_stacks = 1, 
+		stat_buff = "block_cost", 
+		multiplier = -0.3 
+	},
+	{ 
+		name = "tb_markus_knight_rock_of_reikland_buff", 
+		max_stacks = 1, 
+		stat_buff = "fatigue_regen", 
+		multiplier = 0.3
+	},
+	{ 
+		name = "tb_markus_knight_rock_of_reikland_buff", 
+		max_stacks = 1, 
+		stat_buff = "damage_taken", 
+		multiplier = -0.1 
+	},
 })
-mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive_range", {
-	buff_to_add = "markus_knight_passive_defence_aura_range",
-	update_func = "activate_buff_on_distance",
-	remove_buff_func = "remove_aura_buff",
-	range = 40 -- 10
+-- Same loop as activate_buff_on_distance (buff_function_templates.lua), minus the distance check
+mod_api.insert_buff_function("tb_activate_buff_on_team", function (owner_unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local side = Managers.state.side.side_by_unit[owner_unit]
+
+	if not side then
+		return
+	end
+
+	local buff_to_add = buff.template.buff_to_add
+	local buff_system = Managers.state.entity:system("buff_system")
+	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+
+	for i = 1, #player_and_bot_units do
+		local unit = player_and_bot_units[i]
+
+		if Unit.alive(unit) then
+			local buff_extension = ScriptUnit.extension(unit, "buff_system")
+
+			if not buff_extension:has_buff_type(buff_to_add) then
+				buff_system:add_buff(unit, buff_to_add, owner_unit, true)
+			end
+		end
+	end
+end)
+mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive_block_cost_aura", {
+	buff_to_add = "tb_markus_knight_rock_of_reikland_buff",
+	update_func = "tb_activate_buff_on_team",
 })
+mod_api.update_talent("es_knight", 4, 1, {
+	buffs = { "markus_knight_passive_block_cost_aura" },
+	description = "tb_markus_knight_rock_of_reikland_desc",
+	description_values = {},
+})
+mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presence is always active and grants 30%% block cost reduction and 30%% stamina regeneration.")
 
 --[[
 	Comrades in Arms - Adjustment from Passive
@@ -168,25 +226,16 @@ mod_api.update_talent("es_knight", 2, 1, {
 		}
 	},
 })
-
 --[[
 	Have At Thee! 
+	Proc from Mainstay stagger count on an elite
+	thp_stagger_damage_changes/01_damage_calc_changes.lua > mod:hook_origin(DamageUtils, "server_apply_hit", ...)
 ]]
--- Duration increased to 15s (from 10s)
-mod_api.update_talent_buff_template("empire_soldier", "markus_knight_power_level_on_stagger_elite_buff", {
-	duration = 15 -- 10
-})
 mod_api.update_talent("es_knight", 2, 2, { -- update description
 	description_values = {
-		{
-			value_type = "percent",
-			value = 0.15 -- buff_tweak_data.markus_knight_power_level_on_stagger_elite_buff.multiplier
-		},
-		{
-			value = 15 -- buff_tweak_data.markus_knight_power_level_on_stagger_elite_buff.duration
-		}
 	},
 })
+mod_api.insert_text("markus_knight_power_level_on_stagger_elite_desc", "Inflicting stagger counts on an elite enemy increases power by 15.0%% for 10 seconds.")
 
 --[[
 	Crowd Clearer
@@ -210,37 +259,48 @@ mod_api.update_talent("es_knight", 2, 3, { -- update description
 --[[
 	It's Hero Time
 ]]
--- Cooldown refund reduced to 70% (from 100%)
+-- 30s ICD nerf
+mod_api.insert_buff_template("tb_markus_knight_hero_time_ready_buff", {
+	icon = "markus_knight_movement_speed_on_incapacitated_allies",
+})
+mod_api.insert_buff_template("tb_markus_knight_hero_time_cooldown_buff", {
+	icon = "markus_knight_movement_speed_on_incapacitated_allies",
+	is_cooldown = true,
+	duration = 30,
+	duration_end_func = "add_buff_local",
+	buff_to_add = "tb_markus_knight_hero_time_ready_buff",
+})
 mod_api.insert_buff_function("markus_hero_time_reset", function (unit, buff, params)
 	local player_unit = unit
 
-	if Unit.alive(player_unit) then
-		local career_extension = ScriptUnit.has_extension(player_unit, "career_system")
-
-		career_extension:reduce_activated_ability_cooldown_percent(0.7) -- 1
+	if not Unit.alive(player_unit) then
+		return
 	end
+
+	local buff_extension = ScriptUnit.has_extension(player_unit, "buff_system")
+
+	if not buff_extension or buff_extension:has_buff_type("tb_markus_knight_hero_time_cooldown_buff") then
+		return
+	end
+
+	local career_extension = ScriptUnit.has_extension(player_unit, "career_system")
+
+	if not career_extension or career_extension:current_ability_cooldown(1) == 0 then
+		return
+	end
+
+	career_extension:reduce_activated_ability_cooldown_percent(1) -- 0.7
+
+	local ready_buff = buff_extension:get_buff_type("tb_markus_knight_hero_time_ready_buff")
+
+	if ready_buff then
+		buff_extension:remove_buff(ready_buff.id)
+	end
+
+	buff_extension:add_buff("tb_markus_knight_hero_time_cooldown_buff")
 end)
-mod_api.insert_text("markus_knight_charge_reset_on_incapacitated_allies_desc", "Refunds 70% of cooldown upon allied incapacitation")
+mod_api.insert_text("markus_knight_charge_reset_on_incapacitated_allies_desc", "Refunds 100% of cooldown upon allied incapacitation, unless the ultimate is already fully charged. 30 second internal cooldown.")
 
---[[
-	Inspiring Blow
-]]
--- Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
-mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on_stagger_elite", {
-	buff_func = "buff_on_stagger_enemy"
-})
-mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_buff", {
-	duration = 1.5, -- 0.5
-	multiplier = 2, -- 1
-	icon = "markus_knight_improved_passive_defence_aura"
-})
-mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy accelerates the cooldown of nearby allies by 200%% for 1.5 seconds.")
-
---[[
-
-	Fixes
-
-]]
 -- Fix Hero Time not proccing if ally already disabled
 mod_api.insert_buff_function("markus_knight_movespeed_on_incapacitated_ally", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
@@ -285,6 +345,38 @@ mod_api.insert_buff_function("markus_knight_movespeed_on_incapacitated_ally", fu
 	end
 
 	buff.disabled_allies = disabled_allies
+
+	-- It's Hero Time: show the "ready" icon
+	if not buff_extension:has_buff_type("tb_markus_knight_hero_time_ready_buff") and not buff_extension:has_buff_type("tb_markus_knight_hero_time_cooldown_buff") then
+		buff_system:add_buff(owner_unit, "tb_markus_knight_hero_time_ready_buff", owner_unit, true)
+	end
 end)
+
+--[[
+	Inspiring Blow
+	Proc from Mainstay stagger count on an elite
+	thp_stagger_damage_changes/01_damage_calc_changes.lua > mod:hook_origin(DamageUtils, "server_apply_hit", ...)
+]]
+-- Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
+mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on_stagger_elite", {
+	buff_func = "buff_on_stagger_enemy"
+})
+mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Inflicting stagger counts on an elite enemy accelerates the cooldown of nearby allies by 100%% for 0.5 seconds.")
+
+--[[
+	Numb to Pain
+]]
+-- Invulnerability on ult duration increased to 10s
+mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_invulnerability_buff", {
+	duration = 10 -- 3
+})
+mod_api.update_talent("es_knight", 6, 1, {
+	description_values = {
+		{
+			value = 10 -- 3
+		}
+	},
+})
+
 
 

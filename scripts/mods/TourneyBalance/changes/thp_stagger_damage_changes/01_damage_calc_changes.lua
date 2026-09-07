@@ -103,6 +103,25 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 
 			if target_buff_extension then
 				target_buff_extension:add_buff("tb_mainstay_stagger_mark_buff")
+
+				--[[
+					Foot Knight: Have At Thee! / Inspiring Blow - Proc from Mainstay stagger count
+				]]
+				local mainstay_target_breed = Unit.get_data(target_unit, "breed")
+
+				if mainstay_target_breed and mainstay_target_breed.elite then
+					local attacker_talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
+
+					if attacker_talent_extension then
+						if attacker_talent_extension:has_talent("markus_knight_power_level_on_stagger_elite", "empire_soldier", true) then
+							mod_api.add_buff(attacker_unit, "markus_knight_power_level_on_stagger_elite_buff")
+						end
+
+						if attacker_talent_extension:has_talent("markus_knight_cooldown_on_stagger_elite", "empire_soldier", true) then
+							mod_api.add_buff(attacker_unit, "markus_knight_cooldown_buff")
+						end
+					end
+				end
 			end
 		end
 	elseif shield_breaking_hit then
