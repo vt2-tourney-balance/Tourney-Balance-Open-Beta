@@ -30,7 +30,7 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		- Increased stacks gained to 3 (from 2).
 
 		**Dance of Blades**
-		- Dodging starts immediately: dodging can now be canceled into another dodge.
+		- Dodging starts immediately: dodging can now be canceled into another dodge, or started while airborne (jumping or falling), with real air momentum, not just the visual sidestep.
 		- Increased power to 15% (from 10%) and duration to 6s (from 2s).
 
 		**Heart of Oak**
@@ -236,7 +236,7 @@ mod_api.insert_text("kerillian_maidenguard_speed_on_block_desc", "Blocking an at
 --[[
     Dance of Blades
 ]]
--- Now grants 15% power lasting for 3.5 seconds.
+-- Now grants 15% power lasting for 6 seconds.
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_power_on_dodge", {
 	duration = 6, -- 2
 	multiplier = 0.15 -- 0.1
@@ -245,13 +245,18 @@ mod_api.update_talent("we_maidenguard", 4, 2, {
     description = "kerillian_maidenguard_versatile_dodge_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately.")
+mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately, even while dodging or airborne.")
 
--- Dodging starts immediately: let a dodge input interrupt an in-progress dodge (dodge-cancel) instead of only walking/standing
+local function tb_always_on_ground()
+    return true
+end
+
+-- Dodging starts immediately: let a dodge input interrupt an in-progress dodge (dodge-cancel)
 mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, input, dt, context, t)
     local talent_extension = ScriptUnit.extension(unit, "talent_system")
+    local has_dance_of_blades = talent_extension:has_talent("kerillian_maidenguard_versatile_dodge")
 
-    if talent_extension:has_talent("kerillian_maidenguard_versatile_dodge") and not self.csm.state_next then
+    if has_dance_of_blades and not self.csm.state_next then
         local start_dodge, dodge_direction = CharacterStateHelper.check_to_start_dodge(unit, self.input_extension, self.status_extension, t)
 
         if start_dodge then
@@ -265,8 +270,57 @@ mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, inpu
         end
     end
 
-    return func(self, unit, input, dt, context, t)
+    if not has_dance_of_blades then
+        return func(self, unit, input, dt, context, t)
+    end
+
+    --[[
+        Vanilla dodging also lets a jump input near the end of the dodge cancel it straight into a real jump ("dodge-jump").
+        Uncomment below to prevent mid air dodge-jumps.
+    ]]
+    local locomotion_extension = self.locomotion_extension
+    local real_is_on_ground = locomotion_extension.is_on_ground
+    --local real_jump_allowed = locomotion_extension.jump_allowed
+    --local really_on_ground = real_is_on_ground(locomotion_extension)
+
+    locomotion_extension.is_on_ground = tb_always_on_ground
+    --locomotion_extension.jump_allowed = function (self)
+    --    return really_on_ground and real_jump_allowed(self)
+    --end
+
+    local ok, err = pcall(func, self, unit, input, dt, context, t)
+
+    locomotion_extension.is_on_ground = real_is_on_ground
+    --locomotion_extension.jump_allowed = real_jump_allowed
+
+    if not ok then
+        error(err, 0)
+    end
 end)
+
+-- Let a dodge be started while airborne too: both while going up ("jumping", the brief takeoff phase right after
+-- leaving the ground) and on the way back down ("falling", the rest of the arc).
+for _, state_class in ipairs({ PlayerCharacterStateJumping, PlayerCharacterStateFalling }) do
+    mod:hook(state_class, "update", function (func, self, unit, input, dt, context, t)
+        local talent_extension = ScriptUnit.extension(unit, "talent_system")
+
+        if talent_extension:has_talent("kerillian_maidenguard_versatile_dodge") and not self.csm.state_next then
+            local start_dodge, dodge_direction = CharacterStateHelper.check_to_start_dodge(unit, self.input_extension, self.status_extension, t)
+
+            if start_dodge then
+                local params = self.temp_params
+
+                params.dodge_direction = dodge_direction
+
+                self.csm:change_state("dodging", params)
+
+                return
+            end
+        end
+
+        return func(self, unit, input, dt, context, t)
+    end)
+end
 
 --[[
     Heart of Oak
