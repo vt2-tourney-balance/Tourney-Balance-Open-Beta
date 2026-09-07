@@ -15,7 +15,7 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 
 		**Oak Guard (listed)**
 		- Previously unlisted passive (increases maximum stamina by 1, half a stamina shield) is now shown in the perk list.
-		- Added effect: Pushing enemies taunts them for 5 seconds.
+		- Added effect: Pushing enemies taunts them for 2 seconds.
 
 		### Talents
 		**Focused Spirit**
@@ -99,7 +99,7 @@ mod_api.insert_proc_function("tb_maidenguard_taunt_on_push", function (owner_uni
 
     local breed = ai_extension:breed()
 
-    if breed.ignore_taunts then
+    if breed.ignore_taunts or breed.boss then
         return
     end
 
@@ -114,7 +114,7 @@ end)
 mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_on_push", {
     buff_func = "tb_maidenguard_taunt_on_push",
     event = "on_push",
-    taunt_duration = 5,
+    taunt_duration = 2,
 })
 mod_api.insert_career_passives("we_2", {
     "tb_kerillian_maidenguard_taunt_on_push"
@@ -245,7 +245,7 @@ mod_api.update_talent("we_maidenguard", 4, 2, {
     description = "kerillian_maidenguard_versatile_dodge_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately, even while dodging or airborne.")
+mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately (1s ICD).")
 
 local function tb_always_on_ground()
     return true

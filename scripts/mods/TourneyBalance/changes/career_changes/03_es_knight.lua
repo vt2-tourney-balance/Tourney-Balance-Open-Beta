@@ -357,7 +357,6 @@ end)
 	Proc from Mainstay stagger count on an elite
 	thp_stagger_damage_changes/01_damage_calc_changes.lua > mod:hook_origin(DamageUtils, "server_apply_hit", ...)
 ]]
--- Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on_stagger_elite", {
 	buff_func = "buff_on_stagger_enemy"
 })
