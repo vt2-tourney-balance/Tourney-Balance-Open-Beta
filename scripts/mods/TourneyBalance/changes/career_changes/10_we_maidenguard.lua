@@ -13,8 +13,9 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		**Renewal**
 		- Stam regen aura range increased to 20 (from 5).
 
-		**Bendy (NEW)**
-		- Increase healing received by 40%.
+		**Oak Guard (listed)**
+		- Previously unlisted passive (increases maximum stamina by 1, half a stamina shield) is now shown in the perk list.
+		- Added effect: Pushing enemies taunts them for 5 seconds.
 
 		### Talents
 		**Focused Spirit**
@@ -29,11 +30,15 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		- Increased stacks gained to 3 (from 2).
 
 		**Dance of Blades**
-		- Increased power to 15% (from 10%) and duration to 3.5s (from 2s).
+		- Dodging starts immediately: dodging can now be canceled into another dodge.
+		- Increased power to 15% (from 10%) and duration to 6s (from 2s).
 
 		**Heart of Oak**
 		- Increased health bonus to 20% (from 15%).
-        
+
+		**Birch Stance**
+		- Blocking starts immediately: pressing block now raises the block state instantly, even mid-attack (the attack animation still plays out).
+
 		**Quiver of Plenty**
 		- Increased ammo bonus to 70% (from 40%).
 	$END_TB
@@ -73,16 +78,48 @@ end)
 
 ]]
 --[[
-    Bendy - NEW PERK
+    Oak Guard - previously unlisted vanilla perk (+1 max stamina), now listed with an added taunt-on-push effect
 ]]
-mod_api.insert_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_damage_reduction", {
-	stat_buff = "healing_received",
-	multiplier = 0.4,
+mod_api.insert_proc_function("tb_maidenguard_taunt_on_push", function (owner_unit, buff, params)
+    if not is_server() then
+        return
+    end
+
+    local hit_unit = params[1]
+
+    if not hit_unit or not HEALTH_ALIVE[hit_unit] then
+        return
+    end
+
+    local ai_extension = ScriptUnit.has_extension(hit_unit, "ai_system")
+
+    if not ai_extension then
+        return
+    end
+
+    local breed = ai_extension:breed()
+
+    if breed.ignore_taunts then
+        return
+    end
+
+    local blackboard = ai_extension:blackboard()
+    local t = Managers.time:time("game")
+
+    blackboard.taunt_unit = owner_unit
+    blackboard.taunt_end_time = t + buff.template.taunt_duration
+    blackboard.target_unit = owner_unit
+    blackboard.target_unit_found_time = t
+end)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_on_push", {
+    buff_func = "tb_maidenguard_taunt_on_push",
+    event = "on_push",
+    taunt_duration = 5,
 })
 mod_api.insert_career_passives("we_2", {
-    "kerillian_maidenguard_passive_damage_reduction"
+    "tb_kerillian_maidenguard_taunt_on_push"
 })
-mod_api.insert_perk_text("tb_we_2d", "Bendy", "Increases healing received by 40%")
+mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1 (half a stamina shield). Pushing enemies taunts them for 5 seconds.")
 mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
 
 --[[
@@ -201,14 +238,35 @@ mod_api.insert_text("kerillian_maidenguard_speed_on_block_desc", "Blocking an at
 ]]
 -- Now grants 15% power lasting for 3.5 seconds.
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_power_on_dodge", {
-	duration = 3.5, -- 2
+	duration = 6, -- 2
 	multiplier = 0.15 -- 0.1
 })
 mod_api.update_talent("we_maidenguard", 4, 2, {
     description = "kerillian_maidenguard_versatile_dodge_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 3.5 seconds.")
+mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately.")
+
+-- Dodging starts immediately: let a dodge input interrupt an in-progress dodge (dodge-cancel) instead of only walking/standing
+mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, input, dt, context, t)
+    local talent_extension = ScriptUnit.extension(unit, "talent_system")
+
+    if talent_extension:has_talent("kerillian_maidenguard_versatile_dodge") and not self.csm.state_next then
+        local start_dodge, dodge_direction = CharacterStateHelper.check_to_start_dodge(unit, self.input_extension, self.status_extension, t)
+
+        if start_dodge then
+            local params = self.temp_params
+
+            params.dodge_direction = dodge_direction
+
+            self.csm:change_state("dodging", params)
+
+            return
+        end
+    end
+
+    return func(self, unit, input, dt, context, t)
+end)
 
 --[[
     Heart of Oak
@@ -221,6 +279,73 @@ mod_api.update_talent("we_maidenguard", 5, 1, {
     description_values = {},
 })
 mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0%.")
+
+
+--[[
+    Birch Stance
+]]
+mod_api.update_talent("we_maidenguard", 5, 2, {
+    description = "kerillian_maidenguard_block_cost_desc",
+    description_values = {},
+})
+mod_api.insert_text("kerillian_maidenguard_block_cost_desc", "Reduces block cost by 30.0%. Blocking starts immediately.")
+
+-- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
+-- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
+local function tb_birch_stance_wielding_blockable_melee(inventory_extension)
+    local equipment = inventory_extension:equipment()
+    local wielded = equipment.wielded
+    local weapon_template_name = wielded and (wielded.template or wielded.temporary_template)
+    local weapon_template = weapon_template_name and WeaponUtils.get_weapon_template(weapon_template_name)
+    local action_two = weapon_template and weapon_template.actions and weapon_template.actions.action_two
+
+    return action_two ~= nil and action_two.default ~= nil and action_two.default.kind == "block"
+end
+
+local function tb_birch_stance_set_blocking(unit, status_extension, blocking, t)
+    status_extension:set_blocking(blocking)
+
+    if blocking then
+        status_extension.timed_block = t + 0.5
+    end
+
+    local network_manager = Managers.state.network
+    local game = network_manager:game()
+    local go_id = game and network_manager:unit_game_object_id(unit)
+
+    if go_id then
+        if is_server() then
+            network_manager.network_transmit:send_rpc_clients("rpc_set_blocking", go_id, blocking)
+        else
+            network_manager.network_transmit:send_rpc_server("rpc_set_blocking", go_id, blocking)
+        end
+    end
+end
+
+-- Let the real weapon action system go first every frame, so its own (vanilla) handling of things like
+-- push chaining back into block on continued hold happens completely untouched. Our forced early block
+-- only ever fills the remaining gap: input held, talent's weapon can block, but the real system still
+-- hasn't (e.g. because it's mid-attack and not yet at a chainable point).
+mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit, input_extension, inventory_extension, health_extension)
+    func(t, unit, input_extension, inventory_extension, health_extension)
+
+    local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+
+    if talent_extension and talent_extension:has_talent("kerillian_maidenguard_block_cost") and tb_birch_stance_wielding_blockable_melee(inventory_extension) then
+        local status_extension = ScriptUnit.extension(unit, "status_system")
+        local wants_block = input_extension:get("action_two_hold")
+
+        if wants_block and not status_extension.blocking then
+            tb_birch_stance_set_blocking(unit, status_extension, true, t)
+
+            status_extension._tb_birch_stance_forced_block = true
+        elseif status_extension._tb_birch_stance_forced_block and not wants_block then
+            tb_birch_stance_set_blocking(unit, status_extension, false, t)
+
+            status_extension._tb_birch_stance_forced_block = false
+        end
+    end
+end)
 
 
 --[[
