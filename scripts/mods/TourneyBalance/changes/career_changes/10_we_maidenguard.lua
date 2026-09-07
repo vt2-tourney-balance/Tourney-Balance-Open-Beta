@@ -133,6 +133,8 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_s
 --[[
     Dance of Season - the base passive that already grants +15% dodge range/speed, now also with instant block
 ]]
+mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Blocking starts immediately, even mid-attack.")
+
 -- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
 -- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
 -- Always active for the career (not tied to a talent pick), matching the other always-on base passives.
