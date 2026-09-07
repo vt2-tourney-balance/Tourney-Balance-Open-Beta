@@ -368,12 +368,12 @@ mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Inflicting 
 ]]
 -- Invulnerability on ult duration increased to 10s
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_invulnerability_buff", {
-	duration = 10 -- 3
+	duration = 6 -- 3
 })
 mod_api.update_talent("es_knight", 6, 1, {
 	description_values = {
 		{
-			value = 10 -- 3
+			value = 6 -- 3
 		}
 	},
 })
