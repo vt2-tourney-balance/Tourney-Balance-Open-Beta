@@ -26,9 +26,7 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 		- Added a separate guaranteed critical hit (melee or ranged, 6s cooldown) on top of Blessed Shots.
 
 		**Salvaged Ammunition**
-		- Changed proc condition to while below 20% ammo (from out of ammo).
-		- Added effect to also trigger on special kills.
-		- Removed the melee-kill ranged reload (moved to Blessed Kill passive).
+		- Increased ammo restored to 25% of max ammo (from 20%).
 
 		**Rile the Mob**
 		- Added effect to also grant the team 10% attack speed for 10s.
@@ -154,47 +152,16 @@ mod_api.insert_text("victor_bountyhunter_passive_reduced_cooldown_desc", "Reduce
 --[[
 	Salvaged Ammunition
 ]]
--- also procs on Specials
-mod_api.insert_proc_function("victor_bounty_hunter_ammo_fraction_gain_out_of_ammo", function (owner_unit, buff, params)
-	if not is_local(owner_unit) then
-		return
-	end
-
-	if ALIVE[owner_unit] then
-		local killed_unit_breed_data = params[2]
-
-		if killed_unit_breed_data.special or killed_unit_breed_data.elite then
-			local buff_template = buff.template
-			local weapon_slot = "slot_ranged"
-			local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
-			local slot_data = inventory_extension:get_slot_data(weapon_slot)
-			local right_unit_1p = slot_data.right_unit_1p
-			local left_unit_1p = slot_data.left_unit_1p
-			local right_hand_ammo_extension = ScriptUnit.has_extension(right_unit_1p, "ammo_system")
-			local left_hand_ammo_extension = ScriptUnit.has_extension(left_unit_1p, "ammo_system")
-			local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
-			local current_ammo = ammo_extension:remaining_ammo()
-			local clip_ammo = ammo_extension:ammo_count()
-			local ammo_bonus_fraction = buff_template.ammo_bonus_fraction
-
-			-- If below 20%
-			if (current_ammo + clip_ammo) < math.round(ammo_extension:max_ammo() * ammo_bonus_fraction) then
-				local ammo_amount = math.max(math.round(ammo_extension:max_ammo() * ammo_bonus_fraction), 1)
-
-				if ammo_extension then
-					ammo_extension:add_ammo_to_reserve(ammo_amount)
-				end
-			end
-		end
-	end
-end)
+mod_api.update_talent_buff_template("witch_hunter", "victor_bountyhunter_restore_ammo_on_elite_kill", {
+	ammo_bonus_fraction = 0.25, -- 0.2
+})
 -- melee-kill reload moved to the Blessed Kill passive
 mod_api.update_talent("wh_bountyhunter", 5, 2, {
 	buffs = {
 		"victor_bountyhunter_restore_ammo_on_elite_kill",
 	},
 })
-mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while below 20.0%% ammunition restores 20.0%% of max ammo.")
+mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while out of ammunition restores 25.0%% of max ammo.")
 
 --[[
 	Rile the Mob
