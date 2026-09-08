@@ -248,7 +248,7 @@ mod_api.insert_proc_function("maidenguard_reset_unharmed_buff", function (owner_
         local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
 
         if is_server() then
-            buff_extension:insert_buff(buff_name, {
+            buff_extension:add_buff(buff_name, {
                 attacker_unit = owner_unit
             })
         else
