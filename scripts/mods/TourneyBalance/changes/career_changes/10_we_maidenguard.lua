@@ -37,7 +37,8 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		- Increased stacks gained to 3 (from 2).
 
 		**Dance of Blades**
-		- Dodging starts immediately: dodging can now be canceled into another dodge (1s internal cooldown), or started while airborne (jumping or falling), with real air momentum, not just the visual sidestep.
+		- Dodging starts immediately (mid-doge and mid-air)
+        - 1s internal cooldown, tracked separately for blocking and non-blocking dodges
 		- Increased power to 15% (from 10%) and duration to 6s (from 2s).
 
 		**Heart of Oak**
@@ -127,7 +128,7 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_
 mod_api.insert_career_passives("we_2", {
     "tb_kerillian_maidenguard_taunt_on_push"
 })
-mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1. Blocking starts immediately, even mid-attack.")
+mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1. Blocking starts instantly.")
 mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
 
 --[[
@@ -323,7 +324,7 @@ mod_api.update_talent("we_maidenguard", 4, 2, {
     description = "kerillian_maidenguard_versatile_dodge_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately (1s cooldown).")
+mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts instantly (each 1 second cooldown).")
 
 local function tb_always_on_ground()
     return true
@@ -331,16 +332,15 @@ end
 
 local DANCE_OF_BLADES_CANCEL_COOLDOWN = 1
 
--- Dodging starts immediately: let a dodge input interrupt an in-progress dodge (dodge-cancel), gated by its own
--- 1s internal cooldown so it can't be chained every frame -- only the cancel-into-a-new-dodge path is gated;
--- starting a dodge fresh from walking/standing/falling/jumping is untouched.
+-- Instant dodge: Can start mid-dodge, 1s internal cooldown for blocking and non-blocking dodge
 mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, input, dt, context, t)
     local talent_extension = ScriptUnit.extension(unit, "talent_system")
     local has_dance_of_blades = talent_extension:has_talent("kerillian_maidenguard_versatile_dodge")
 
     if has_dance_of_blades and not self.csm.state_next then
         local status_extension = self.status_extension
-        local cancel_ready = t >= (status_extension._tb_dance_of_blades_cancel_cd or 0)
+        local cancel_cd_field = status_extension.blocking and "_tb_dance_of_blades_cancel_cd_blocking" or "_tb_dance_of_blades_cancel_cd_not_blocking"
+        local cancel_ready = t >= (status_extension[cancel_cd_field] or 0)
 
         if cancel_ready then
             local start_dodge, dodge_direction = CharacterStateHelper.check_to_start_dodge(unit, self.input_extension, status_extension, t)
@@ -350,7 +350,7 @@ mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, inpu
 
                 params.dodge_direction = dodge_direction
 
-                status_extension._tb_dance_of_blades_cancel_cd = t + DANCE_OF_BLADES_CANCEL_COOLDOWN
+                status_extension[cancel_cd_field] = t + DANCE_OF_BLADES_CANCEL_COOLDOWN
 
                 self.csm:change_state("dodging", params)
 
@@ -387,8 +387,7 @@ mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, inpu
     end
 end)
 
--- Let a dodge be started while airborne too: both while going up ("jumping", the brief takeoff phase right after
--- leaving the ground) and on the way back down ("falling", the rest of the arc).
+-- Allow dodging mid air
 for _, state_class in ipairs({ PlayerCharacterStateJumping, PlayerCharacterStateFalling }) do
     mod:hook(state_class, "update", function (func, self, unit, input, dt, context, t)
         local talent_extension = ScriptUnit.extension(unit, "talent_system")
@@ -479,6 +478,6 @@ mod_api.update_talent("we_maidenguard", 5, 3, {
     description = "kerillian_maidenguard_max_ammo_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_max_ammo_desc", "Doubles the ammunition amount.")
+mod_api.insert_text("kerillian_maidenguard_max_ammo_desc", "Increased ammunition amount by 100%.")
 
 
