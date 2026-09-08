@@ -8,14 +8,27 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 		## Bounty Hunter
 		### Passives
 		**Blessed Kill (NEW)**
-		- Melee Kills reset the cooldown of Blessed Shots.
+		- Melee Kills reset the cooldown of Blessed Shots (moved from Blessed Combat).
+		- Melee kills reload 1 ammo into Victor's ranged weapon (moved from Salvaged Ammunition).
 
 		### Talents
+		**Steel Crescendo**
+		- Corrected talent description to melee power (from power).
+
 		**Blessed Combat**
 		- Added ranged hits also grant 15% more attack speed for the next 6 attacks.
+		- Removed the melee-kill reset Blessed Shots (moved to Blessed Kill passive).
+
+		**Weight of Fire**
+		- Increased ranged power per clip stack to 2% (from 1%).
+
+		**Cruel Fortune**
+		- Added a separate guaranteed critical hit (melee or ranged, 6s cooldown) on top of Blessed Shots.
 
 		**Salvaged Ammunition**
+		- Changed proc condition to while below 20% ammo (from out of ammo).
 		- Added effect to also trigger on special kills.
+		- Removed the melee-kill ranged reload (moved to Blessed Kill passive).
 
 		**Rile the Mob**
 		- Added effect to also grant the team 10% attack speed for 10s.
@@ -40,7 +53,13 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 ]]
 mod_api.insert_career_passives("wh_2", { "victor_bountyhunter_activate_passive_on_melee_kill" })
-mod_api.insert_perk_text("tb_wh_2d", "Blessed Kill", "Melee kills reset the cooldown of Blessed Shots.")
+-- moved from Salvaged Ammunition: melee kills reload 1 ammo into the ranged weapon
+mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_blessed_kill_reload_ammo", {
+	buff_func = "victor_bounty_hunter_reload_on_kill",
+	event = "on_kill",
+})
+mod_api.insert_career_passives("wh_2", { "tb_wh2_blessed_kill_reload_ammo" })
+mod_api.insert_perk_text("tb_wh_2d", "Blessed Kill", "Melee kills reset the cooldown of Blessed Shots and reload 1 ammo into Victor's ranged weapon.")
 mod_api.insert_career_perk_descriptions("wh_2", "tb_wh_2d")
 
 --[[
@@ -49,7 +68,33 @@ mod_api.insert_career_perk_descriptions("wh_2", "tb_wh_2d")
 
 ]]
 
--- Blessed Combat
+--[[
+	Steel Crescendo
+]]
+mod_api.update_talent("wh_bountyhunter", 2, 2, {
+	description_values = { },
+})
+mod_api.insert_text("victor_bountyhunter_power_burst_on_no_ammo_desc_2", "When his ranged weapon is empty, Victor gains 15% Melee Power and 15% Attack Speed for 10 seconds.")
+
+
+--[[
+	Weight of Fire
+]]
+mod_api.update_talent_buff_template("witch_hunter", "victor_bountyhunter_power_level_on_clip_size_buff", {
+	multiplier = 0.02, -- 0.01
+})
+mod_api.update_talent("wh_bountyhunter", 2, 3, {
+	description_values = {
+		{
+			value_type = "percent",
+			value = 0.02, --buff_tweak_data.victor_bountyhunter_power_level_on_clip_size_buff.multiplier,
+		},
+	},
+})
+
+--[[
+	Blessed Combat
+]]
 mod_api.update_talent_buff_template("witch_hunter", "victor_bountyhunter_activate_passive_on_melee_kill", {
 	activation_buff = "victor_bountyhunter_blessed_melee_damage_buff",
 	buff_to_add = "victor_bountyhunter_blessed_melee_attack_speed_buff",
@@ -61,6 +106,50 @@ mod_api.insert_talent_buff_template("witch_hunter", "victor_bountyhunter_blessed
 	max_stacks = 1,
 })
 mod_api.insert_text("victor_bountyhunter_weapon_swap_buff_desc", "Melee strikes make up to the next 6 ranged shots deal 15%% more damage. Ranged hits make up to the next 6 melee strikes deal 15%% more damage and grants 15%% attack speed for the next 6 strikes.")
+
+--[[
+	Cruel Fortune
+]]
+-- A fully separate guaranteed crit, independent of Blessed Shots
+mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_cruel_fortune_crit_buff", {
+	bonus = 1,
+	icon = "victor_bountyhunter_passive_reduced_cooldown",
+	max_stacks = 1,
+	stat_buff = "critical_strike_chance",
+})
+mod_api.insert_proc_function("tb_wh2_cruel_fortune_remove_crit_buff", function (owner_unit, buff, params)
+	if not ALIVE[owner_unit] then
+		return
+	end
+
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+	local crit_buff = buff_extension:get_non_stacking_buff("tb_wh2_cruel_fortune_crit_buff")
+
+	if crit_buff then
+		buff_extension:remove_buff(crit_buff.id)
+		buff_extension:add_buff("tb_wh2_cruel_fortune_cooldown_buff")
+	end
+end)
+mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_cruel_fortune_crit_buff_removal", {
+	buff_func = "tb_wh2_cruel_fortune_remove_crit_buff",
+	event = "on_critical_action",
+})
+mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_cruel_fortune_cooldown_buff", {
+	buff_to_add = "tb_wh2_cruel_fortune_crit_buff",
+	duration = 6,
+	duration_end_func = "add_buff_local",
+	icon = "victor_bountyhunter_passive_reduced_cooldown",
+	is_cooldown = true,
+	max_stacks = 1,
+	refresh_durations = true,
+})
+mod_api.update_talent("wh_bountyhunter", 4, 2, {
+	buffs = {
+		"tb_wh2_cruel_fortune_crit_buff",
+		"tb_wh2_cruel_fortune_crit_buff_removal",
+	},
+})
+mod_api.insert_text("victor_bountyhunter_passive_reduced_cooldown_desc", "Reduces the cooldown of Blessed Shots to 6 seconds. Grants a guaranteed critical strike every 6 seconds.")
 
 --[[
 	Salvaged Ammunition
@@ -86,9 +175,10 @@ mod_api.insert_proc_function("victor_bounty_hunter_ammo_fraction_gain_out_of_amm
 			local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
 			local current_ammo = ammo_extension:remaining_ammo()
 			local clip_ammo = ammo_extension:ammo_count()
+			local ammo_bonus_fraction = buff_template.ammo_bonus_fraction
 
-			if current_ammo < 1 and clip_ammo < 1 then
-				local ammo_bonus_fraction = buff_template.ammo_bonus_fraction
+			-- If below 20%
+			if (current_ammo + clip_ammo) < math.round(ammo_extension:max_ammo() * ammo_bonus_fraction) then
 				local ammo_amount = math.max(math.round(ammo_extension:max_ammo() * ammo_bonus_fraction), 1)
 
 				if ammo_extension then
@@ -98,7 +188,13 @@ mod_api.insert_proc_function("victor_bounty_hunter_ammo_fraction_gain_out_of_amm
 		end
 	end
 end)
-mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while out of ammunition restores 20.0%% of max ammo. Melee kills reload 1 ammo into Victor's ranged weapon.")
+-- melee-kill reload moved to the Blessed Kill passive
+mod_api.update_talent("wh_bountyhunter", 5, 2, {
+	buffs = {
+		"victor_bountyhunter_restore_ammo_on_elite_kill",
+	},
+})
+mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while below 20.0%% ammunition restores 20.0%% of max ammo.")
 
 --[[
 	Rile the Mob
