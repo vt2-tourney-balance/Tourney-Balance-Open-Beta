@@ -20,7 +20,7 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 		- Removed the melee-kill reset Blessed Shots (moved to Blessed Kill passive).
 
 		**Weight of Fire**
-		- Increased ranged power per clip stack to 2% (from 1%).
+		- Increased ranged power per clip stack to 3% (from 1%).
 
 		**Cruel Fortune**
 		- Added a separate guaranteed critical hit (melee or ranged, 6s cooldown) on top of Blessed Shots.
@@ -79,13 +79,13 @@ mod_api.insert_text("victor_bountyhunter_power_burst_on_no_ammo_desc_2", "When h
 	Weight of Fire
 ]]
 mod_api.update_talent_buff_template("witch_hunter", "victor_bountyhunter_power_level_on_clip_size_buff", {
-	multiplier = 0.02, -- 0.01
+	multiplier = 0.03, -- 0.01
 })
 mod_api.update_talent("wh_bountyhunter", 2, 3, {
 	description_values = {
 		{
 			value_type = "percent",
-			value = 0.02, --buff_tweak_data.victor_bountyhunter_power_level_on_clip_size_buff.multiplier,
+			value = 0.03, --buff_tweak_data.victor_bountyhunter_power_level_on_clip_size_buff.multiplier,
 		},
 	},
 })
@@ -173,7 +173,7 @@ mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_rile_the_mob_attack_
 	duration = 10,
 	max_stacks = 1,
 	refresh_durations = true,
-	icon = "victor_bountyhunter_movespeed_on_ranged_crit",
+	-- icon = "victor_bountyhunter_movespeed_on_ranged_crit",
 })
 mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_rile_the_mob_attack_speed", {
 	buff_func = "add_team_buff_on_ranged_critical_hit",
