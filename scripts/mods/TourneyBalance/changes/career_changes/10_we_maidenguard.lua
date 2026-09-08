@@ -2,6 +2,10 @@ local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_server
 
+-- Forward-declared: defined in the Birch Stance section further down, but called from the shared
+-- update_weapon_actions hook in the Dance of Season section above it.
+local tb_maidenguard_update_birch_stance_damage_reduction
+
 --[[
 	$BEGIN_TB
 		---
@@ -11,14 +15,14 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 
 		### Passives
 		**Dance of Season**
-		- Added effect: Blocking starts immediately, even mid-attack (the attack animation still plays out).
+		- Added effect: Pushing enemies taunts them for 2 seconds.
 
 		**Renewal**
 		- Stam regen aura range increased to 20 (from 5).
 
 		**Oak Guard (listed)**
-		- Previously unlisted passive (increases maximum stamina by 1, half a stamina shield) is now shown in the perk list.
-		- Added effect: Pushing enemies taunts them for 2 seconds.
+		- (Added to list) Increases maximum stamina by 1.
+		- Added effect: Blocking starts immediately, even mid-attack.
 
 		### Talents
 		**Focused Spirit**
@@ -40,8 +44,11 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		- Increased health bonus to 20% (from 15%).
 		- Added 40% increased healing received.
 
+		**Birch Stance**
+		- Added 30% reduced damage taken while blocking.
+
 		**Quiver of Plenty**
-		- Increased ammo bonus to 70% (from 40%).
+		- Increased ammo bonus to 100% (from 40%).
 	$END_TB
 ]]
 
@@ -79,7 +86,7 @@ end)
 
 ]]
 --[[
-    Oak Guard - previously unlisted vanilla perk (+1 max stamina), now listed with an added taunt-on-push effect
+    Oak Guard - listed + 2s taunt on push
 ]]
 mod_api.insert_proc_function("tb_maidenguard_taunt_on_push", function (owner_unit, buff, params)
     if not is_server() then
@@ -120,7 +127,7 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_
 mod_api.insert_career_passives("we_2", {
     "tb_kerillian_maidenguard_taunt_on_push"
 })
-mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1 (half a stamina shield). Pushing enemies taunts them for 5 seconds.")
+mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1. Blocking starts immediately, even mid-attack.")
 mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
 
 --[[
@@ -131,9 +138,9 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_s
 })
 
 --[[
-    Dance of Season - the base passive that already grants +15% dodge range/speed, now also with instant block
+    Dance of Season
 ]]
-mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Blocking starts immediately, even mid-attack.")
+mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Pushing enemies taunts them for 2 seconds.")
 
 -- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
 -- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
@@ -168,17 +175,19 @@ local function tb_instant_block_set_blocking(unit, status_extension, blocking, t
     end
 end
 
--- Let the real weapon action system go first every frame, so its own (vanilla) handling of things like
--- push chaining back into block on continued hold happens completely untouched. Our forced early block
--- only ever fills the remaining gap: input held, wielding a blockable melee weapon, but the real system still
--- hasn't (e.g. because it's mid-attack and not yet at a chainable point).
+-- Let real weapon action system go first, so push chaining back into block on continued hold happens completely untouched.
 mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit, input_extension, inventory_extension, health_extension)
     func(t, unit, input_extension, inventory_extension, health_extension)
 
     local career_extension = ScriptUnit.has_extension(unit, "career_system")
 
-    if career_extension and career_extension:career_name() == "we_maidenguard" and tb_instant_block_wielding_blockable_melee(inventory_extension) then
-        local status_extension = ScriptUnit.extension(unit, "status_system")
+    if not career_extension or career_extension:career_name() ~= "we_maidenguard" then
+        return
+    end
+
+    local status_extension = ScriptUnit.extension(unit, "status_system")
+
+    if tb_instant_block_wielding_blockable_melee(inventory_extension) then
         local wants_block = input_extension:get("action_two_hold")
 
         if wants_block and not status_extension.blocking then
@@ -191,6 +200,11 @@ mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit,
             status_extension._tb_instant_block_forced_block = false
         end
     end
+
+    --[[
+        Birch Stance
+    ]]
+    tb_maidenguard_update_birch_stance_damage_reduction(unit, status_extension)
 end)
 
 --[[
@@ -309,7 +323,7 @@ mod_api.update_talent("we_maidenguard", 4, 2, {
     description = "kerillian_maidenguard_versatile_dodge_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately (1s ICD).")
+mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts immediately (1s cooldown).")
 
 local function tb_always_on_ground()
     return true
@@ -421,23 +435,50 @@ mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max heal
 --[[
     Birch Stance
 ]]
+-- Also grants 30% reduced damage taken while blocking
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_birch_stance_damage_reduction", {
+	stat_buff = "damage_taken",
+	multiplier = -0.3,
+})
 mod_api.update_talent("we_maidenguard", 5, 2, {
     description = "kerillian_maidenguard_block_cost_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_block_cost_desc", "Reduces block cost by 30.0%.")
+mod_api.insert_text("kerillian_maidenguard_block_cost_desc", "Reduces block cost by 30.0% and damage taken by 30.0% while blocking.")
+
+-- The damage reduction only applies while actually blocking. Called from the shared update_weapon_actions hook above (Dance of Season)
+tb_maidenguard_update_birch_stance_damage_reduction = function (unit, status_extension)
+    local talent_extension = ScriptUnit.extension(unit, "talent_system")
+
+    if not talent_extension:has_talent("kerillian_maidenguard_block_cost") then
+        return
+    end
+
+    local buff_extension = ScriptUnit.extension(unit, "buff_system")
+    local has_damage_reduction = buff_extension:has_buff_type("tb_kerillian_maidenguard_birch_stance_damage_reduction")
+
+    if status_extension.blocking and not has_damage_reduction then
+        buff_extension:add_buff("tb_kerillian_maidenguard_birch_stance_damage_reduction")
+    elseif not status_extension.blocking and has_damage_reduction then
+        local buff = buff_extension:get_buff_type("tb_kerillian_maidenguard_birch_stance_damage_reduction")
+
+        if buff then
+            buff_extension:remove_buff(buff.id)
+        end
+    end
+end
 
 
 --[[
     Quiver of Plenty
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_max_ammo", {
-	multiplier = 0.7 -- 0.4
+	multiplier = 1 -- 0.4
 })
 mod_api.update_talent("we_maidenguard", 5, 3, {
     description = "kerillian_maidenguard_max_ammo_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_max_ammo_desc", "Increases ammunition amount by 70.0%.")
+mod_api.insert_text("kerillian_maidenguard_max_ammo_desc", "Doubles the ammunition amount.")
 
 

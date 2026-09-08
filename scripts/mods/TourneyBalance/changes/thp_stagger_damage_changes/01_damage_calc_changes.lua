@@ -15,6 +15,26 @@ mod:hook(DamageUtils, "stagger_ai", function (func, t, damage_profile, target_in
 	return func(t, damage_profile, target_index, power_level, target_unit, attacker_unit, hit_zone_name, attack_direction, boost_curve_multiplier, is_critical_strike, blocked, damage_source, source_attacker_unit, optional_predicted_damage)
 end)
 
+-- Inspiring Blow: gives markus_knight_cooldown_buff to the whole team
+local function tb_add_buff_to_team(owner_unit, buff_name)
+	local buff_system = Managers.state.entity:system("buff_system")
+	local side = Managers.state.side.side_by_unit[owner_unit]
+
+	if not side then
+		return
+	end
+
+	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+
+	for i = 1, #player_and_bot_units do
+		local unit = player_and_bot_units[i]
+
+		if HEALTH_ALIVE[unit] then
+			buff_system:add_buff(unit, buff_name, owner_unit, false)
+		end
+	end
+end
+
 -- Fixed Vanguard not proccing when you killed an enemy which is staggered
 local dead_units = {}
 local damage_source_procs = {
@@ -118,7 +138,7 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 						end
 
 						if attacker_talent_extension:has_talent("markus_knight_cooldown_on_stagger_elite", "empire_soldier", true) then
-							mod_api.add_buff(attacker_unit, "markus_knight_cooldown_buff")
+							tb_add_buff_to_team(attacker_unit, "markus_knight_cooldown_buff")
 						end
 					end
 				end

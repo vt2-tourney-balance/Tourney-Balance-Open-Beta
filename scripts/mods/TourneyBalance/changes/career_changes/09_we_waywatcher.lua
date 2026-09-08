@@ -31,7 +31,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Ricochet**
 		- Fully charging for 1 second grants ricochet projectiles true-flight.
-		- Applying true-flight costs 20% ult cooldown drained over 10 seconds.
+		- Applying true-flight costs 10% ult cooldown drained over 10 seconds.
 		- Fixed ricocheting after enemy cleave.
 
 		**Piercing Shot**
@@ -342,11 +342,11 @@ mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", 
 --[[
 	Richochet
 ]]
-mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Staying at full charge for 1 second imbues trueflight to ricochets, but drains 20.0%% cooldown over 10 seconds.")
+mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Staying at full charge for 1 second imbues trueflight upon ricochet, but costs 10.0%% cooldown drained over 10 seconds.")
 
 mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
 	stat_buff = "cooldown_regen",
-	multiplier = -1.6,
+	multiplier = -1.8,
 	duration = 10,
 	max_stacks = 99,
 	debuff = true,
@@ -366,16 +366,73 @@ mod_api.insert_buff_template("tb_ricochet_charged_shot_ready", {
 	icon = "kerillian_waywatcher_projectile_ricochet",
 })
 
--- Show popup buff and buff icon when trueflight is ready
+-- The tension/ready sounds below belong to the Moonfire Bow (we_deus_01) and its SoundBank is normally only loaded while that specific weapon is equipped
+local TB_RICOCHET_WWISE_PACKAGE = "wwise/we_deus_01"
+local TB_RICOCHET_WWISE_PACKAGE_REFERENCE = "TourneyBalance_ricochet"
+local tb_ricochet_wwise_package_loaded = false
+
+local function tb_ricochet_ensure_wwise_package()
+	if tb_ricochet_wwise_package_loaded then
+		return
+	end
+
+	local package_manager = Managers.package
+
+	if package_manager:has_loaded(TB_RICOCHET_WWISE_PACKAGE, TB_RICOCHET_WWISE_PACKAGE_REFERENCE) then
+		tb_ricochet_wwise_package_loaded = true
+
+		return
+	end
+
+	if not package_manager:is_loading(TB_RICOCHET_WWISE_PACKAGE) then
+		local async = true
+
+		package_manager:load(TB_RICOCHET_WWISE_PACKAGE, TB_RICOCHET_WWISE_PACKAGE_REFERENCE, function ()
+			tb_ricochet_wwise_package_loaded = true
+		end, async)
+	end
+end
+
+local function tb_ricochet_has_talent(owner_unit)
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+	local has_talent = not not (talent_extension and talent_extension:has_talent("kerillian_waywatcher_projectile_ricochet"))
+
+	if has_talent then
+		-- Lazily kicks off the load the first time it's needed; async, so the very first charge in a
+		-- session may still miss the sound if the package hasn't finished loading yet.
+		tb_ricochet_ensure_wwise_package()
+	end
+
+	return has_talent
+end
+
+-- Charge-hold audio feedback, reusing Moonfire Bow's own tension loop.
+local TB_RICOCHET_TIGHTEN_GRIP_LOOP = "player_combat_weapon_we_deus_01_tighten_grip_loop"
+local TB_RICOCHET_TIGHTEN_GRIP_LOOP_STOP = "stop_player_combat_weapon_we_deus_01_tighten_grip_loop"
+
+local function tb_ricochet_start_charge(self, t)
+	self._tb_charge_start_t = t
+	self._tb_ricochet_tighten_grip_playing = false
+end
+
+-- Stops the tension loop unconditionally on finish.
+local function tb_ricochet_stop_tighten_grip(self)
+	if self._tb_ricochet_tighten_grip_playing then
+		self._tb_ricochet_tighten_grip_playing = false
+
+		WwiseWorld.trigger_event(self.wwise_world, TB_RICOCHET_TIGHTEN_GRIP_LOOP_STOP)
+	end
+end
+
+-- Show popup buff and buff icon, and start the tension loop, once trueflight is ready
 local function tb_ricochet_show_charged_popup(self, t)
 	if not self._tb_charge_start_t or t - self._tb_charge_start_t < TB_RICOCHET_HOLD_TIME_REQUIRED then
 		return
 	end
 
 	local owner_unit = self.owner_unit
-	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
 
-	if not talent_extension or not talent_extension:has_talent("kerillian_waywatcher_projectile_ricochet") then
+	if not tb_ricochet_has_talent(owner_unit) then
 		return
 	end
 
@@ -384,10 +441,16 @@ local function tb_ricochet_show_charged_popup(self, t)
 	if owner_buff_extension then
 		owner_buff_extension:add_buff("tb_ricochet_charged_shot_ready")
 	end
+
+	if not self._tb_ricochet_tighten_grip_playing then
+		self._tb_ricochet_tighten_grip_playing = true
+
+		WwiseWorld.trigger_event(self.wwise_world, TB_RICOCHET_TIGHTEN_GRIP_LOOP)
+	end
 end
 
 mod:hook_safe(ActionAim, "client_owner_start_action", function (self, new_action, t)
-	self._tb_charge_start_t = t
+	tb_ricochet_start_charge(self, t)
 end)
 mod:hook_safe(ActionAim, "client_owner_post_update", function (self, dt, t, world, can_damage)
 	tb_ricochet_show_charged_popup(self, t)
@@ -395,6 +458,8 @@ end)
 -- Longbow/Hagbane/Swiftbow
 mod:hook(ActionAim, "finish", function (func, self, reason)
 	func(self, reason)
+
+	tb_ricochet_stop_tighten_grip(self)
 
 	return {
 		_tb_charge_start_t = self._tb_charge_start_t,
@@ -414,9 +479,12 @@ mod:hook_safe(PlayerProjectileUnitExtension, "init", function (self, extension_i
 	self._tb_ricochet_held_1s = tb_ricochet_pending_held_1s
 end)
 
--- Moonfire Bow
+-- Moonfire Bow (client_owner_start_action/post_update are inherited from ActionAim, so the hooks above
+-- already cover its charge; only finish() is overridden and needs its own hook)
 mod:hook(ActionAimEnergy, "finish", function (func, self, reason)
 	func(self, reason)
+
+	tb_ricochet_stop_tighten_grip(self)
 
 	return {
 		_tb_charge_start_t = self._tb_charge_start_t,
@@ -428,13 +496,15 @@ end)
 
 -- Javelin
 mod:hook_safe(ActionMeleeStart, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level, action_init_data)
-	self._tb_charge_start_t = t
+	tb_ricochet_start_charge(self, t)
 end)
 mod:hook_safe(ActionMeleeStart, "client_owner_post_update", function (self, dt, t, world)
 	tb_ricochet_show_charged_popup(self, t)
 end)
 mod:hook(ActionMeleeStart, "finish", function (func, self, reason, data)
 	func(self, reason, data)
+
+	tb_ricochet_stop_tighten_grip(self)
 
 	return {
 		_tb_charge_start_t = self._tb_charge_start_t,
@@ -515,8 +585,11 @@ mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, 
 
 	func(self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, level_index, has_ranged_boost, ranged_boost_curve_multiplier)
 
+	-- Must run on the owning player's own machine (not "is this the host")
+	local owner_player = self._owner_player
+
 	-- impact_data.bounce_on_level_units to prevent career ability bounces (piercing shot) to spawn converted arrow
-	if not self._is_server or impact_data.bounce_on_level_units or self._num_bounces <= num_bounces_before then
+	if not (owner_player and owner_player.local_player) or impact_data.bounce_on_level_units or self._num_bounces <= num_bounces_before then
 		return
 	end
 
@@ -537,11 +610,11 @@ mod:hook(PlayerProjectileUnitExtension, "hit_level_unit", function (func, self, 
 		return
 	end
 
-	-- True-flight imbue requires at least 20% ult cd
+	-- True-flight imbue requires at least 10% ult cd
 	local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 	local ability_bar_fill = 1 - career_extension:current_ability_cooldown_percentage(1)
 
-	if ability_bar_fill < 0.2 then
+	if ability_bar_fill < 0.1 then
 		return
 	end
 

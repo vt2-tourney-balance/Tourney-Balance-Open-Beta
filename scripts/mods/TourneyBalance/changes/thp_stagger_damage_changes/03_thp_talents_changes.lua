@@ -7,8 +7,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		---
 		## THP Talents
 		### Careers
-		**Handmaiden**
-		- Execute (THP on Kill) replaced with Sting (THP on Crits/Headshots).
+		- No changes
 
 		### Talents
 		**Execute**
@@ -234,7 +233,7 @@ local talent_first_row = {
 	{ "dr_engineer", 		VANGUARD, 	REAPER, 	BLOODLUST },
 
 	{ "we_waywatcher", 		REGROWTH, 	REAPER, 	BLOODLUST },
-	{ "we_maidenguard", 	REAPER, 	REGROWTH, 	VANGUARD }, -- Bloodlust > Regrowth
+	{ "we_maidenguard", 	REAPER, 	BLOODLUST, 	VANGUARD },
 	{ "we_shade", 			REGROWTH, 	BLOODLUST, 	REAPER },
 	{ "we_thornsister", 	REGROWTH, 	BLOODLUST, 	REAPER },
 

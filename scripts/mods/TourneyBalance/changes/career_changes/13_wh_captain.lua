@@ -18,7 +18,8 @@ local is_local = shared_utils.is_local
 		- Elites and specials take 25% more direct damage from Saltzpyre.
 
 		**I Shall Judge You All**
-		- Permanently marks specials. Headshotting tagged enemies refreshes Animosity duration.
+		- Apply Witch Hunt to all enemies within Animosity's range and all specials.
+		- Headshotting Witch-Hunted enemies extends the duration by 1s.
 
 		**Fervency**
 		- Increased duration to 10s (from 6s).
@@ -92,7 +93,7 @@ mod_api.insert_text("victor_witchhunter_activated_ability_guaranteed_crit_self_b
 --[[
 	I Shall Judge You All
 ]]
--- I Shall Judge You All: headshotting a Witch Hunted enemy refreshes Animosity's duration
+-- Headshotting a Witch Hunted enemy extends the isjya aura's duration by 1s
 mod_api.insert_proc_function("tb_isjya_refresh_animosity_on_headshot", function (owner_unit, buff, params)
 	if not Unit.alive(owner_unit) or not (is_server() or is_local(owner_unit)) then
 		return
@@ -111,21 +112,18 @@ mod_api.insert_proc_function("tb_isjya_refresh_animosity_on_headshot", function 
 		return
 	end
 
-	local side = Managers.state.side.side_by_unit[owner_unit]
-	local player_and_bot_units = side and side.PLAYER_AND_BOT_UNITS
+	local owner_buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+	local aura_buff = owner_buff_extension:get_buff_type("tb_isjya_aura")
 
-	if not player_and_bot_units then
-		return
-	end
+	if aura_buff and aura_buff.duration then
+		local t = Managers.time:time("game")
+		local remaining = math.max(0, aura_buff.start_time + aura_buff.duration - t)
 
-	for i = 1, #player_and_bot_units do
-		local unit = player_and_bot_units[i]
-
-		if HEALTH_ALIVE[unit] and ScriptUnit.extension(unit, "buff_system"):has_buff_type("victor_witchhunter_activated_ability_crit_buff") then
-			mod_api.add_buff(unit, "victor_witchhunter_activated_ability_crit_buff")
-		end
+		aura_buff.start_time = t
+		aura_buff.duration = remaining + 1
 	end
 end)
+
 mod_api.insert_talent_buff_template("witch_hunter", "tb_isjya_refresh_animosity_on_headshot", {
 	buff_func = "tb_isjya_refresh_animosity_on_headshot",
 	event = "on_hit",
@@ -136,10 +134,10 @@ mod_api.update_talent("wh_captain", 6, 1, {
 		"tb_isjya_refresh_animosity_on_headshot",
 	},
 })
-mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Applies Witch Hunt to enemies hit by Animosity and permanently to all specials.\n\nHeadshotting enemies affected by Witch Hunt refreshes the duration of Animosity for the whole party.")
+mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Apply Witch Hunt to all enemies within Animosity's range and all specials. Headshotting Witch-Hunted enemies extends the duration by 1s.")
 
 --[[ Ping All Specials on WHC ISJYA ULT ]]
-local PING_DURATION = 150
+local PING_DURATION = 15
 local marked_enemies = {}
 
 do
@@ -177,25 +175,8 @@ mod:add_setting_changed_function(function ()
 	end
 end)
 
--- Register outline colors
-mod:hook_safe(DamageUtils, "create_explosion", function (world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, is_husk, damaging_unit, attacker_power_level, is_critical_strike, source_attacker_unit)
-	if damage_source ~= "career_ability" or not ALIVE[attacker_unit] then
-		return
-	end
-
-	local career_extension = ScriptUnit.has_extension(attacker_unit, "career_system")
-
-	if not career_extension or career_extension:career_name() ~= "wh_captain" then
-		return
-	end
-
-	local talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
-
-	if not talent_extension or not talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") then
-		return
-	end
-
-	local has_templars_knowledge = talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
+-- Reveals/re-reveals every special tracked by the proximity system and applies Witch Hunt (+ Templar's Knowledge)
+local function apply_isjya_special_marks(attacker_unit, has_templars_knowledge)
 	local proximity_system = Managers.state.entity:system("proximity_system")
 	local t = Managers.time:time("game")
 
@@ -236,6 +217,95 @@ mod:hook_safe(DamageUtils, "create_explosion", function (world, attacker_unit, i
 					})
 				end
 			end
+		end
+	end
+end
+
+-- Applies Witch Hunt (+ Templar's Knowledge) to every enemy within radius of position.
+local function apply_isjya_radius_debuff(attacker_unit, position, radius, has_templars_knowledge)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local nearby_enemy_units = FrameTable.alloc_table()
+	local proximity_system = Managers.state.entity:system("proximity_system")
+	local broadphase = proximity_system.enemy_broadphase
+
+	Broadphase.query(broadphase, position, radius, nearby_enemy_units)
+
+	local buff_system = Managers.state.entity:system("buff_system")
+
+	for _, enemy_unit in pairs(nearby_enemy_units) do
+		if ALIVE[enemy_unit] then
+			buff_system:add_buff_synced(enemy_unit, "defence_debuff_enemies", BuffSyncType.All, {
+				external_optional_duration = PING_DURATION,
+			})
+
+			if has_templars_knowledge then
+				buff_system:add_buff_synced(enemy_unit, "victor_witchhunter_improved_damage_taken_ping", BuffSyncType.All, {
+					external_optional_duration = PING_DURATION,
+				})
+			end
+		end
+	end
+end
+
+-- isjya aura: while active, every 3s re-runs the marking/debuff
+mod_api.insert_buff_function("tb_isjya_aura_pulse", function (unit, buff, params, world)
+	if not HEALTH_ALIVE[unit] then
+		return
+	end
+
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+	local has_templars_knowledge = talent_extension and talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
+
+	apply_isjya_special_marks(unit, has_templars_knowledge)
+	apply_isjya_radius_debuff(unit, POSITION_LOOKUP[unit], buff.range, has_templars_knowledge)
+end)
+local ISJYA_AURA_DURATION = 6
+mod_api.insert_talent_buff_template("witch_hunter", "tb_isjya_aura", {
+	icon = "victor_captain_activated_ability_stagger_ping_debuff",
+	duration = ISJYA_AURA_DURATION,
+	range = 10, -- Animosity's explosion radius
+	update_func = "tb_isjya_aura_pulse",
+	update_frequency = 3,
+})
+
+-- Register outline colors
+mod:hook_safe(DamageUtils, "create_explosion", function (world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, is_husk, damaging_unit, attacker_power_level, is_critical_strike, source_attacker_unit)
+	if damage_source ~= "career_ability" or not ALIVE[attacker_unit] then
+		return
+	end
+
+	local career_extension = ScriptUnit.has_extension(attacker_unit, "career_system")
+
+	if not career_extension or career_extension:career_name() ~= "wh_captain" then
+		return
+	end
+
+	local talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
+
+	if not talent_extension or not talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") then
+		return
+	end
+
+	local has_templars_knowledge = talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
+
+	apply_isjya_special_marks(attacker_unit, has_templars_knowledge)
+
+	-- Add ISJYA aura - if recasting while the old one is still active, reset
+	if Managers.state.network.is_server then
+		local buff_extension = ScriptUnit.extension(attacker_unit, "buff_system")
+		local existing_aura = buff_extension:get_buff_type("tb_isjya_aura")
+
+		if existing_aura then
+			-- Duration drifts upward with each headshot extension (see the
+			-- headshot proc above), so a recast must reset it back to base,
+			-- not just re-anchor start_time.
+			existing_aura.start_time = Managers.time:time("game")
+			existing_aura.duration = ISJYA_AURA_DURATION
+		else
+			mod_api.add_buff(attacker_unit, "tb_isjya_aura")
 		end
 	end
 end)

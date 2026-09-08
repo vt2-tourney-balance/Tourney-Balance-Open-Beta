@@ -17,6 +17,9 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 		**Salvaged Ammunition**
 		- Added effect to also trigger on special kills.
 
+		**Rile the Mob**
+		- Added effect to also grant the team 10% attack speed for 10s.
+
 		**Job Well Done**
 		- Decreased max damage reductions stacks to 20 (from 30).
 
@@ -98,6 +101,31 @@ end)
 mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while out of ammunition restores 20.0%% of max ammo. Melee kills reload 1 ammo into Victor's ranged weapon.")
 
 --[[
+	Rile the Mob
+]]
+-- Ranged crits grant attack speed.
+mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_rile_the_mob_attack_speed_buff", {
+	stat_buff = "attack_speed",
+	multiplier = 0.1,
+	duration = 10,
+	max_stacks = 1,
+	refresh_durations = true,
+	icon = "victor_bountyhunter_movespeed_on_ranged_crit",
+})
+mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_rile_the_mob_attack_speed", {
+	buff_func = "add_team_buff_on_ranged_critical_hit",
+	buff_to_add = "tb_wh2_rile_the_mob_attack_speed_buff",
+	event = "on_hit",
+})
+mod_api.update_talent("wh_bountyhunter", 5, 1, {
+	buffs = {
+		"victor_bountyhunter_party_movespeed_on_ranged_crit",
+		"tb_wh2_rile_the_mob_attack_speed",
+	},
+})
+mod_api.insert_text("victor_bountyhunter_party_movespeed_on_ranged_crit_desc", "Ranged critical hits grant Victor and his allies 10%% increased movement speed and 10%% increased attack speed for 10s.")
+
+--[[
 	Job Well Done
 ]]
 mod_api.update_talent_buff_template("witch_hunter", "victor_bountyhunter_stacking_damage_reduction_on_elite_or_special_kill_buff", {
@@ -122,7 +150,11 @@ mod_api.update_talent_buff_template("witch_hunter", "victor_bountyhunter_activat
     cooldown = 4, -- 10
     multiplier = 0.2,
 })
-mod_api.insert_text("victor_bountyhunter_activated_ability_reset_cooldown_on_stacks_desc", "Ranged critical hits reduces the cooldown of Locked and Loaded by 20%. Can only trigger once every 4 seconds.")
+mod_api.update_talent("wh_bountyhunter", 6, 1, {
+    description_values = {
+	},
+})
+mod_api.insert_text("victor_bountyhunter_activated_ability_reset_cooldown_on_stacks_2_desc", "Ranged critical hits reduces the cooldown of Locked and Loaded by 20%. Can only trigger once every 4 seconds.")
 
 --[[
 	Double-Shotted
