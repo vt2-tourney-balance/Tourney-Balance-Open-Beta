@@ -31,13 +31,14 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		- Potions drop pseudo-random from bag size 6 with 2 of each potion (speed, strength, cooldown reduction).
 
 		**No Dawdling**
-		- Also grants 15% movement speed for 5 seconds on picking up a Survivalist pouch.
+		- Additionally removes the limit on dodging efficiently.
 
 		**Exuberance**
 		- Also procs on picking up Survivalist pouches.
 		- Reduced damage reduction to 20% (from 30%).
 
 		**Firing Fury**
+		- Reload speed buff duration increased to 3s (from 2s)
 		- Also procs on picking up Survivalist pouches.
 
 		**Exhilarating Vapours**
@@ -205,38 +206,36 @@ mod_api.update_talent("dr_ranger", 2, 3, {
 Weapons.bardin_survival_ale.actions.action_one.default.total_time = 0.8 -- 1.9
 
 --[[
+	No Dawdling
+]]
+-- Grants 99 dodge count regardless of the wielded weapon's own dodge_count value
+mod:hook(GenericStatusExtension, "get_dodge_item_data", function (func, self, ...)
+	func(self, ...)
+
+	local talent_extension = ScriptUnit.has_extension(self.unit, "talent_system")
+
+	if talent_extension and talent_extension:has_talent("bardin_ranger_movement_speed") then
+		self.dodge_count = 99
+	end
+end)
+mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10%% and removes the limit on dodging efficiently.")
+
+--[[
 	Exuberance
 ]]
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_reduced_damage_taken_headshot_buff", {
-	multiplier = -0.2 -- -0.3
+	multiplier = -0.2, -- -0.3
 })
 mod_api.update_talent("dr_ranger", 5, 2, {
-    description_values = { },
+    description_values = {},
 })
-mod_api.insert_text("bardin_ranger_reduced_damage_taken_headshot_desc", "Bardin takes 30.0% less damage from behind. Whenever he scores a headshots or picks up a survivalist pouch, this bonus applies to all damage taken for 7 seconds.")
+mod_api.insert_text("bardin_ranger_reduced_damage_taken_headshot_desc_2", "Bardin takes 20.0% less damage from behind. Whenever he scores a headshots or picks up a survivalist pouch, this bonus applies to all damage taken for 7 seconds.")
 
 
 --[[
-	No Dawdling
 	Exuberance
 	Firing Fury
 ]]
-mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_ranger_movement_speed_on_pouch_pickup", {
-	apply_buff_func = "apply_movement_buff",
-	remove_buff_func = "remove_movement_buff",
-	duration = 5,
-	refresh_durations = true,
-	icon = "bardin_ranger_movement_speed",
-	max_stacks = 1,
-	multiplier = 1.15,
-	path_to_movement_setting_to_modify = {
-		"move_speed",
-	},
-})
-mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10.0%. Picking up a Survivalist pouch increases movement speed by additional 15% for 5 seconds.")
-mod_api.update_talent("dr_ranger", 5, 1, {
-	description_values = {}
-})
 
 mod:hook(SimpleInventoryExtension, "add_ammo_from_pickup", function (func, self, pickup_settings, ...)
 	func(self, pickup_settings, ...)
@@ -264,11 +263,12 @@ mod:hook(SimpleInventoryExtension, "add_ammo_from_pickup", function (func, self,
 		buff_extension:add_buff("bardin_ranger_reload_speed_on_multi_hit_buff")
 	elseif talent_extension:has_talent("bardin_ranger_reduced_damage_taken_headshot") then 	-- Exuberance
 		buff_extension:add_buff("bardin_ranger_reduced_damage_taken_headshot_buff")
-	elseif talent_extension:has_talent("bardin_ranger_movement_speed") then 				-- No Dawdling
-		buff_extension:add_buff("tb_bardin_ranger_movement_speed_on_pouch_pickup")
 	end
 end)
-mod_api.insert_text("bardin_ranger_reload_speed_on_multi_hit_desc", "Hitting 2 enemies with one ranged attack or picking up a Survivalist pouch increases speed of Bardin's reload speed by 35.0%% for 2s.")
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_reload_speed_on_multi_hit_buff", {
+  duration = 3, -- 2
+})
+mod_api.insert_text("bardin_ranger_reload_speed_on_multi_hit_desc", "Hitting 2 enemies with one ranged attack or picking up a Survivalist pouch increases Bardin's reload speed by 35.0%% for 3 seconds.")
 
 --[[
 	Parting Gift

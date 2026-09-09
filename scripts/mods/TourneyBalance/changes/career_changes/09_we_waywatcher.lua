@@ -1,5 +1,6 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
+local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 
 --[[
 	$BEGIN_TB
@@ -31,7 +32,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Ricochet**
 		- Fully charging for 1 second grants ricochet projectiles true-flight.
-		- Applying true-flight costs 10% ult cooldown drained over 10 seconds.
+		- Applying true-flight costs 10% ult cooldown drained over 10 seconds and disables your ultimate.
 		- Fixed ricocheting after enemy cleave.
 
 		**Piercing Shot**
@@ -342,8 +343,9 @@ mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", 
 --[[
 	Richochet
 ]]
-mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Staying at full charge for 1 second imbues trueflight on ricochets, but costs 10.0%% cooldown drained over 10 seconds.")
+mod_api.insert_text("kerillian_waywatcher_projectile_ricochet_desc", "Projectiles can ricochet up to 3 times before hitting an enemy. Staying at full charge for 1 second gives trueflight to ricochets. Requires 10.0%% cooldown and disables career ability for 10 seconds.")
 
+-- while this debuff is up the ultimate can't be activated at all
 mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
 	stat_buff = "cooldown_regen",
 	multiplier = -1.8,
@@ -351,6 +353,9 @@ mod_api.insert_buff_template("tb_ricochet_true_flight_cooldown_debuff", {
 	max_stacks = 99,
 	debuff = true,
 	icon = "kerillian_waywatcher_projectile_ricochet",
+	perks = {
+		buff_perks.disable_career_ability,
+	},
 })
 
 -- Ricochet conversion additionally requires the shot to have been held (charged) for >= 1 real second before firing.

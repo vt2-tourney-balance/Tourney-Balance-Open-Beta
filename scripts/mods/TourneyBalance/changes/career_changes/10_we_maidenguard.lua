@@ -12,6 +12,7 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		## Handmaiden
 		### Career Ability
 		- Increased hitbox width for non-bleed ult to 5.0 (from 1.5).
+		- Added jump-cancelling and bhopping.
 
 		### Passives
 		**Dance of Season**
@@ -37,7 +38,7 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		- Increased stacks gained to 3 (from 2).
 
 		**Dance of Blades**
-		- Dodging starts immediately (mid-doge and mid-air)
+		- Dodging starts immediately (mid-dodge, mid-air)
         - 1s internal cooldown, tracked separately for blocking and non-blocking dodges
 		- Increased power to 15% (from 10%) and duration to 6s (from 2s).
 
@@ -78,6 +79,122 @@ mod:hook(CareerAbilityWEMaidenGuard, "_run_ability", function (func, self, ...)
         status_extension.do_lunge.damage.width = 5.0    --1.5    --width of hitbox
         status_extension.do_lunge.damage.depth_padding = 5.0   --0.4    --length of hitbox
         status_extension.do_lunge.damage.offset_forward = 0   --0    --position of hitbox
+    end
+end)
+
+local function tb_noop() end
+
+-- General fix for the same underlying whereabouts-tracking crash the two hooks below also guard against
+mod:hook(PlayerWhereaboutsExtension, "update", function (func, self, unit, input, dt, context, t)
+    local queued_input = self._input
+
+    if queued_input then
+        local opening = queued_input.jumped or queued_input.fell
+        local closing = queued_input.no_landing or queued_input.landed
+
+        if opening and closing then
+            queued_input.jumped = nil
+            queued_input.fell = nil
+            queued_input.no_landing = nil
+            queued_input.landed = nil
+        end
+    end
+
+    return func(self, unit, input, dt, context, t)
+end)
+
+-- PlayerCharacterStateLunging.on_enter unconditionally calls whereabouts_extension:set_jumped()
+mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, input, dt, context, t, previous_state, params)
+    local career_extension = ScriptUnit.has_extension(unit, "career_system")
+    local silence_set_jumped = career_extension and career_extension:career_name() == "we_maidenguard" and (previous_state == "jumping" or previous_state == "falling")
+
+    if not silence_set_jumped then
+        return func(self, unit, input, dt, context, t, previous_state, params)
+    end
+
+    local whereabouts_extension = ScriptUnit.extension(unit, "whereabouts_system")
+    local real_set_jumped = whereabouts_extension.set_jumped
+
+    whereabouts_extension.set_jumped = tb_noop
+
+    func(self, unit, input, dt, context, t, previous_state, params)
+
+    whereabouts_extension.set_jumped = real_set_jumped
+end)
+
+-- Jump cancel out of the ult
+mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, input, dt, context, t)
+    local career_extension = ScriptUnit.has_extension(unit, "career_system")
+
+    if career_extension and career_extension:career_name() == "we_maidenguard" and not self.csm.state_next then
+        local input_extension = self.input_extension
+        local locomotion_extension = self.locomotion_extension
+
+        if (input_extension:get("jump") or input_extension:get("jump_only")) and locomotion_extension:jump_allowed() then
+            local lunge_data = self._lunge_data
+            local lunge_time = t - self._start_time
+            local duration = lunge_data.duration
+            local speed_function = lunge_data.speed_function
+            local speed
+
+            if speed_function then
+                speed = speed_function(lunge_time, duration)
+            else
+                speed = math.lerp(lunge_data.initial_speed, lunge_data.falloff_to_speed, math.min(lunge_time / duration, 1))
+            end
+
+            local move_direction
+
+            if lunge_data.allow_rotation then
+                local forward_direction = Quaternion.forward(self.first_person_extension:current_rotation())
+
+                move_direction = Vector3.normalize(Vector3.flat(forward_direction))
+            else
+                move_direction = self._direction:unbox()
+            end
+
+            local dash_velocity = move_direction * speed * 0.5
+
+            local whereabouts_extension = ScriptUnit.extension(unit, "whereabouts_system")
+            local real_set_jumped = whereabouts_extension.set_jumped
+
+            whereabouts_extension.set_jumped = tb_noop
+
+            self.status_extension._tb_dash_jump_velocity = Vector3Box(dash_velocity)
+
+            self.csm:change_state("jumping", self.temp_params)
+            self.first_person_extension:change_state("jumping")
+
+            whereabouts_extension.set_jumped = real_set_jumped
+
+            return
+        end
+    end
+
+    return func(self, unit, input, dt, context, t)
+end)
+
+-- Apply the queued dash momentum from within jumping's own on_enter, once it's actually the active state.
+mod:hook(PlayerCharacterStateJumping, "on_enter", function (func, self, unit, input, dt, context, t, previous_state, params)
+    func(self, unit, input, dt, context, t, previous_state, params)
+
+    local status_extension = self.status_extension
+    local preserved_velocity_box = status_extension._tb_dash_jump_velocity
+
+    if not preserved_velocity_box then
+        return
+    end
+
+    status_extension._tb_dash_jump_velocity = nil
+
+    local dash_velocity = preserved_velocity_box:unbox()
+    local dash_speed = Vector3.length(dash_velocity)
+
+    if dash_speed > 0 then
+        local locomotion_extension = self.locomotion_extension
+
+        locomotion_extension:set_external_velocity_enabled(true)
+        locomotion_extension:add_external_velocity(dash_velocity, dash_speed)
     end
 end)
 
@@ -324,7 +441,7 @@ mod_api.update_talent("we_maidenguard", 4, 2, {
     description = "kerillian_maidenguard_versatile_dodge_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts instantly (each 1 second cooldown).")
+mod_api.insert_text("kerillian_maidenguard_versatile_dodge_desc", "Dodging while blocking increases dodge range by 20%. Dodging while not blocking increases Kerillian's power by 15% for 6 seconds. Dodging starts instantly (1 second cooldown each).")
 
 local function tb_always_on_ground()
     return true
@@ -387,7 +504,7 @@ mod:hook(PlayerCharacterStateDodging, "update", function (func, self, unit, inpu
     end
 end)
 
--- Allow dodging mid air
+-- Allow dodging mid air and mid-ult
 for _, state_class in ipairs({ PlayerCharacterStateJumping, PlayerCharacterStateFalling }) do
     mod:hook(state_class, "update", function (func, self, unit, input, dt, context, t)
         local talent_extension = ScriptUnit.extension(unit, "talent_system")

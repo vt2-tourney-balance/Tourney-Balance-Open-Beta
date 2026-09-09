@@ -6,7 +6,6 @@ mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/weapon_fixes")
 -- career ability
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/bw_pyromancer_ult")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/we_thornsister_blackvenom")
-mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/we_waystalker_piercing")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/we_waystalker_trueflight")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/career_ability/wh_bountyhunter_shotgun")
 -- melee

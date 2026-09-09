@@ -11,6 +11,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Spirit Casting**
 		- Additionally gives 5% crit, while above 65% health.
+
+		**Blaze Away**
+		- Fixed no refund on crit when the fireball first hits a teammate.
 	$END_TB
 ]]
 
@@ -90,6 +93,23 @@ mod_api.update_talent("bw_scholar", 2, 3, {
     description_values = {},
 })
 mod_api.insert_text("sienna_scholar_crit_chance_above_health_threshold_desc", "Critical strike chance is increased by 5.0% while above 65.0% health and increased by 10.0% while above 80.0% health.")
+
+--[[
+	Blaze Away
+]]
+-- Fix no refund on crit when the fireball cleaves through a teammate first (target_number > 1)
+mod_api.insert_proc_function("sienna_scholar_refund_activated_ability_cooldown", function (owner_unit, buff, params)
+	if ALIVE[owner_unit] then
+		local buff_type = params[5]
+		local is_critical = params[6]
+
+		if buff_type == "RANGED_ABILITY" and is_critical then
+			local career_extension = ScriptUnit.extension(owner_unit, "career_system")
+
+			career_extension:reduce_activated_ability_cooldown_percent(1)
+		end
+	end
+end)
 
 
 
