@@ -216,9 +216,26 @@ mod_api.insert_text("bardin_ranger_reduced_damage_taken_headshot_desc", "Bardin 
 
 
 --[[
+	No Dawdling
 	Exuberance
 	Firing Fury
 ]]
+mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_ranger_movement_speed_on_pouch_pickup", {
+	apply_buff_func = "apply_movement_buff",
+	remove_buff_func = "remove_movement_buff",
+	duration = 5,
+	refresh_durations = true,
+	icon = "bardin_ranger_movement_speed",
+	max_stacks = 1,
+	multiplier = 1.15,
+	path_to_movement_setting_to_modify = {
+		"move_speed",
+	},
+})
+mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10.0%. Picking up a Survivalist pouch increases movement speed by additional 15% for 5 seconds.")
+mod_api.update_talent("dr_ranger", 5, 1, {
+	description_values = {}
+})
 
 mod:hook(SimpleInventoryExtension, "add_ammo_from_pickup", function (func, self, pickup_settings, ...)
 	func(self, pickup_settings, ...)
@@ -240,15 +257,14 @@ mod:hook(SimpleInventoryExtension, "add_ammo_from_pickup", function (func, self,
 	end
 
 	local buff_extension
+	buff_extension = buff_extension or ScriptUnit.extension(owner_unit, "buff_system")
 
-	if talent_extension:has_talent("bardin_ranger_reload_speed_on_multi_hit") then 	-- Firing Fury
-		buff_extension = buff_extension or ScriptUnit.extension(owner_unit, "buff_system")
-
+	if talent_extension:has_talent("bardin_ranger_reload_speed_on_multi_hit") then 			-- Firing Fury
 		buff_extension:add_buff("bardin_ranger_reload_speed_on_multi_hit_buff")
-	elseif talent_extension:has_talent("bardin_ranger_reduced_damage_taken_headshot") then -- Exuberance
-		buff_extension = buff_extension or ScriptUnit.extension(owner_unit, "buff_system")
-
+	elseif talent_extension:has_talent("bardin_ranger_reduced_damage_taken_headshot") then 	-- Exuberance
 		buff_extension:add_buff("bardin_ranger_reduced_damage_taken_headshot_buff")
+	elseif talent_extension:has_talent("bardin_ranger_movement_speed") then 				-- No Dawdling
+		buff_extension:add_buff("tb_bardin_ranger_movement_speed_on_pouch_pickup")
 	end
 end)
 mod_api.insert_text("bardin_ranger_reload_speed_on_multi_hit_desc", "Hitting 2 enemies with one ranged attack or picking up a Survivalist pouch increases speed of Bardin's reload speed by 35.0%% for 2s.")
