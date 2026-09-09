@@ -421,6 +421,8 @@ local function tb_ricochet_stop_tighten_grip(self)
 		self._tb_ricochet_tighten_grip_playing = false
 
 		WwiseWorld.trigger_event(self.wwise_world, TB_RICOCHET_TIGHTEN_GRIP_LOOP_STOP)
+		WwiseWorld.trigger_event(self.wwise_world, TB_RICOCHET_TIGHTEN_GRIP_LOOP_STOP)
+		WwiseWorld.trigger_event(self.wwise_world, TB_RICOCHET_TIGHTEN_GRIP_LOOP_STOP)
 	end
 end
 

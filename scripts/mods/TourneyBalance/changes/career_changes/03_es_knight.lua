@@ -41,7 +41,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Now also procs when Mainstay marks an elite with a stagger count, even if the hit doesn't actually stagger it.
 
 		**Numb to Pain**
-		- Invulnerability duration on ult increased to 10s (from 3s).
+		- Invulnerability duration on ult increased to 5s (from 3s).
 	$END_TB
 ]]
 
