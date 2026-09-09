@@ -153,7 +153,7 @@ mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, inpu
                 move_direction = self._direction:unbox()
             end
 
-            local dash_velocity = move_direction * speed * 0.5
+            local dash_velocity = move_direction * speed * 0.67
 
             local whereabouts_extension = ScriptUnit.extension(unit, "whereabouts_system")
             local real_set_jumped = whereabouts_extension.set_jumped
