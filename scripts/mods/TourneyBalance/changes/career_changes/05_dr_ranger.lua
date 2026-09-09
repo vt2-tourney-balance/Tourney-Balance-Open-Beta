@@ -34,6 +34,7 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		- Also grants 15% movement speed for 5 seconds on picking up a Survivalist pouch.
 
 		**Exuberance**
+		- Also procs on picking up Survivalist pouches.
 		- Reduced damage reduction to 20% (from 30%).
 
 		**Firing Fury**
