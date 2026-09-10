@@ -14,13 +14,13 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Impatience**
 		- Additionally grants 5% dodge distance and 5% dodge speed per Trophy Hunter stack.
-		- Additionally increases overall dodge count by 3 (1 per Trophy Hunter stack).
+		- Sets dodge count to 6, regardless of the wielded weapon.
 
 		**Adrenaline Surge**
 		- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
 
 		**Barge**
-		- Now requires 3 effective dodges to proc the push.
+		- Now requires more than 3 effective dodges remaining (i.e. banked dodge budget, boosted by Impatience) to proc the push.
 		- Push now uses Crunch's (upgraded) ultimate landing stagger explosion.
 	$END_TB
 ]]
@@ -132,16 +132,15 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_do
 		"speed_modifier"
 	}
 })
-mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5.0%%. Increases overall dodge count by 3 (1 per Trophy Hunter stack), regardless of the wielded weapon.")
--- Flat overall dodge count increase (1 per Trophy Hunter's max stacks of 3), same pattern as No Dawdling in 05_dr_ranger.lua -
--- not tied to currently active stacks, since those decay after 2s of not attacking and a fluctuating dodge count would feel bad.
+mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5.0%%. Sets dodge count to 6, regardless of the wielded weapon.")
+-- Flat dodge count of 6 regardless of weapon, same pattern as No Dawdling in 05_dr_ranger.lua
 mod:hook(GenericStatusExtension, "get_dodge_item_data", function (func, self, ...)
 	func(self, ...)
 
 	local talent_extension = ScriptUnit.has_extension(self.unit, "talent_system")
 
 	if talent_extension and talent_extension:has_talent("bardin_slayer_passive_movement_speed") then
-		self.dodge_count = self.dodge_count + 1
+		self.dodge_count = 6
 	end
 end)
 --[[
@@ -180,12 +179,13 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_push_on_dodge
 	--multiplier = -0.15, -- Added
 	explosion_template = "bardin_slayer_activated_ability_landing_stagger_impact", -- Crunch's ult landing stagger (was bardin_slayer_push_on_dodge)
 })
--- Vanilla proc, gated behind a 3-effective-dodge counter stored on the buff instance
+-- 3 effective dodges required
 mod_api.insert_proc_function("bardin_slayer_push_on_dodge", function (owner_unit, buff, params)
 	if Unit.alive(owner_unit) then
 		local status_extension = ScriptUnit.has_extension(owner_unit, "status_system")
+		local effective_dodges_left = status_extension.dodge_count - status_extension.dodge_cooldown
 
-		if status_extension:get_dodge_cooldown() >= 3 then
+		if effective_dodges_left > 3 then
 
 			local first_person_extension = ScriptUnit.has_extension(owner_unit, "first_person_system")
 			local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")
@@ -215,6 +215,6 @@ mod_api.update_talent("dr_slayer", 5, 3, {
 		--"tb_bardin_slayer_dodge_speed"
 	}
 })
-mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Every 3rd effective dodge pushes and staggers nearby enemies.")
+mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Dodging while more than 3 effective dodges remain pushes and staggers nearby enemies.")
 
 
