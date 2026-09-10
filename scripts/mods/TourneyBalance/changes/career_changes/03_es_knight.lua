@@ -189,7 +189,7 @@ mod_api.update_talent("es_knight", 4, 3, { -- update description
 	description_values = {
 	},
 })
-mod_api.insert_text("markus_knight_guard_desc", "Kruber gains 10.0% increased power. The closest ally to Kruber gains 50.0% damage reduction and 10.0% increased power. Passive aura from Protective Presence no longer affects allies.\n\nUsing weapon special while holding the ranged weapon cycles through the team mate you are guarding.")
+mod_api.insert_text("markus_knight_guard_desc", "Kruber gains 10.0% increased power. The closest ally to Kruber gains 50.0% damage reduction and 10.0% increased power. Passive aura from Protective Presence no longer affects allies.\n\nUse weapon special on the ranged weapon cycle between guarding a select team mate or the closest one.")
 
 -- owner_unit -> { mode = "closest" | "manual", index = N (1-based into teammate_indices), indicator_stack_ids }
 local comrades_in_arms_cycle = {}
@@ -352,6 +352,32 @@ mod_api.insert_buff_function("tb_activate_buff_on_selected_or_closest", function
 	local teammate_indices, player_and_bot_units = tb_get_comrades_in_arms_teammates(owner_unit)
 	local target_array_index = teammate_indices and teammate_indices[state.index]
 	local target_unit = target_array_index and player_and_bot_units[target_array_index]
+
+	-- The selected teammate died or their slot is gone (disconnected) - auto-revert to closest
+	-- instead of silently buffing nobody until the player manually cycles back.
+	if not target_unit or not ALIVE[target_unit] then
+		state.mode = "closest"
+		state.index = 0
+
+		local stale_unit = buff.current_unit
+
+		if stale_unit then
+			local stale_buff_extension = ScriptUnit.has_extension(stale_unit, "buff_system")
+			local stale_buff = stale_buff_extension and stale_buff_extension:get_non_stacking_buff(buff.template.buff_to_add)
+
+			if stale_buff and stale_buff.server_id then
+				Managers.state.entity:system("buff_system"):remove_server_controlled_buff(stale_unit, stale_buff.server_id)
+			end
+
+			buff.current_unit = nil
+		end
+
+		tb_update_comrades_in_arms_indicator(owner_unit, state)
+		BuffFunctionTemplates.functions.activate_buff_on_closest_distance(owner_unit, buff, params)
+
+		return
+	end
+
 	local template = buff.template
 	local buff_to_add = template.buff_to_add
 	local buff_system = Managers.state.entity:system("buff_system")
