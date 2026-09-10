@@ -14,7 +14,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Impatience**
 		- Additionally grants 5% dodge distance and 5% dodge speed per Trophy Hunter stack.
-		- Additionally grants 1 dodge count per Trophy Hunter stack.
+		- Additionally increases overall dodge count by 3 (1 per Trophy Hunter stack).
 
 		**Adrenaline Surge**
 		- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
@@ -132,21 +132,17 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_do
 		"speed_modifier"
 	}
 })
-mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%%, dodge range by 5.0%%, and dodge count by 1.")
--- Each Trophy Hunter stack also grants +1 dodge count, regardless of the wielded weapon
+mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5.0%%. Increases overall dodge count by 3 (1 per Trophy Hunter stack), regardless of the wielded weapon.")
+-- Flat overall dodge count increase (1 per Trophy Hunter's max stacks of 3), same pattern as No Dawdling in 05_dr_ranger.lua -
+-- not tied to currently active stacks, since those decay after 2s of not attacking and a fluctuating dodge count would feel bad.
 mod:hook(GenericStatusExtension, "get_dodge_item_data", function (func, self, ...)
 	func(self, ...)
 
 	local talent_extension = ScriptUnit.has_extension(self.unit, "talent_system")
 
-	if not talent_extension or not talent_extension:has_talent("bardin_slayer_passive_movement_speed") then
-		return
+	if talent_extension and talent_extension:has_talent("bardin_slayer_passive_movement_speed") then
+		self.dodge_count = self.dodge_count + 1
 	end
-
-	local buff_extension = ScriptUnit.has_extension(self.unit, "buff_system")
-	local stacks = buff_extension and buff_extension:num_buff_type("bardin_slayer_passive_movement_speed") or 0
-
-	self.dodge_count = self.dodge_count + stacks
 end)
 --[[
 	Adrenaline Surge
@@ -189,14 +185,7 @@ mod_api.insert_proc_function("bardin_slayer_push_on_dodge", function (owner_unit
 	if Unit.alive(owner_unit) then
 		local status_extension = ScriptUnit.has_extension(owner_unit, "status_system")
 
-		if status_extension:get_dodge_cooldown() >= 1 then
-			buff.tb_effective_dodge_count = (buff.tb_effective_dodge_count or 0) + 1
-
-			if buff.tb_effective_dodge_count < 3 then
-				return
-			end
-
-			buff.tb_effective_dodge_count = 0
+		if status_extension:get_dodge_cooldown() >= 3 then
 
 			local first_person_extension = ScriptUnit.has_extension(owner_unit, "first_person_system")
 			local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")
