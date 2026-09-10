@@ -6,18 +6,22 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Slayer
 		### Talents
+		**Dawi Drop**
+		- Additionally grants max Trophy Hunter stacks while airborne.
+
 		**A Thousand Cuts**
 		- Attack speed increased to 15% (from 10%).
 
 		**Impatience**
 		- Additionally grants 5% dodge distance and 5% dodge speed per Trophy Hunter stack.
+		- Additionally grants 1 dodge count per Trophy Hunter stack.
 
 		**Adrenaline Surge**
 		- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
 
 		**Barge**
-		- Additionally grants 10% dodge distance and 10% dodge speed.
-		- Additionally grants 15% damage reduction.
+		- Now requires 3 effective dodges to proc the push.
+		- Push now uses Crunch's (upgraded) ultimate landing stagger explosion.
 	$END_TB
 ]]
 
@@ -26,6 +30,40 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Talents
 
 ]]
+--[[
+	Dawi Drop
+]]
+-- With Dawi Drop selected, max Trophy Hunter
+mod:hook_safe(CareerAbilityDRSlayer, "_do_leap", function (self)
+	local do_leap = self._status_extension.do_leap
+
+	if not do_leap then
+		return
+	end
+
+	local leap_events = do_leap.leap_events
+	local original_start = leap_events.start
+
+	leap_events.start = function (this)
+		if original_start then
+			original_start(this)
+		end
+
+		local unit_3p = this.unit
+		local talent_extension = ScriptUnit.has_extension(unit_3p, "talent_system")
+
+		if not talent_extension or not talent_extension:has_talent("bardin_slayer_activated_ability_leap_damage") then -- Dawi Drop only
+			return
+		end
+
+		local proc_function = ProcFunctions.add_bardin_slayer_passive_buff
+
+		for _ = 1, 4 do -- covers max_stacks 3 (base/Impatience/Adrenaline Surge) and 4 (increased_max_stacks talent)
+			proc_function(unit_3p, nil, nil)
+		end
+	end
+end)
+
 --[[
 	A Thousand Cuts
 ]]
@@ -94,7 +132,22 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_do
 		"speed_modifier"
 	}
 })
-mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5.0%%.")
+mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%%, dodge range by 5.0%%, and dodge count by 1.")
+-- Each Trophy Hunter stack also grants +1 dodge count, regardless of the wielded weapon
+mod:hook(GenericStatusExtension, "get_dodge_item_data", function (func, self, ...)
+	func(self, ...)
+
+	local talent_extension = ScriptUnit.has_extension(self.unit, "talent_system")
+
+	if not talent_extension or not talent_extension:has_talent("bardin_slayer_passive_movement_speed") then
+		return
+	end
+
+	local buff_extension = ScriptUnit.has_extension(self.unit, "buff_system")
+	local stacks = buff_extension and buff_extension:num_buff_type("bardin_slayer_passive_movement_speed") or 0
+
+	self.dodge_count = self.dodge_count + stacks
+end)
 --[[
 	Adrenaline Surge
 ]]
@@ -127,18 +180,52 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_dodge_rang
 	}
 })
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_push_on_dodge", {
-	stat_buff = "damage_taken", -- Added
-	multiplier = -0.15 -- Added
+	--stat_buff = "damage_taken", -- Added
+	--multiplier = -0.15, -- Added
+	explosion_template = "bardin_slayer_activated_ability_landing_stagger_impact", -- Crunch's ult landing stagger (was bardin_slayer_push_on_dodge)
 })
+-- Vanilla proc, gated behind a 3-effective-dodge counter stored on the buff instance
+mod_api.insert_proc_function("bardin_slayer_push_on_dodge", function (owner_unit, buff, params)
+	if Unit.alive(owner_unit) then
+		local status_extension = ScriptUnit.has_extension(owner_unit, "status_system")
+
+		if status_extension:get_dodge_cooldown() >= 1 then
+			buff.tb_effective_dodge_count = (buff.tb_effective_dodge_count or 0) + 1
+
+			if buff.tb_effective_dodge_count < 3 then
+				return
+			end
+
+			buff.tb_effective_dodge_count = 0
+
+			local first_person_extension = ScriptUnit.has_extension(owner_unit, "first_person_system")
+			local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")
+			local dodge_direction_box = params[1]
+			local dodge_direction = dodge_direction_box:unbox()
+			local template = buff.template
+			local explosion_template = template.explosion_template
+			local owner_position = POSITION_LOOKUP[owner_unit]
+			local unit_rotation = first_person_extension:current_rotation()
+			local career_power_level = career_extension:get_career_power_level()
+			local offset_distance = 2
+			local flat_unit_rotation = Quaternion.look(Vector3.flat(Quaternion.forward(unit_rotation)), Vector3.up())
+			local move_direction = Quaternion.rotate(flat_unit_rotation, dodge_direction)
+			local offset_position = owner_position + Vector3.normalize(move_direction) * offset_distance
+			local area_damage_system = Managers.state.entity:system("area_damage_system")
+
+			area_damage_system:create_explosion(owner_unit, offset_position, unit_rotation, explosion_template, 1, "career_ability", career_power_level, false)
+		end
+	end
+end)
 mod_api.update_talent("dr_slayer", 5, 3, {
 	description = "bardin_slayer_push_on_dodge_desc",
 	server = "both",
 	buffs = {
 		"bardin_slayer_push_on_dodge",
-		"tb_bardin_slayer_dodge_range",
-		"tb_bardin_slayer_dodge_speed"
+		--"tb_bardin_slayer_dodge_range",
+		--"tb_bardin_slayer_dodge_speed"
 	}
 })
-mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Effective dodges pushes nearby small enemies out of the way. Increases dodge range by 10% and reduces damage taken by 15%.")
+mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Every 3rd effective dodge pushes and staggers nearby enemies.")
 
 
