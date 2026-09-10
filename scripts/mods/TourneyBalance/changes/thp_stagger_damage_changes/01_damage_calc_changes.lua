@@ -138,7 +138,8 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 						end
 
 						if attacker_talent_extension:has_talent("markus_knight_cooldown_on_stagger_elite", "empire_soldier", true) then
-							tb_add_buff_to_team(attacker_unit, "markus_knight_cooldown_buff")
+							-- Separate, weaker buff than the regular on_stagger proc (career_changes/03_es_knight.lua)
+							tb_add_buff_to_team(attacker_unit, "tb_markus_knight_cooldown_buff_mainstay")
 						end
 					end
 				end

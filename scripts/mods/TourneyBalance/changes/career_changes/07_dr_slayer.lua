@@ -7,22 +7,23 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		## Slayer
 		### Talents
 		**Dawi Drop**
-		- Additionally grants max Trophy Hunter stacks while airborne.
+		- Additionally grants max Trophy Hunter stacks (up to 5, with High Tally) while airborne.
 
 		**A Thousand Cuts**
 		- Attack speed increased to 15% (from 10%).
 
 		**Impatience**
 		- Additionally grants 5% dodge distance and 5% dodge speed per Trophy Hunter stack.
-		- Sets dodge count to 6.
+
+		**High Tally**
+		- Increases Trophy Hunter's maximum stacks to 5 (from 4).
 
 		**Adrenaline Surge**
 		- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
 
 		**Barge**
-		- Now requires more than 3 effective dodges remaining (i.e. banked dodge budget, boosted by Impatience) to proc the push.
-		- Push now uses Crunch's (upgraded) ultimate landing stagger explosion.
-	$END_TB
+		- Push now staggers with medium_push strength and radius (no real damage), up from light_push.
+		- Instead of taking damage, Bardin now bleeds out 90% of it over 10 seconds instea (ignores Barkskin).
 ]]
 
 --[[
@@ -30,39 +31,6 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Talents
 
 ]]
---[[
-	Dawi Drop
-]]
--- With Dawi Drop selected, max Trophy Hunter
-mod:hook_safe(CareerAbilityDRSlayer, "_do_leap", function (self)
-	local do_leap = self._status_extension.do_leap
-
-	if not do_leap then
-		return
-	end
-
-	local leap_events = do_leap.leap_events
-	local original_start = leap_events.start
-
-	leap_events.start = function (this)
-		if original_start then
-			original_start(this)
-		end
-
-		local unit_3p = this.unit
-		local talent_extension = ScriptUnit.has_extension(unit_3p, "talent_system")
-
-		if not talent_extension or not talent_extension:has_talent("bardin_slayer_activated_ability_leap_damage") then -- Dawi Drop only
-			return
-		end
-
-		local proc_function = ProcFunctions.add_bardin_slayer_passive_buff
-
-		for _ = 1, 4 do -- covers max_stacks 3 (base/Impatience/Adrenaline Surge) and 4 (increased_max_stacks talent)
-			proc_function(unit_3p, nil, nil)
-		end
-	end
-end)
 
 --[[
 	A Thousand Cuts
@@ -135,6 +103,14 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_do
 mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5.0%%. Sets dodge count to 6.")
 
 --[[
+	High Tally
+]]
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_passive_increased_max_stacks", {
+	max_stacks = 5, -- 4
+})
+mod_api.insert_text("bardin_slayer_passive_increased_max_stacks_desc", "Increases Trophy Hunter's maximum stacks to 5 (from 4).")
+
+--[[
 	Adrenaline Surge
 ]]
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_passive_cooldown_reduction_on_max_stacks", {
@@ -147,65 +123,118 @@ mod_api.insert_text("bardin_slayer_passive_cooldown_reduction_on_max_stacks_desc
 --[[
 	Barge
 ]]
-mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_dodge_speed", {
-	multiplier = 1.1,
-	remove_buff_func = "remove_movement_buff",
-	apply_buff_func = "apply_movement_buff",
-	path_to_movement_setting_to_modify = {
-		"dodging",
-		"speed_modifier"
-	}
-})
-mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_dodge_range", {
-	multiplier = 1.1,
-	remove_buff_func = "remove_movement_buff",
-	apply_buff_func = "apply_movement_buff",
-	path_to_movement_setting_to_modify = {
-		"dodging",
-		"distance_modifier"
-	}
-})
-mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_push_on_dodge", {
-	--stat_buff = "damage_taken", -- Added
-	--multiplier = -0.15, -- Added
-	explosion_template = "bardin_slayer_activated_ability_landing_stagger_impact", -- Crunch's ult landing stagger (was bardin_slayer_push_on_dodge)
-})
--- 3 effective dodges required
-mod_api.insert_proc_function("bardin_slayer_push_on_dodge", function (owner_unit, buff, params)
-	if Unit.alive(owner_unit) then
-		local status_extension = ScriptUnit.has_extension(owner_unit, "status_system")
-		local effective_dodges_left = status_extension.dodge_count - status_extension.dodge_cooldown
-
-		if effective_dodges_left >= 3 then
-
-			local first_person_extension = ScriptUnit.has_extension(owner_unit, "first_person_system")
-			local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")
-			local dodge_direction_box = params[1]
-			local dodge_direction = dodge_direction_box:unbox()
-			local template = buff.template
-			local explosion_template = template.explosion_template
-			local owner_position = POSITION_LOOKUP[owner_unit]
-			local unit_rotation = first_person_extension:current_rotation()
-			local career_power_level = career_extension:get_career_power_level()
-			local offset_distance = 2
-			local flat_unit_rotation = Quaternion.look(Vector3.flat(Quaternion.forward(unit_rotation)), Vector3.up())
-			local move_direction = Quaternion.rotate(flat_unit_rotation, dodge_direction)
-			local offset_position = owner_position + Vector3.normalize(move_direction) * offset_distance
-			local area_damage_system = Managers.state.entity:system("area_damage_system")
-
-			area_damage_system:create_explosion(owner_unit, offset_position, unit_rotation, explosion_template, 1, "career_ability", career_power_level, false)
-		end
-	end
-end)
+-- Medium push
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.damage_profile = "medium_push" -- light_push
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.radius = 6 -- 1.5, Crunch's radius
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.max_damage_radius = 3 -- 1.5, Crunch's max_damage_radius
 mod_api.update_talent("dr_slayer", 5, 3, {
 	description = "bardin_slayer_push_on_dodge_desc",
 	server = "both",
 	buffs = {
 		"bardin_slayer_push_on_dodge",
-		--"tb_bardin_slayer_dodge_range",
-		--"tb_bardin_slayer_dodge_speed"
 	}
 })
-mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Dodging while more than 3 effective dodges remain pushes and staggers nearby enemies.")
+mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Effective dodges push nearby enemies. Instead of taking damage, Bardin bleeds out 90% of it over 10 seconds instead.")
 
+-- Barge bleed: pooled DoT buff like Warrior Priest Shield-of-Faith
+-- new hits add to it and refresh duration
+local TB_BARGE_BLEED_SOURCE = "life_tap"
+local TB_BARGE_BLEED_TYPE = "knockdown_bleed"
+local TB_BARGE_BLEED_DURATION = 10
+
+local function tb_barge_has_talent(unit)
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+
+	return not not (talent_extension and talent_extension:has_talent("bardin_slayer_push_on_dodge", "dwarf_ranger", true))
+end
+
+-- add_buff params don't reach reapply (the common case here), so smuggle the amount via upvalue instead
+local tb_barge_pending_damage_amount = 0
+
+mod_api.insert_buff_function("tb_barge_bleed_add_value", function (unit, buff, params)
+	buff.value = (buff.value or 0) + tb_barge_pending_damage_amount
+	buff.ticks_left = TB_BARGE_BLEED_DURATION
+end)
+mod_api.insert_buff_function("tb_barge_bleed_tick", function (unit, buff, params)
+	if not Managers.state.network.is_server or not ALIVE[unit] then
+		return
+	end
+
+	local ticks_left = buff.ticks_left or 0
+
+	if ticks_left <= 0 or not buff.value or buff.value <= 0 then
+		return
+	end
+
+	local damage_per_tick = buff.value / ticks_left
+
+	buff.value = buff.value - damage_per_tick
+	buff.ticks_left = ticks_left - 1
+
+	DamageUtils.add_damage_network(unit, unit, damage_per_tick, "full", TB_BARGE_BLEED_TYPE, nil, Vector3(0, 0, 0), TB_BARGE_BLEED_SOURCE, nil, unit, nil, nil, nil, nil, nil, nil, nil, nil, 1)
+end)
+mod_api.insert_buff_template("tb_bardin_slayer_barge_bleed", {
+	icon = "bardin_slayer_crit_chance", -- twich bleed icon
+	debuff = true,
+	max_stacks = 1,
+	duration = TB_BARGE_BLEED_DURATION,
+	update_frequency = 1,
+	refresh_durations = true,
+	apply_buff_func = "tb_barge_bleed_add_value",
+	reapply_buff_func = "tb_barge_bleed_add_value",
+	update_func = "tb_barge_bleed_tick",
+})
+mod_api.insert_text("tb_bardin_slayer_barge_bleed", "Bleeding")
+
+-- Intercepts the instance before it reaches the health pool; banks it into the bleed pool
+mod:hook(PlayerUnitHealthExtension, "add_damage", function (func, self, attacker_unit, damage_amount, hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
+	local unit = self.unit
+
+	if self.is_server and damage_amount and damage_amount > 0 and damage_source_name ~= TB_BARGE_BLEED_SOURCE and damage_source_name ~= "temporary_health_degen" and HEALTH_ALIVE[unit] and tb_barge_has_talent(unit) then
+		local buff_extension = ScriptUnit.extension(unit, "buff_system")
+
+		-- Hardcoded Barge Damage Reduction
+		tb_barge_pending_damage_amount = damage_amount * 0.9
+		buff_extension:add_buff("tb_bardin_slayer_barge_bleed")
+		tb_barge_pending_damage_amount = 0
+
+		return func(self, attacker_unit, 0, hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
+	end
+
+	return func(self, attacker_unit, damage_amount, hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
+end)
+
+--[[
+	Dawi Drop
+]]
+-- With Dawi Drop selected, max Trophy Hunter
+mod:hook_safe(CareerAbilityDRSlayer, "_do_leap", function (self)
+	local do_leap = self._status_extension.do_leap
+
+	if not do_leap then
+		return
+	end
+
+	local leap_events = do_leap.leap_events
+	local original_start = leap_events.start
+
+	leap_events.start = function (this)
+		if original_start then
+			original_start(this)
+		end
+
+		local unit_3p = this.unit
+		local talent_extension = ScriptUnit.has_extension(unit_3p, "talent_system")
+
+		if not talent_extension or not talent_extension:has_talent("bardin_slayer_activated_ability_leap_damage") then -- Dawi Drop only
+			return
+		end
+
+		local proc_function = ProcFunctions.add_bardin_slayer_passive_buff
+
+		for _ = 1, 5 do -- covers max_stacks 3 (base/Impatience/Adrenaline Surge) and 5 (High Tally)
+			proc_function(unit_3p, nil, nil)
+		end
+	end
+end)
 

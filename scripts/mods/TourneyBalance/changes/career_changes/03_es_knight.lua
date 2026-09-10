@@ -32,16 +32,19 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Increased block cost reduction to 30% (from 20%)
 		- Added 30% stamina recovery
 
+		**Comrades in Arms**
+		- Closest player mode (green outline)
+		- Press weapon special to guard specific team mate (red outline with number)
+
 		**It's Hero Time**
 		- Added a 30 second internal cooldown on the refund.
 		- No longer refunds if the ultimate is already fully charged.
 		
 		**Inspiring Blow**
-		- Increased cooldown reduction gained to 200% (from 100%) and duration to 1.5s (from 0.5s).
 		- Now also procs when Mainstay marks an elite with a stagger count, even if the hit doesn't actually stagger it.
 
 		**Numb to Pain**
-		- Invulnerability duration on ult increased to 5s (from 3s).
+		- Invulnerability duration on ult increased to 6s (from 3s).
 	$END_TB
 ]]
 
@@ -169,11 +172,222 @@ mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presen
 
 --[[
 	Comrades in Arms - Adjustment from Passive
+
+	Weapon Special (action_three) while the ranged weapon slot is wielded (no aiming/zooming
+	required, just holding it) cycles who receives Comrades in Arms: closest ally (vanilla) ->
+	teammate 2 -> teammate 3 -> ... -> back to closest.
+	The Foot Knight himself is never a valid recipient in either mode. Manual mode ignores range
+	entirely (whoever is selected gets it regardless of distance); closest mode is untouched vanilla
+	behavior (buff_function_templates.lua:activate_buff_on_closest_distance), range 20 unchanged.
+
+	Indicator (self-only, shown on the Knight's own buff bar):
+	  - Closest mode: no icon at all (the default).
+	  - Manual mode: tb_markus_knight_guard_mode_manual, debuff=true (red outline), stack count
+	    = the selected teammate's number (2..N, matching "players besides FK numbered from 2 to N").
 ]]
+mod_api.update_talent("es_knight", 4, 3, { -- update description
+	description_values = {
+	},
+})
+mod_api.insert_text("markus_knight_guard_desc", "Kruber gains 10.0% increased power. The closest ally to Kruber gains 50.0% damage reduction and 10.0% increased power. Passive aura from Protective Presence no longer affects allies.\n\nUsing weapon special while holding the ranged weapon cycles through the team mate you are guarding.")
+
+-- owner_unit -> { mode = "closest" | "manual", index = N (1-based into teammate_indices), indicator_stack_ids }
+local comrades_in_arms_cycle = {}
+
+-- Stable, deterministic ordering: everyone's array position in side.PLAYER_AND_BOT_UNITS, which is
+-- assigned once per level (by lobby/join slot) and doesn't reshuffle on death/respawn - only the
+-- Foot Knight's own position is excluded.
+local function tb_get_comrades_in_arms_teammates(owner_unit)
+	local side = Managers.state.side.side_by_unit[owner_unit]
+
+	if not side then
+		return nil, nil
+	end
+
+	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+	local teammate_indices = {}
+
+	for i = 1, #player_and_bot_units do
+		if player_and_bot_units[i] ~= owner_unit then
+			teammate_indices[#teammate_indices + 1] = i
+		end
+	end
+
+	return teammate_indices, player_and_bot_units
+end
+
+local function tb_update_comrades_in_arms_indicator(owner_unit, state)
+	local buff_system = Managers.state.entity:system("buff_system")
+
+	-- Clear whatever stack count was showing before (no-op in closest mode, since there's nothing to show)
+	local stack_ids = state.indicator_stack_ids
+
+	if stack_ids then
+		for i = 1, #stack_ids do
+			buff_system:remove_server_controlled_buff(owner_unit, stack_ids[i])
+		end
+	end
+
+	state.indicator_stack_ids = nil
+
+	if state.mode == "manual" then
+		local desired_count = state.index + 1 -- teammates are numbered 2..N
+		local new_stack_ids = {}
+
+		for _ = 1, desired_count do
+			new_stack_ids[#new_stack_ids + 1] = buff_system:add_buff(owner_unit, "tb_markus_knight_guard_mode_manual", owner_unit, true)
+		end
+
+		state.indicator_stack_ids = new_stack_ids
+	end
+end
+
+mod_api.insert_buff_function("tb_cycle_comrades_in_arms_target", function (owner_unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local teammate_indices = tb_get_comrades_in_arms_teammates(owner_unit)
+
+	if not teammate_indices or #teammate_indices == 0 then
+		return
+	end
+
+	local state = comrades_in_arms_cycle[owner_unit]
+
+	if not state then
+		state = { mode = "closest", index = 0 }
+		comrades_in_arms_cycle[owner_unit] = state
+	end
+
+	if state.mode == "closest" then
+		state.mode = "manual"
+		state.index = 1
+	else
+		state.index = state.index + 1
+
+		if state.index > #teammate_indices then
+			state.mode = "closest"
+			state.index = 0
+		end
+	end
+
+	tb_update_comrades_in_arms_indicator(owner_unit, state)
+end)
+
+-- Fired by a client (or the host directly) whenever Weapon Special is pressed; mod_api.add_buff
+-- handles the client->server RPC, and this buff_func only ever mutates state server-side.
+mod_api.insert_buff_template("tb_markus_knight_guard_cycle_pulse", {
+	max_stacks = 1,
+	refresh_durations = true,
+	duration = 0.3,
+	apply_buff_func = "tb_cycle_comrades_in_arms_target",
+	reapply_buff_func = "tb_cycle_comrades_in_arms_target",
+})
+mod_api.insert_buff_template("tb_markus_knight_guard_mode_manual", {
+	max_stacks = 4,
+	debuff = true,
+	icon = "markus_knight_passive_power_increase",
+})
+
+-- Global per-frame check on the local player only
+local tb_action_three_was_pressed = false
+local tb_is_comrades_in_arms_knight = false
+local tb_next_comrades_in_arms_check_t = 0
+local COMRADES_IN_ARMS_TALENT_CHECK_INTERVAL = 0.5
+
+mod:add_update_function(function (dt)
+	local local_player = Managers.player:local_player_safe(1)
+	local owner_unit = local_player and local_player.player_unit
+
+	if not owner_unit or not Unit.alive(owner_unit) then
+		tb_action_three_was_pressed = false
+
+		return
+	end
+
+	local t = Managers.time:time("main")
+
+	if t >= tb_next_comrades_in_arms_check_t then
+		tb_next_comrades_in_arms_check_t = t + COMRADES_IN_ARMS_TALENT_CHECK_INTERVAL
+
+		local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+		tb_is_comrades_in_arms_knight = not not (talent_extension and talent_extension:has_talent("markus_knight_guard", "empire_soldier", true))
+	end
+
+	if not tb_is_comrades_in_arms_knight then
+		return
+	end
+
+	local inventory_extension = ScriptUnit.has_extension(owner_unit, "inventory_system")
+
+	if not inventory_extension or inventory_extension:get_wielded_slot_name() ~= "slot_ranged" then
+		return
+	end
+
+	local input_extension = ScriptUnit.extension(owner_unit, "input_system")
+	local is_pressed = input_extension:get("action_three")
+
+	if is_pressed and not tb_action_three_was_pressed then
+		mod_api.add_buff(owner_unit, "tb_markus_knight_guard_cycle_pulse")
+	end
+
+	tb_action_three_was_pressed = is_pressed
+end)
+
+mod_api.insert_buff_function("tb_activate_buff_on_selected_or_closest", function (owner_unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local state = comrades_in_arms_cycle[owner_unit]
+
+	if not state or state.mode == "closest" then
+		BuffFunctionTemplates.functions.activate_buff_on_closest_distance(owner_unit, buff, params)
+
+		return
+	end
+
+	local teammate_indices, player_and_bot_units = tb_get_comrades_in_arms_teammates(owner_unit)
+	local target_array_index = teammate_indices and teammate_indices[state.index]
+	local target_unit = target_array_index and player_and_bot_units[target_array_index]
+	local template = buff.template
+	local buff_to_add = template.buff_to_add
+	local buff_system = Managers.state.entity:system("buff_system")
+	local current_unit = buff.current_unit
+
+	if current_unit and current_unit ~= target_unit then
+		local current_buff_extension = ScriptUnit.has_extension(current_unit, "buff_system")
+		local current_buff = current_buff_extension and current_buff_extension:get_non_stacking_buff(buff_to_add)
+
+		if current_buff and current_buff.server_id then
+			buff_system:remove_server_controlled_buff(current_unit, current_buff.server_id)
+		end
+
+		buff.current_unit = nil
+	end
+
+	if target_unit and ALIVE[target_unit] then
+		buff.current_unit = target_unit
+
+		local target_buff_extension = ScriptUnit.extension(target_unit, "buff_system")
+
+		if not target_buff_extension:has_buff_type(buff_to_add) then
+			local server_id = buff_system:add_buff(target_unit, buff_to_add, owner_unit, true)
+			local new_buff = target_buff_extension:get_non_stacking_buff(buff_to_add)
+
+			if new_buff then
+				new_buff.server_id = server_id
+			end
+		end
+	end
+end)
+
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard_defence", {
 	buff_to_add = "markus_knight_guard_defence_buff",
 	stat_buff = "damage_taken",
-	update_func = "activate_buff_on_closest_distance",
+	update_func = "tb_activate_buff_on_selected_or_closest",
 	remove_buff_func = "remove_aura_buff",
 	range = 20 -- 5
 })
@@ -182,7 +396,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard", {
 	stat_buff = "power_level",
 	remove_buff_func = "remove_aura_buff",
 	icon = "markus_knight_passive_power_increase",
-	update_func = "activate_buff_on_closest_distance",
+	update_func = "tb_activate_buff_on_selected_or_closest",
 	range = 20 -- 5
 })
 
@@ -197,7 +411,6 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_damage_take
 	max_stacks = 3,
 	remove_buff_func = "remove_party_buff_stacks"
 })
-
 
 --[[
 	Unlisted: Ult CD on Taking Damage
@@ -226,8 +439,9 @@ mod_api.update_talent("es_knight", 2, 1, {
 		}
 	},
 })
+
 --[[
-	Have At Thee! 
+	Have At Thee!
 	Proc from Mainstay stagger count on an elite
 	thp_stagger_damage_changes/01_damage_calc_changes.lua > mod:hook_origin(DamageUtils, "server_apply_hit", ...)
 ]]
@@ -357,27 +571,34 @@ end)
 	Proc from Mainstay stagger count on an elite
 	thp_stagger_damage_changes/01_damage_calc_changes.lua > mod:hook_origin(DamageUtils, "server_apply_hit", ...)
 ]]
-mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on_stagger_elite", {
-	buff_func = "buff_on_stagger_enemy"
-})
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_buff", {
 	duration = 1.5, -- 0.5
-	multiplier = 2, -- 1
+	multiplier = 3, -- 2
 	icon = "markus_knight_improved_passive_defence_aura"
 })
 mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Inflicting stagger counts on an elite enemy accelerates the cooldown of nearby allies by 100%% for 0.5 seconds.")
 
+-- Separate, weaker buff for the Mainstay stagger-count proc
+mod_api.insert_buff_template("tb_markus_knight_cooldown_buff_mainstay", {
+	max_stacks = 1,
+	refresh_durations = true,
+	stat_buff = "cooldown_regen",
+	duration = 0.5,
+	multiplier = 2,
+	icon = "markus_knight_improved_passive_defence_aura",
+})
+
 --[[
 	Numb to Pain
 ]]
--- Invulnerability on ult duration increased to 10s
+-- Invulnerability on ult duration increased to 6s
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_invulnerability_buff", {
-	duration = 5 -- 3
+	duration = 6 -- 3
 })
 mod_api.update_talent("es_knight", 6, 1, {
 	description_values = {
 		{
-			value = 5 -- 3
+			value = 6 -- 3
 		}
 	},
 })

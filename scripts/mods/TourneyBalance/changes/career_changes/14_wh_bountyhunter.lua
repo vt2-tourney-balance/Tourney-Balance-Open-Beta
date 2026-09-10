@@ -27,8 +27,7 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 		**Salvaged Ammunition**
 		- Increased ammo restored to 25% of max ammo (from 20%).
-		- Now triggers at or below 5% ammo remaining (from requiring fully empty).
-		- Blessed Kills reload 20% of the ranged weapon's clip size.
+		- Blessed Kills reload 25% of the ranged weapon's clip size.
 
 		**Rile the Mob**
 		- Added effect to also grant the team 10% attack speed for 10s.
@@ -164,8 +163,8 @@ mod_api.update_talent("wh_bountyhunter", 5, 2, {
 		"tb_victor_bounty_hunter_reload_on_kill",
 	},
 })
-mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while at or below 5%% ammunition restores 25.0%% of max ammo. Blessed Kills now reloads 20%% of the ranged weapon's clip size from reserve ammo..")
--- trigger threshold changed from fully out of ammo to at/below 5% of max ammo
+mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while out of ammunition restores 25.0%% of max ammo. Blessed Kills now reloads 25%% of the ranged weapon's clip size from reserve ammo..")
+-- trigger threshold also from specials
 local function get_ranged_ammo_extension(inventory_extension)
 	local slot_data = inventory_extension:get_slot_data("slot_ranged")
 	local right_unit_1p = slot_data.right_unit_1p
@@ -181,12 +180,12 @@ mod_api.insert_proc_function("victor_bounty_hunter_ammo_fraction_gain_out_of_amm
 	if ALIVE[owner_unit] then
 		local killed_unit_breed_data = params[2]
 
-		if killed_unit_breed_data.elite then
+		if killed_unit_breed_data.elite or killed_unit_breed_data.special then
 			local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
 			local ammo_extension = get_ranged_ammo_extension(inventory_extension)
 			local max_ammo = ammo_extension:max_ammo()
 
-			if ammo_extension:remaining_ammo() + ammo_extension:ammo_count() <= max_ammo * 0.05 then
+			if ammo_extension:remaining_ammo() + ammo_extension:ammo_count() < 1 then
 				local ammo_bonus_fraction = buff.template.ammo_bonus_fraction
 				local ammo_amount = math.max(math.round(max_ammo * ammo_bonus_fraction), 1)
 
@@ -195,9 +194,9 @@ mod_api.insert_proc_function("victor_bounty_hunter_ammo_fraction_gain_out_of_amm
 		end
 	end
 end)
--- melee kills also reload 5% of the ranged weapon's clip size from reserve ammo
+-- melee kills also reload 25% of the ranged weapon's clip size from reserve ammo
 mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_bounty_hunter_reload_on_kill", {
-	ammo_bonus_fraction = 0.2,
+	ammo_bonus_fraction = 0.25,
 	buff_func = "tb_victor_bounty_hunter_reload_on_kill",
 	event = "on_kill",
 })
