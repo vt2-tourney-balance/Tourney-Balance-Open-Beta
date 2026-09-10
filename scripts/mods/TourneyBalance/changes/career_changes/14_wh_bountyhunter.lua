@@ -27,6 +27,8 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 		**Salvaged Ammunition**
 		- Increased ammo restored to 25% of max ammo (from 20%).
+		- Now triggers at or below 5% ammo remaining (from requiring fully empty).
+		- Blessed Kills reload 20% of the ranged weapon's clip size.
 
 		**Rile the Mob**
 		- Added effect to also grant the team 10% attack speed for 10s.
@@ -147,7 +149,7 @@ mod_api.update_talent("wh_bountyhunter", 4, 2, {
 		"tb_wh2_cruel_fortune_crit_buff_removal",
 	},
 })
-mod_api.insert_text("victor_bountyhunter_passive_reduced_cooldown_desc", "Reduces the cooldown of Blessed Shots to 6 seconds. Grants a guaranteed critical strike every 6 seconds.")
+mod_api.insert_text("victor_bountyhunter_passive_reduced_cooldown_desc", "Reduces the cooldown of Blessed Shots to 6 seconds. Gain a separate guaranteed critical strike every 6 seconds.")
 
 --[[
 	Salvaged Ammunition
@@ -159,9 +161,93 @@ mod_api.update_talent_buff_template("witch_hunter", "victor_bountyhunter_restore
 mod_api.update_talent("wh_bountyhunter", 5, 2, {
 	buffs = {
 		"victor_bountyhunter_restore_ammo_on_elite_kill",
+		"tb_victor_bounty_hunter_reload_on_kill",
 	},
 })
-mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while out of ammunition restores 25.0%% of max ammo.")
+mod_api.insert_text("victor_bountyhunter_reload_on_kill_desc", "Killing an elite or special while at or below 5%% ammunition restores 25.0%% of max ammo. Blessed Kills now reloads 20%% of the ranged weapon's clip size from reserve ammo..")
+-- trigger threshold changed from fully out of ammo to at/below 5% of max ammo
+local function get_ranged_ammo_extension(inventory_extension)
+	local slot_data = inventory_extension:get_slot_data("slot_ranged")
+	local right_unit_1p = slot_data.right_unit_1p
+	local left_unit_1p = slot_data.left_unit_1p
+
+	return ScriptUnit.has_extension(right_unit_1p, "ammo_system") or ScriptUnit.has_extension(left_unit_1p, "ammo_system")
+end
+mod_api.insert_proc_function("victor_bounty_hunter_ammo_fraction_gain_out_of_ammo", function (owner_unit, buff, params)
+	if not is_local(owner_unit) then
+		return
+	end
+
+	if ALIVE[owner_unit] then
+		local killed_unit_breed_data = params[2]
+
+		if killed_unit_breed_data.elite then
+			local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
+			local ammo_extension = get_ranged_ammo_extension(inventory_extension)
+			local max_ammo = ammo_extension:max_ammo()
+
+			if ammo_extension:remaining_ammo() + ammo_extension:ammo_count() <= max_ammo * 0.05 then
+				local ammo_bonus_fraction = buff.template.ammo_bonus_fraction
+				local ammo_amount = math.max(math.round(max_ammo * ammo_bonus_fraction), 1)
+
+				ammo_extension:add_ammo_to_reserve(ammo_amount)
+			end
+		end
+	end
+end)
+-- melee kills also reload 5% of the ranged weapon's clip size from reserve ammo
+mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_bounty_hunter_reload_on_kill", {
+	ammo_bonus_fraction = 0.2,
+	buff_func = "tb_victor_bounty_hunter_reload_on_kill",
+	event = "on_kill",
+})
+mod_api.insert_proc_function("tb_victor_bounty_hunter_reload_on_kill", function (owner_unit, buff, params)
+	if not is_local(owner_unit) then
+		return
+	end
+
+	if not ALIVE[owner_unit] then
+		return
+	end
+
+	local killing_blow = params[1]
+	local damage_source_name = killing_blow[DamageDataIndex.DAMAGE_SOURCE_NAME]
+	local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
+	local melee_slot_data = inventory_extension:get_slot_data("slot_melee")
+
+	if not melee_slot_data or damage_source_name ~= melee_slot_data.item_data.name then
+		return
+	end
+
+	local ammo_extension = get_ranged_ammo_extension(inventory_extension)
+
+	if ammo_extension:clip_full() then
+		return
+	end
+
+	local reserve_ammo = ammo_extension:remaining_ammo()
+
+	if reserve_ammo < 1 then
+		return
+	end
+
+	local clip_size = ammo_extension:clip_size()
+	local clip_current_ammo = ammo_extension:ammo_count()
+	local ammo_bonus_fraction = buff.template.ammo_bonus_fraction
+	-- Blessed Kill already restores 1 ammo per melee kill; total restored 20% so -1
+	local ammo_amount = math.max(math.round(clip_size * ammo_bonus_fraction) - 1, 0)
+
+	-- clamp to the clip's remaining space
+	ammo_amount = math.min(ammo_amount, clip_size - clip_current_ammo, reserve_ammo)
+
+	ammo_extension._ammo_immediately_available = true
+
+	ammo_extension:add_ammo(ammo_amount)
+
+	ammo_extension._ammo_immediately_available = false
+
+	ammo_extension:remove_ammo(ammo_amount)
+end)
 
 --[[
 	Rile the Mob

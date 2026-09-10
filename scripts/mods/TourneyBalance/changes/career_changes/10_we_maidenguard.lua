@@ -16,7 +16,7 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 
 		### Passives
 		**Dance of Season**
-		- Added effect: Pushing enemies taunts them for 2 seconds.
+		- Added effect: Pushing enemies taunts them for 2 seconds. Does not apply to Lords and Bosses.
 
 		**Renewal**
 		- Stam regen aura range increased to 20 (from 5).
@@ -123,6 +123,7 @@ mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, in
 end)
 
 -- Jump cancel out of the ult
+local JUMP_CANCEL_MOD = 0.67
 mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, input, dt, context, t)
     local career_extension = ScriptUnit.has_extension(unit, "career_system")
 
@@ -153,7 +154,7 @@ mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, inpu
                 move_direction = self._direction:unbox()
             end
 
-            local dash_velocity = move_direction * speed * 0.67
+            local dash_velocity = move_direction * speed * JUMP_CANCEL_MOD
 
             local whereabouts_extension = ScriptUnit.extension(unit, "whereabouts_system")
             local real_set_jumped = whereabouts_extension.set_jumped
@@ -258,7 +259,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_s
 --[[
     Dance of Season
 ]]
-mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Pushing enemies taunts them for 2 seconds.")
+mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Pushing enemies taunts them for 2 seconds (excluding Lords and Bosses).")
 
 -- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
 -- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
@@ -589,12 +590,17 @@ end
     Quiver of Plenty
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_max_ammo", {
-	multiplier = 1 -- 0.4
+	multiplier = 1.0, -- 0.4
 })
 mod_api.update_talent("we_maidenguard", 5, 3, {
     description = "kerillian_maidenguard_max_ammo_desc",
-    description_values = {},
+    description_values = {
+        {
+            value_type = "percent",
+            value = 1.0,
+        },
+    },
 })
-mod_api.insert_text("kerillian_maidenguard_max_ammo_desc", "Increased ammunition amount by 100%.")
+--mod_api.insert_text("kerillian_maidenguard_max_ammo_desc", "Increased ammunition amount by 100%.")
 
 
