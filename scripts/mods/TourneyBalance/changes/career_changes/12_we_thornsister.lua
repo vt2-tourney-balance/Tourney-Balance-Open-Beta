@@ -295,6 +295,15 @@ mod:hook_safe(ActionCareerWEThornsisterTargetWall, "_update_targeting", function
 	end
 
 	local owner_unit = self.owner_unit
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+	if not (talent_extension and talent_extension:has_talent("kerillian_thorn_sister_tanky_wall")) then
+		tb_flat_wall_toggle_state[owner_unit] = nil
+		self._tb_action_three_was_held = false
+		self._wall_tilt_angle = 0
+		return
+	end
+
 	local input_extension = ScriptUnit.extension(owner_unit, "input_system")
 	local action_three_held = input_extension:get("action_three")
 
