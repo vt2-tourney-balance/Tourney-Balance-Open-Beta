@@ -14,7 +14,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Impatience**
 		- Additionally grants 5% dodge distance and 5% dodge speed per Trophy Hunter stack.
-		- Sets dodge count to 6, regardless of the wielded weapon.
+		- Sets dodge count to 6.
 
 		**Adrenaline Surge**
 		- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
@@ -132,17 +132,8 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_do
 		"speed_modifier"
 	}
 })
-mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5.0%%. Sets dodge count to 6, regardless of the wielded weapon.")
--- Flat dodge count of 6 regardless of weapon, same pattern as No Dawdling in 05_dr_ranger.lua
-mod:hook(GenericStatusExtension, "get_dodge_item_data", function (func, self, ...)
-	func(self, ...)
+mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5.0%%. Sets dodge count to 6.")
 
-	local talent_extension = ScriptUnit.has_extension(self.unit, "talent_system")
-
-	if talent_extension and talent_extension:has_talent("bardin_slayer_passive_movement_speed") then
-		self.dodge_count = 6
-	end
-end)
 --[[
 	Adrenaline Surge
 ]]
@@ -185,7 +176,7 @@ mod_api.insert_proc_function("bardin_slayer_push_on_dodge", function (owner_unit
 		local status_extension = ScriptUnit.has_extension(owner_unit, "status_system")
 		local effective_dodges_left = status_extension.dodge_count - status_extension.dodge_cooldown
 
-		if effective_dodges_left > 3 then
+		if effective_dodges_left >= 3 then
 
 			local first_person_extension = ScriptUnit.has_extension(owner_unit, "first_person_system")
 			local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")

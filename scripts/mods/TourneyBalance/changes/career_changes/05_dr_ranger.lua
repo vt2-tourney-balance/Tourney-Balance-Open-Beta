@@ -217,6 +217,13 @@ mod:hook(GenericStatusExtension, "get_dodge_item_data", function (func, self, ..
 	if talent_extension and talent_extension:has_talent("bardin_ranger_movement_speed") then
 		self.dodge_count = 99
 	end
+	
+	if talent_extension and talent_extension:has_talent("bardin_slayer_passive_movement_speed") then
+		local buff_extension = ScriptUnit.has_extension(self.unit, "buff_system")
+    	local stacks = buff_extension and buff_extension:num_buff_type("bardin_slayer_passive_movement_speed") or 0
+
+		self.dodge_count = self.dodge_count + stacks
+	end
 end)
 mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10%% and removes the limit on dodging efficiently.")
 
