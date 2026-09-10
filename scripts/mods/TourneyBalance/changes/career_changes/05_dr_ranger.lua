@@ -229,7 +229,7 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_reduced_damag
 mod_api.update_talent("dr_ranger", 5, 2, {
     description_values = {},
 })
-mod_api.insert_text("bardin_ranger_reduced_damage_taken_headshot_desc_2", "Bardin takes 20.0% less damage from behind. Whenever he scores a headshots or picks up a survivalist pouch, this bonus applies to all damage taken for 7 seconds.")
+mod_api.insert_text("bardin_ranger_reduced_damage_taken_headshot_desc_2", "Bardin takes 20.0% less damage from behind. Whenever he scores a headshots, this bonus applies to all damage taken for 7 seconds.")
 
 
 --[[
@@ -261,8 +261,6 @@ mod:hook(SimpleInventoryExtension, "add_ammo_from_pickup", function (func, self,
 
 	if talent_extension:has_talent("bardin_ranger_reload_speed_on_multi_hit") then 			-- Firing Fury
 		buff_extension:add_buff("bardin_ranger_reload_speed_on_multi_hit_buff")
-	elseif talent_extension:has_talent("bardin_ranger_reduced_damage_taken_headshot") then 	-- Exuberance
-		buff_extension:add_buff("bardin_ranger_reduced_damage_taken_headshot_buff")
 	end
 end)
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_reload_speed_on_multi_hit_buff", {

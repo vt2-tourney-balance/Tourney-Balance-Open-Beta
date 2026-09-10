@@ -10,7 +10,6 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Damage cleave buff.
 		- Prioritizes specials now.
 		- Does not consume Bloodshot anymore.
-		- Conservative Shooter trait can proc limited to 1 ammo per arrow.
 
 		### Passives
 		**Amaranthe**
@@ -579,9 +578,12 @@ mod:hook(PlayerProjectileUnitExtension, "hit_enemy", function (func, self, impac
 
 	local owner_unit = self._owner_unit
 
+	-- Conservative shooter on Ult
+	--[[
 	if owner_unit and ALIVE[owner_unit] and HEALTH_ALIVE[hit_unit] then
 		tb_conservative_shooter_grant_ult_ammo(self, owner_unit, hit_unit, hit_actor)
 	end
+	]]
 
 	-- Note: intentionally not reset back to false after this call
 	func(self, impact_data, hit_unit, hit_position, hit_direction, hit_normal, hit_actor, breed, has_ranged_boost, ranged_boost_curve_multiplier)

@@ -37,7 +37,6 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Additionally grants passive 100% increased stamina recovery.
 
 		**Ironbark Thicket**
-		- Reduced wall duration to 6s (from 10s).
 		- When holding cast, pressing weapon special key toggles a flat-wall mode (Ironbark Thicket icon)
 		- A flat wall no longer blocks enemy movement, but enemies touching it are slowed by 50% for 10s.
 
@@ -405,7 +404,9 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 				local life_time_mult = 1
 				local life_time_bonus = 4.2
 				area_damage_params.life_time = area_damage_params.life_time * life_time_mult + life_time_bonus
-				props_params.life_time = (6 / 10) * (props_params.life_time * life_time_mult + life_time_bonus)
+				-- Wide wall duration
+				-- props_params.life_time = (6 / 10) * (props_params.life_time * life_time_mult + life_time_bonus)
+				props_params.life_time = props_params.life_time * life_time_mult + life_time_bonus
 			elseif source_talent_extension:has_talent("kerillian_thorn_sister_debuff_wall") then
 				local life_time_mult = 0.17
 				local life_time_bonus = 0
