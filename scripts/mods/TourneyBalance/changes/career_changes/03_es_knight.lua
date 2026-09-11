@@ -38,7 +38,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Press weapon_inspect while blocking to cycle between modes and team mates.
 
 		**It's Hero Time**
-		- Added a 30 second internal cooldown on the refund.
+		- Added a 15 second internal cooldown on the refund.
 		- No longer refunds if the ultimate is already fully charged.
 		
 		**Inspiring Blow**
@@ -502,14 +502,14 @@ mod_api.update_talent("es_knight", 2, 3, { -- update description
 --[[
 	It's Hero Time
 ]]
--- 30s ICD nerf
+-- 15s ICD nerf
 mod_api.insert_buff_template("tb_markus_knight_hero_time_ready_buff", {
 	icon = "markus_knight_movement_speed_on_incapacitated_allies",
 })
 mod_api.insert_buff_template("tb_markus_knight_hero_time_cooldown_buff", {
 	icon = "markus_knight_movement_speed_on_incapacitated_allies",
 	is_cooldown = true,
-	duration = 30,
+	duration = 15,
 	duration_end_func = "add_buff_local",
 	buff_to_add = "tb_markus_knight_hero_time_ready_buff",
 })
