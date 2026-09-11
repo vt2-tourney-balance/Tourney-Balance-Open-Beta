@@ -195,26 +195,27 @@ mod_api.insert_text("markus_knight_guard_desc", "Kruber gains 10.0% increased po
 -- owner_unit -> { mode = "closest" | "manual", index = N (1-based into teammate_indices), indicator_stack_ids }
 local comrades_in_arms_cycle = {}
 
--- Stable, deterministic ordering: everyone's array position in side.PLAYER_AND_BOT_UNITS, which is
--- assigned once per level (by lobby/join slot) and doesn't reshuffle on death/respawn - only the
--- Foot Knight's own position is excluded.
+-- Stable, deterministic ordering
 local function tb_get_comrades_in_arms_teammates(owner_unit)
-	local side = Managers.state.side.side_by_unit[owner_unit]
+	local players = Managers.player:players()
+	local teammates = {}
 
-	if not side then
-		return nil, nil
-	end
+	for _, player in pairs(players) do
+		if player.player_unit ~= owner_unit then
+			local sort_key = tostring(player:network_id()) .. "_" .. tostring(player:local_player_id())
 
-	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
-	local teammate_indices = {}
-
-	for i = 1, #player_and_bot_units do
-		if player_and_bot_units[i] ~= owner_unit then
-			teammate_indices[#teammate_indices + 1] = i
+			teammates[#teammates + 1] = {
+				player = player,
+				sort_key = sort_key,
+			}
 		end
 	end
 
-	return teammate_indices, player_and_bot_units
+	table.sort(teammates, function (a, b)
+		return a.sort_key < b.sort_key
+	end)
+
+	return teammates
 end
 
 local function tb_update_comrades_in_arms_indicator(owner_unit, state)
@@ -248,9 +249,9 @@ mod_api.insert_buff_function("tb_cycle_comrades_in_arms_target", function (owner
 		return
 	end
 
-	local teammate_indices = tb_get_comrades_in_arms_teammates(owner_unit)
+	local teammates = tb_get_comrades_in_arms_teammates(owner_unit)
 
-	if not teammate_indices or #teammate_indices == 0 then
+	if not teammates or #teammates == 0 then
 		return
 	end
 
@@ -267,7 +268,7 @@ mod_api.insert_buff_function("tb_cycle_comrades_in_arms_target", function (owner
 	else
 		state.index = state.index + 1
 
-		if state.index > #teammate_indices then
+		if state.index > #teammates then
 			state.mode = "closest"
 			state.index = 0
 		end
@@ -352,9 +353,9 @@ mod_api.insert_buff_function("tb_activate_buff_on_selected_or_closest", function
 		return
 	end
 
-	local teammate_indices, player_and_bot_units = tb_get_comrades_in_arms_teammates(owner_unit)
-	local target_array_index = teammate_indices and teammate_indices[state.index]
-	local target_unit = target_array_index and player_and_bot_units[target_array_index]
+	local teammates = tb_get_comrades_in_arms_teammates(owner_unit)
+	local target_entry = teammates and teammates[state.index]
+	local target_unit = target_entry and target_entry.player.player_unit
 
 	-- The selected teammate died or their slot is gone (disconnected) - auto-revert to closest
 	-- instead of silently buffing nobody until the player manually cycles back.
