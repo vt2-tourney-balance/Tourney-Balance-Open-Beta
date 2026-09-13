@@ -123,7 +123,7 @@ mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, in
 end)
 
 -- Jump cancel out of the ult
-local JUMP_CANCEL_MOD = 0.67
+local JUMP_CANCEL_MOD = 0.42
 mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, input, dt, context, t)
     local career_extension = ScriptUnit.has_extension(unit, "career_system")
 
@@ -259,7 +259,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_s
 --[[
     Dance of Season
 ]]
-mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Pushing enemies taunts them for 2 seconds (excluding Lords and Bosses).")
+mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Pushing enemies taunts them for 2 seconds (excludes Lords and Bosses).")
 
 -- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
 -- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.

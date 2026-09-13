@@ -6,9 +6,6 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Slayer
 		### Talents
-		**Dawi Drop**
-		- Additionally grants max Trophy Hunter stacks (up to 5, with High Tally) while airborne.
-
 		**A Thousand Cuts**
 		- Attack speed increased to 15% (from 10%).
 
@@ -22,8 +19,12 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Changed to 67% cooldown reduction per Trophy Hunter stack (300% only at max stacks).
 
 		**Barge**
-		- Push now staggers with medium_push strength and radius (no real damage), up from light_push.
-		- Instead of taking damage, Bardin now bleeds out 90% of it over 10 seconds instea (ignores Barkskin).
+		- Stagger strength on dodge increased to medium_push (from light_push).
+		- Stagger radius on dodge increased to 3 (from 1.5).
+		- All damage taken is converted into a bleed effect lasting 10 seconds.
+
+		**Dawi Drop**
+		- Additionally grants max Trophy Hunter stacks (up to 5, with High Tally) while airborne.
 ]]
 
 --[[
@@ -125,8 +126,8 @@ mod_api.insert_text("bardin_slayer_passive_cooldown_reduction_on_max_stacks_desc
 ]]
 -- Medium push
 ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.damage_profile = "medium_push" -- light_push
-ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.radius = 6 -- 1.5, Crunch's radius
-ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.max_damage_radius = 3 -- 1.5, Crunch's max_damage_radius
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.radius = 3 -- 1.5
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.max_damage_radius = 3 -- 1.5
 mod_api.update_talent("dr_slayer", 5, 3, {
 	description = "bardin_slayer_push_on_dodge_desc",
 	server = "both",
@@ -134,7 +135,7 @@ mod_api.update_talent("dr_slayer", 5, 3, {
 		"bardin_slayer_push_on_dodge",
 	}
 })
-mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Effective dodges push nearby enemies. Instead of taking damage, Bardin bleeds out 90% of it over 10 seconds instead.")
+mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Effective dodges push nearby enemies. All damage taken is converted into a bleed effect lasting 10 seconds.")
 
 -- Barge bleed: pooled DoT buff like Warrior Priest Shield-of-Faith
 -- new hits add to it and refresh duration
@@ -193,12 +194,12 @@ mod:hook(PlayerUnitHealthExtension, "add_damage", function (func, self, attacker
 	if self.is_server and damage_amount and damage_amount > 0 and damage_source_name ~= TB_BARGE_BLEED_SOURCE and damage_source_name ~= "temporary_health_degen" and HEALTH_ALIVE[unit] and tb_barge_has_talent(unit) then
 		local buff_extension = ScriptUnit.extension(unit, "buff_system")
 
-		-- Hardcoded Barge Damage Reduction
-		tb_barge_pending_damage_amount = damage_amount * 0.9
+		-- Converted into the bleed
+		tb_barge_pending_damage_amount = damage_amount - 1 -- * damage_reduction_multiplier
 		buff_extension:add_buff("tb_bardin_slayer_barge_bleed")
 		tb_barge_pending_damage_amount = 0
 
-		return func(self, attacker_unit, 0, hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
+		return func(self, attacker_unit, 1, hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
 	end
 
 	return func(self, attacker_unit, damage_amount, hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
