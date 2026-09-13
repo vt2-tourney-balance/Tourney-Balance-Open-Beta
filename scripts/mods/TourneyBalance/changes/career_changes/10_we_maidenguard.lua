@@ -12,7 +12,6 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		## Handmaiden
 		### Career Ability
 		- Increased hitbox width for non-bleed ult to 5.0 (from 1.5).
-		- Added jump-cancelling and bhopping.
 
 		### Passives
 		**Dance of Season**
@@ -38,9 +37,8 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		- Increased stacks gained to 3 (from 2).
 
 		**Dance of Blades**
-		- Dodging starts immediately (mid-dodge, mid-air)
-        - 1s internal cooldown, tracked separately for blocking and non-blocking dodges
 		- Increased power to 15% (from 10%) and duration to 6s (from 2s).
+		- Instant dodges (1s cooldown each), tracked separately for blocking and non-blocking dodges.
 
 		**Heart of Oak**
 		- Increased health bonus to 20% (from 15%).
@@ -103,6 +101,10 @@ mod:hook(PlayerWhereaboutsExtension, "update", function (func, self, unit, input
     return func(self, unit, input, dt, context, t)
 end)
 
+--[[ 
+    Jump Cancelling
+
+
 -- PlayerCharacterStateLunging.on_enter unconditionally calls whereabouts_extension:set_jumped()
 mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, input, dt, context, t, previous_state, params)
     local career_extension = ScriptUnit.has_extension(unit, "career_system")
@@ -123,7 +125,7 @@ mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, in
 end)
 
 -- Jump cancel out of the ult
-local JUMP_CANCEL_MOD = 0.42
+local JUMP_CANCEL_MOMENTUM_MODIFIER = 0.67
 mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, input, dt, context, t)
     local career_extension = ScriptUnit.has_extension(unit, "career_system")
 
@@ -154,7 +156,7 @@ mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, inpu
                 move_direction = self._direction:unbox()
             end
 
-            local dash_velocity = move_direction * speed * JUMP_CANCEL_MOD
+            local dash_velocity = move_direction * speed * JUMP_CANCEL_MOMENTUM_MODIFIER
 
             local whereabouts_extension = ScriptUnit.extension(unit, "whereabouts_system")
             local real_set_jumped = whereabouts_extension.set_jumped
@@ -175,29 +177,39 @@ mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, inpu
     return func(self, unit, input, dt, context, t)
 end)
 
--- Apply the queued dash momentum from within jumping's own on_enter, once it's actually the active state.
+-- Jump cancel dodges
 mod:hook(PlayerCharacterStateJumping, "on_enter", function (func, self, unit, input, dt, context, t, previous_state, params)
+    local career_extension = ScriptUnit.has_extension(unit, "career_system")
+    local is_maidenguard = career_extension and career_extension:career_name() == "we_maidenguard"
+    local dodge_jump_velocity, dodge_jump_speed
+
+    if is_maidenguard and previous_state == "dodging" and params.post_dodge_jump then
+        dodge_jump_velocity = Vector3.flat(self.locomotion_extension:current_velocity()) * JUMP_CANCEL_MOMENTUM_MODIFIER
+        dodge_jump_speed = Vector3.length(dodge_jump_velocity)
+    end
+
     func(self, unit, input, dt, context, t, previous_state, params)
 
+    local locomotion_extension = self.locomotion_extension
     local status_extension = self.status_extension
     local preserved_velocity_box = status_extension._tb_dash_jump_velocity
 
-    if not preserved_velocity_box then
-        return
-    end
+    if preserved_velocity_box then
+        status_extension._tb_dash_jump_velocity = nil
 
-    status_extension._tb_dash_jump_velocity = nil
+        local dash_velocity = preserved_velocity_box:unbox()
+        local dash_speed = Vector3.length(dash_velocity)
 
-    local dash_velocity = preserved_velocity_box:unbox()
-    local dash_speed = Vector3.length(dash_velocity)
-
-    if dash_speed > 0 then
-        local locomotion_extension = self.locomotion_extension
-
+        if dash_speed > 0 then
+            locomotion_extension:set_external_velocity_enabled(true)
+            locomotion_extension:add_external_velocity(dash_velocity, dash_speed)
+        end
+    elseif dodge_jump_speed and dodge_jump_speed > 0 then
         locomotion_extension:set_external_velocity_enabled(true)
-        locomotion_extension:add_external_velocity(dash_velocity, dash_speed)
+        locomotion_extension:add_external_velocity(dodge_jump_velocity, dodge_jump_speed)
     end
 end)
+]]
 
 --[[
 
