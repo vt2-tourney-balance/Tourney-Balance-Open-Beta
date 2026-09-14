@@ -1,10 +1,11 @@
 local mod = get_mod("TourneyBalance")
 
 -- Builds a "preset dropdown + custom R/G/B sliders" widget. Every color group in the
--- Accessibility section shares the same Default + presets (from _color_presets.lua) + Custom;
--- selecting Default or a preset hides the sliders (show_widgets omitted), selecting Custom
--- reveals them (show_widgets = {1, 2, 3}). Default resolves to that entry's own stock in-game
--- RGB (r_default/g_default/b_default), passed to color_presets.resolve_color at the call site.
+-- Stagger State Visualizer's outline colors shares the same Default + presets (from
+-- debugging/_color_presets.lua) + Custom; selecting Default or a preset hides the sliders
+-- (show_widgets omitted), selecting Custom reveals them (show_widgets = {1, 2, 3}). Default
+-- resolves to that entry's own stock in-game RGB (r_default/g_default/b_default), passed to
+-- color_presets.resolve_color at the call site.
 local function color_picker_widget(setting_id, r_setting_id, g_setting_id, b_setting_id, r_default, g_default, b_default)
 	return {
 		setting_id = setting_id,
@@ -119,24 +120,6 @@ return {
 				default_value = false,
 				title = "performance_logging_title",
 				tooltip = "performance_logging_description",
-			},
-			{
-				setting_id = "accessibility",
-				type = "group",
-				sub_widgets = {
-					{
-						setting_id = "outline_colors",
-						type = "group",
-						sub_widgets = {
-							color_picker_widget("tb_ping_outline_color_group", "tb_ping_color_r", "tb_ping_color_g", "tb_ping_color_b", 30, 150, 255),
-							color_picker_widget("tb_isjya_ping_outline_color_group", "tb_special_tag_color_r", "tb_special_tag_color_g", "tb_special_tag_color_b", 227, 4, 4),
-							color_picker_widget("tb_dangerous_outline_color_group", "tb_dangerous_color_r", "tb_dangerous_color_g", "tb_dangerous_color_b", 227, 4, 4),
-							color_picker_widget("tb_downed_player_outline_color_group", "tb_downed_player_outline_color_r", "tb_downed_player_outline_color_g", "tb_downed_player_outline_color_b", 227, 4, 4),
-							color_picker_widget("tb_player_outline_color_group", "tb_player_outline_color_r", "tb_player_outline_color_g", "tb_player_outline_color_b", 118, 186, 0),
-							color_picker_widget("tb_skeleton_outline_color_group", "tb_skeleton_outline_color_r", "tb_skeleton_outline_color_g", "tb_skeleton_outline_color_b", 89, 218, 158),
-						},
-					},
-				},
 			},
 			{
 				setting_id = "debugging",

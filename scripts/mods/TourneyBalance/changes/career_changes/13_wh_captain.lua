@@ -1,6 +1,5 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
-local color_presets = require("scripts/mods/TourneyBalance/accessibility/_color_presets")
 local shared_utils = require("scripts/mods/TourneyBalance/_api/shared_utils")
 local is_server = shared_utils.is_server
 local is_local = shared_utils.is_local
@@ -140,8 +139,24 @@ mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc",
 local PING_DURATION = 15
 local marked_enemies = {}
 
+-- Mirrors AccessibilityOptions' "Dangerous Enemy" outline color (OutlineOptions.lua) instead of
+-- carrying a separate TB-only color setting for this mark. Falls back to the base-game dangerous
+-- enemy color if AccessibilityOptions isn't installed/enabled.
+local function get_dangerous_enemy_color()
+	local accessibility_options = get_mod("AccessibilityOptions")
+	local marker_color = accessibility_options and OutlineSettings.colors.accessibility_dangerous_enemy_marker
+
+	if marker_color then
+		local color = marker_color.color
+
+		return color[2], color[3], color[4]
+	end
+
+	return 227, 4, 4
+end
+
 do
-	local r, g, b = color_presets.resolve_color("tb_isjya_ping_outline_color_group", "tb_special_tag_color_r", "tb_special_tag_color_g", "tb_special_tag_color_b", 227, 4, 4)
+	local r, g, b = get_dangerous_enemy_color()
 
 	OutlineSettings.colors.tb_judged_special = {
 		pulsate = false,
@@ -156,27 +171,40 @@ OutlineSettings.templates.tb_judged_special = {
 	flag = OutlineSettings.flags.non_wall_occluded,
 }
 
--- Update outline color only when a setting actually changes
-mod:add_setting_changed_function(function ()
-	local color = OutlineSettings.colors.tb_judged_special.color
-	local r, g, b = color_presets.resolve_color("tb_isjya_ping_outline_color_group", "tb_special_tag_color_r", "tb_special_tag_color_g", "tb_special_tag_color_b", 227, 4, 4)
+-- Update outline color whenever AccessibilityOptions' Dangerous Enemy color changes
+local accessibility_options = get_mod("AccessibilityOptions")
 
-	color[2], color[3], color[4] = r, g, b
+if accessibility_options then
+	accessibility_options:add_setting_changed_function(function ()
+		local color = OutlineSettings.colors.tb_judged_special.color
+		local r, g, b = get_dangerous_enemy_color()
 
-	-- Force already-tagged specials to redraw immediately with the new color, not just future tags
-	for enemy_unit, data in pairs(marked_enemies) do
-		if ALIVE[enemy_unit] and data.outline_id then
-			local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
+		color[2], color[3], color[4] = r, g, b
 
-			if outline_extension then
-				outline_extension:reapply_outline()
+		-- Force already-tagged specials to redraw immediately with the new color, not just future tags
+		for enemy_unit, data in pairs(marked_enemies) do
+			if ALIVE[enemy_unit] and data.outline_id then
+				local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
+
+				if outline_extension then
+					outline_extension:reapply_outline()
+				end
 			end
 		end
-	end
-end)
+	end)
+end
 
 -- Reveals/re-reveals every special tracked by the proximity system and applies Witch Hunt (+ Templar's Knowledge)
 local function apply_isjya_special_marks(attacker_unit, has_templars_knowledge)
+	-- Re-sync from AccessibilityOptions here too (not just on setting-changed) so mark color is
+	-- correct the first time it's actually used, regardless of mod load order.
+	do
+		local color = OutlineSettings.colors.tb_judged_special.color
+		local r, g, b = get_dangerous_enemy_color()
+
+		color[2], color[3], color[4] = r, g, b
+	end
+
 	local proximity_system = Managers.state.entity:system("proximity_system")
 	local t = Managers.time:time("game")
 

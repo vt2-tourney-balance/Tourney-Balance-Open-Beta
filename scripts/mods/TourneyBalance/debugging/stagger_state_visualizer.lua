@@ -1,5 +1,5 @@
 local mod = get_mod("TourneyBalance")
-local color_presets = require("scripts/mods/TourneyBalance/accessibility/_color_presets")
+local color_presets = require("scripts/mods/TourneyBalance/debugging/_color_presets")
 
 --[[
 

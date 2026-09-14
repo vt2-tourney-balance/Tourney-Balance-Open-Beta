@@ -1,10 +1,10 @@
 --[[
 
-	Shared color preset list for the Accessibility outline-color dropdowns. RGB values match
-	Colors.color_definitions (scripts/utils/colors.lua) so presets match colors already used
-	elsewhere in the game rather than arbitrary picks.
+	Shared color preset list for the Stagger State Visualizer's outline-color dropdowns. RGB
+	values match Colors.color_definitions (scripts/utils/colors.lua) so presets match colors
+	already used elsewhere in the game rather than arbitrary picks.
 
-	Each accessibility color file calls resolve_color() to get its final RGB: the selected
+	stagger_state_visualizer.lua calls resolve_color() to get its final RGB: the selected
 	preset's RGB, the entry's own stock RGB when "default" is selected, or the custom R/G/B
 	sliders when "custom" is selected. "default" isn't a shared preset like the other 9 - it's
 	the unmodified in-game color for that specific outline, so it's passed in per call instead
