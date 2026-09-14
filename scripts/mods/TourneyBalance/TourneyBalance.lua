@@ -31,6 +31,53 @@ mod.on_setting_changed = function (...)
     end
 end
 
+--- IngameHud per-frame hook
+-- Same problem again, but for an engine hook rather than a single mod field: mod_checker.lua and
+-- 13_wh_captain.lua each used to call mod:hook_safe(IngameHud, "update", ...) independently, and
+-- having this mod hook the exact same (class, method) more than once meant only one of them
+-- actually ran. Register through mod:add_ingame_hud_update_function(fn) instead of calling
+-- mod:hook_safe(IngameHud, "update", ...) directly, so this mod only ever installs one such hook.
+local _ingame_hud_update_functions = {}
+function mod.add_ingame_hud_update_function(self, func)
+    _ingame_hud_update_functions[#_ingame_hud_update_functions + 1] = func
+end
+mod:hook_safe(IngameHud, "update", function (self)
+    for i = 1, #_ingame_hud_update_functions do
+        _ingame_hud_update_functions[i](self)
+    end
+end)
+
+--- All-mods-loaded hook
+-- Same single-field-collision problem as `mod.update`/`mod.on_setting_changed` above. This one is
+-- also the right place to do cross-mod setup (e.g. get_mod("SomeOtherMod")): calling get_mod at a
+-- file's own top-level load time is NOT safe, since VMF's mod load order between different mods is
+-- not guaranteed - a `get_mod` there can silently return nil and get cached in a local that's never
+-- refreshed, if the other mod hasn't loaded yet. By the time on_all_mods_loaded fires, every mod is
+-- guaranteed loaded regardless of order. Register through mod:add_all_mods_loaded_function(fn)
+-- instead of assigning mod.on_all_mods_loaded itself.
+local _all_mods_loaded_functions = {}
+function mod.add_all_mods_loaded_function(self, func)
+    _all_mods_loaded_functions[#_all_mods_loaded_functions + 1] = func
+end
+mod.on_all_mods_loaded = function (...)
+    for i = 1, #_all_mods_loaded_functions do
+        _all_mods_loaded_functions[i](...)
+    end
+end
+
+--- Game-state-changed hook
+-- Same single-field-collision problem again. Register through
+-- mod:add_game_state_changed_function(fn) instead of assigning mod.on_game_state_changed itself.
+local _game_state_changed_functions = {}
+function mod.add_game_state_changed_function(self, func)
+    _game_state_changed_functions[#_game_state_changed_functions + 1] = func
+end
+mod.on_game_state_changed = function (...)
+    for i = 1, #_game_state_changed_functions do
+        _game_state_changed_functions[i](...)
+    end
+end
+
 --- In-game localization
 -- Replace original strings, if _quick_localize can fetch custom strings
 local localization_api = require("scripts/mods/TourneyBalance/_api/_localization_api")
