@@ -103,7 +103,7 @@ end)
 
 --[[ 
     Jump Cancelling
-
+]]
 
 -- PlayerCharacterStateLunging.on_enter unconditionally calls whereabouts_extension:set_jumped()
 mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, input, dt, context, t, previous_state, params)
@@ -209,7 +209,7 @@ mod:hook(PlayerCharacterStateJumping, "on_enter", function (func, self, unit, in
         locomotion_extension:add_external_velocity(dodge_jump_velocity, dodge_jump_speed)
     end
 end)
-]]
+--]]
 
 --[[
 
