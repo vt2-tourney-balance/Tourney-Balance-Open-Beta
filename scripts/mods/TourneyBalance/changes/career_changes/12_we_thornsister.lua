@@ -32,6 +32,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Radiant Inheritance**
 		- Can be activated with Thornwake (regular ult).
 		- Recasting refreshes the and extends the duration to 20s.
+		- Allies now also see a depleting-icon timer for the buff (previously a static icon).
 
 		**Repel**
 		- Additionally grants passive 100% increased stamina recovery.
@@ -164,6 +165,27 @@ mod_api.insert_text("kerillian_thorn_sister_faster_passive_desc", "Reduce the co
 ]]
 -- longer duration for radiant inheritance
 local radiant_thorn_stack_count = {}
+
+-- Give allies a depleting-icon timer matching Kerillian's own
+local radiant_thorn_ally_timer_ids = setmetatable({}, { __mode = "k" })
+mod_api.insert_talent_buff_template("wood_elf", "tb_radiant_inheritance_ally_timer", {
+	icon = "kerillian_thornsister_avatar",
+	max_stacks = 1,
+	refresh_durations = true,
+})
+local function tb_radiant_thorn_refresh_ally_timer(ally_unit, remaining_duration)
+	local buff_system = Managers.state.entity:system("buff_system")
+	local buff_id = buff_system:add_buff_synced(ally_unit, "tb_radiant_inheritance_ally_timer", BuffSyncType.All, {
+		external_optional_duration = remaining_duration,
+	})
+
+	-- A refresh of an already-tracked timer returns -1 (no new instance was created), so only
+	-- overwrite the tracked id on a genuine first add - otherwise we'd lose the id needed to
+	-- remove it later
+	if buff_id and buff_id ~= -1 then
+		radiant_thorn_ally_timer_ids[ally_unit] = buff_id
+	end
+end
 local function tb_radiant_thorn_duration_modifier(unit, sub_buff_template, duration, buff_extension, params)
 	local is_active = buff_extension:has_buff_type("kerillian_thorn_sister_team_buff_aura")
 	local current_count = radiant_thorn_stack_count[unit] or 0
@@ -171,13 +193,74 @@ local function tb_radiant_thorn_duration_modifier(unit, sub_buff_template, durat
 
 	radiant_thorn_stack_count[unit] = new_count
 
-	return duration * new_count
+	local final_duration = duration * new_count
+
+	-- Push the freshly (re)cast duration to every ally currently in range
+	if Managers.state.network.is_server then
+		local side = Managers.state.side.side_by_unit[unit]
+
+		if side then
+			local range = sub_buff_template.range
+			local range_squared = range * range
+			local caster_position = POSITION_LOOKUP[unit]
+			local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+
+			for i = 1, #player_and_bot_units do
+				local ally_unit = player_and_bot_units[i]
+
+				if ally_unit ~= unit and HEALTH_ALIVE[ally_unit] and Vector3.distance_squared(caster_position, POSITION_LOOKUP[ally_unit]) < range_squared then
+					tb_radiant_thorn_refresh_ally_timer(ally_unit, final_duration)
+				end
+			end
+		end
+	end
+
+	return final_duration
 end
+-- Piggybacks on the same per-tick range check the real aura buff already uses
+local tb_radiant_thorn_vanilla_activate_buff_on_distance = BuffFunctionTemplates.functions.activate_buff_on_distance
+mod_api.insert_buff_function("tb_radiant_thorn_activate_buff_on_distance", function (owner_unit, buff, params)
+	tb_radiant_thorn_vanilla_activate_buff_on_distance(owner_unit, buff, params)
+
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local side = Managers.state.side.side_by_unit[owner_unit]
+
+	if not side then
+		return
+	end
+
+	local remaining_duration = buff.duration and buff.start_time + buff.duration - Managers.time:time("game")
+	local range = buff.range
+	local range_squared = range * range
+	local caster_position = POSITION_LOOKUP[owner_unit]
+	local buff_system = Managers.state.entity:system("buff_system")
+	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+
+	for i = 1, #player_and_bot_units do
+		local ally_unit = player_and_bot_units[i]
+
+		if ally_unit ~= owner_unit and HEALTH_ALIVE[ally_unit] then
+			local inside = Vector3.distance_squared(caster_position, POSITION_LOOKUP[ally_unit]) < range_squared
+			local timer_id = radiant_thorn_ally_timer_ids[ally_unit]
+
+			if inside and not timer_id and remaining_duration and remaining_duration > 0 then
+				tb_radiant_thorn_refresh_ally_timer(ally_unit, remaining_duration)
+			elseif not inside and timer_id then
+				buff_system:remove_buff_synced(ally_unit, timer_id)
+				radiant_thorn_ally_timer_ids[ally_unit] = nil
+			end
+		end
+	end
+end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buff_aura", {
 	duration = 10,
 	max_stacks = 2,
 	refresh_durations = true,
 	duration_modifier_func = tb_radiant_thorn_duration_modifier,
+	update_func = "tb_radiant_thorn_activate_buff_on_distance",
 })
 -- trigger radiant inheritance on regular ult too, not just extra-charge uses
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_team_buff", {

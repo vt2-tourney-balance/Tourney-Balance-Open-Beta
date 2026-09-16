@@ -42,6 +42,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- No longer refunds if the ultimate is already fully charged.
 		
 		**Inspiring Blow**
+		- Now only affects the Foot Knight himself (no longer nearby allies).
 		- Increased cooldown regeneration effect to 200% (from 100%) and duration to 1.5s (from 0.5s).
 		- Also procs when Mainstay marks an elite with a stagger count, even if the hit doesn't actually stagger it.
 		- Mainstay grants official realm effect 100% cooldown regeneration for 0.5s
@@ -597,16 +598,21 @@ mod_api.insert_buff_function("markus_knight_movespeed_on_incapacitated_ally", fu
 end)
 
 --[[
-	Inspiring Blow
+	Inspiring Blow - self only (not nearby allies)
 	Proc from Mainstay stagger count on an elite
 	thp_stagger_damage_changes/01_damage_calc_changes.lua > mod:hook_origin(DamageUtils, "server_apply_hit", ...)
 ]]
+-- Vanilla's own buff_func (markus_knight_reduce_cooldown_on_stagger) applies to nearby allies in
+-- range; buff_on_stagger_enemy (same one Have At Thee uses) is self-only.
+mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on_stagger_elite", {
+	buff_func = "buff_on_stagger_enemy"
+})
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_buff", {
 	duration = 1.5, -- 0.5
 	multiplier = 3, -- 2
 	icon = "markus_knight_improved_passive_defence_aura"
 })
-mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates the cooldown of nearby allies by 200%% (100%%) for 1.5 (0.5) seconds.")
+mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates his own cooldown by 200%% (100%%) for 1.5 (0.5) seconds.")
 
 -- Separate, weaker buff for the Mainstay stagger-count proc
 mod_api.insert_buff_template("tb_markus_knight_cooldown_buff_mainstay", {

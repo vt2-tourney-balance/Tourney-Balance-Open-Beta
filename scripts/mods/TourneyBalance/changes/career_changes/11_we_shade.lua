@@ -8,7 +8,7 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 		## Shade
 		### Career Ability
 		- Lord and Boss boost_curve_multiplier_override incresed to 2 (from 1.8/1.5).
-		- Reduced stealth duration to 3s (from 5).
+		- Reduced Infiltrate stealth duration to 3s (from 5s).
 
 		### Passives
 		**Assassin's Blade**
@@ -17,7 +17,6 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 
 		**Blur**
 		- Increased parry window to 0.75s (from 0.5s).
-
 
 		### Talents
 		**Cruelty**
@@ -37,14 +36,15 @@ local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_se
 
 		**Lingering Shadow** (new, replaces Gladerunner)
 		- Attacking from Blur's stealth no longer ends it.
-		- Increases the duration of invisibility granted by Blur by 0.5 seconds.
+		- Increases Blur invisibility duration to 2 seconds (from 1.5s).
 
 		**Shimmer Strike**
-		- Limited extending stealth duration to 4s (from uncapped).
+		- Limited extending stealth to 4 times.
+		- Increased duration granted from extending to 3s (from 1s).
+		- Extending stealth reduces ultimate cooldown by 5%.
 
 		**Hungry Wind**
-		- Reduced the post-Infiltrate movement speed/Power/pass-through window to 6s (from 10s).
-		- Additionally after leaving infiltrate all attacks are considered backstabs.
+		- After activating Infiltrate, the next 10 hits are considered backstabs.
 	$END_TB
 ]]
 
@@ -85,25 +85,25 @@ end
 ]]
 -- Reduce ult stealth duration
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_activated_ability", {
-	duration = 2.5 -- 5
+	duration = 3 -- 5
 })
 -- internal
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_activated_ability_short_blocker", {
-	duration = 2.5 -- 5
+	duration = 3 -- 5
 })
 --[[
 	Hungry Wind
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_activated_ability_phasing", {
-	duration = 2.5 -- 5
+	duration = 3 -- 5
 })
 --[[
 	Cloak of Pain
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_activated_ability_restealth", {
-	duration = 2.5 -- 5
+	duration = 3 -- 5
 })
-mod_api.insert_text("career_active_desc_we_1_2", "Kerillian becomes undetectable, can pass through enemies, and deals greatly increased melee damage. Lasts for 2.5 seconds or until she deals damage.")
+mod_api.insert_text("career_active_desc_we_1_2", "Kerillian becomes undetectable, can pass through enemies, and deals greatly increased melee damage. Lasts for 3 seconds or until she deals damage.")
 
 --[[
 
@@ -346,7 +346,8 @@ mod_api.insert_talent("we_shade", 5, 3, "tb_kerillian_shade_lingering_shadow", {
 		"tb_kerillian_shade_lingering_shadow_duration",
 	},
 })
-mod_api.insert_talent_text("tb_kerillian_shade_lingering_shadow", "Lingering Shadow", "Increases the duration of invisibility granted by Blur by 0.5 seconds. Attacking while in Blur's stealth no longer ends it.")
+-- Blur baseline lasts 1.5 seconds
+mod_api.insert_talent_text("tb_kerillian_shade_lingering_shadow", "Lingering Shadow", "Increases Blur invisibility duration to 2 seconds. Attacking from Blur's stealth no longer ends it.")
 
 --[[
 	Shimmer Strike
@@ -382,10 +383,30 @@ mod_api.insert_talent_buff_template("wood_elf", "kerillian_shade_ult_invis_combo
 	duration = 0.3,
 	refresh_durations = true,
 	event = "on_kill_elite_special",
-	extend_time = 1,                                           
+	extend_time = 3, -- 1
 	max_stacks = 1,
 	icon = "kerillian_shade_passive_stealth_on_backstab_kill",
 	remove_buff_func = "kerillian_shade_missed_combo_window"
+})
+-- Fix: clear leftover shimmer charges once the stealth extension ends, so they can't be
+-- silently spent on an unrelated kill outside of Infiltrate
+local tb_shimmer_vanilla_on_shade_activated_ability_remove = BuffFunctionTemplates.functions.on_shade_activated_ability_remove
+mod_api.insert_buff_function("tb_shade_ult_invis_remove", function (unit, buff, params, world)
+	tb_shimmer_vanilla_on_shade_activated_ability_remove(unit, buff, params, world)
+
+	if ALIVE[unit] then
+		local buff_extension = ScriptUnit.extension(unit, "buff_system")
+		local shimmer_charges = buff_extension:get_stacking_buff("tb_shimmer_charges")
+
+		if shimmer_charges then
+			for i = #shimmer_charges, 1, -1 do
+				buff_extension:remove_buff(shimmer_charges[i].id)
+			end
+		end
+	end
+end)
+mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_ult_invis", {
+	remove_buff_func = "tb_shade_ult_invis_remove",
 })
 mod_api.insert_proc_function("shade_combo_stealth_on_hit", function (owner_unit, buff, params)
 	if ALIVE[owner_unit] then
@@ -417,6 +438,11 @@ mod_api.insert_proc_function("tb_shimmer_control", function (owner_unit, buff, p
 
 					buff_extension:remove_buff(buff_id)
 					buff_extension:add_buff("tb_shimmer_abuser")
+
+					-- Refund 5% of the ultimate's cooldown for each shimmer consumed
+					local career_extension = ScriptUnit.extension(owner_unit, "career_system")
+
+					career_extension:reduce_activated_ability_cooldown_percent(0.05)
 				end
 			end
 		end
@@ -430,29 +456,52 @@ mod_api.update_talent("we_shade", 6, 1, {
 		"tb_shimmer_handler"
 	}
 })
-mod_api.insert_text("kerillian_shade_activated_stealth_combo_desc", "Leaving Infiltrate grants stealth for 3 seconds. Killing an Elite or Special extends this duration by 1 second up to a maximum of 4 times.")
+mod_api.insert_text("kerillian_shade_activated_stealth_combo_desc", "Leaving Infiltrate grants stealth for 3 seconds. Killing an Elite or Special extends this duration by 3 seconds and refunds 5.0% of the ultimate's cooldown, up to a maximum of 4 times.")
 
 --[[
 	Hungry Wind
 ]]
 -- Reduce the post-Infiltrate movement speed/Power/pass-through window
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_phasing_buff", {
-	duration = 6 -- 10
+	duration = 10,
 })
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_movespeed_buff", {
-	duration = 6 -- 10
+	duration = 10,
 })
--- All attacks count as backstabs for that same window
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_power_buff", {
-	duration = 6, -- 10
+	duration = 10,
+})
+-- Backstabs-on-hit is now a limited resource (10 charges, consumed on_hit) instead of
+-- unlimited for the whole power-buff window
+mod_api.insert_talent_buff_template("wood_elf", "tb_hungry_wind_backstab_charges", {
+	max_stacks = 10,
+	icon = "kerillian_shade_activated_ability_quick_cooldown",
 	perks = {
 		"guaranteed_backstab",
 	},
 })
+mod_api.insert_talent_buff_template("wood_elf", "tb_hungry_wind_backstab_handler", {
+	buff_func = "remove_ref_buff_stack_woods",
+	buff_to_remove = "tb_hungry_wind_backstab_charges",
+	event = "on_hit",
+	max_stacks = 1,
+})
+mod_api.insert_talent_buff_template("wood_elf", "tb_hungry_wind_backstab_activator", {
+	buff_func = "add_buff_reff_buff_stack",
+	buff_to_add = "tb_hungry_wind_backstab_charges",
+	event = "on_ability_activated",
+	amount_to_add = 10,
+	max_stacks = 1,
+	reference_buff = "tb_hungry_wind_backstab_handler",
+})
 mod_api.update_talent("we_shade", 6, 2, {
 	description = "kerillian_shade_activated_ability_phasing_desc",
 	description_values = {},
+	buffs = {
+		"tb_hungry_wind_backstab_activator", -- adds necessary buffs to handle having capped backstab hits
+		"tb_hungry_wind_backstab_handler",
+	},
 })
-mod_api.insert_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10% movement speed and 15% Power with the ability to pass through enemies for 6 seconds. All attacks are considered backstabs for the duration. Infiltrate no longer grants bonus damage.")
+mod_api.insert_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10% movement speed and 15% Power with the ability to pass through enemies for 10 seconds. Infiltrate no longer grants bonus damage, instead the next 10 hits are considered backstabs.")
 
 
