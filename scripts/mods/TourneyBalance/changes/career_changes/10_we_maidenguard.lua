@@ -103,7 +103,7 @@ end)
 
 --[[ 
     Jump Cancelling
-]]
+    
 
 -- PlayerCharacterStateLunging.on_enter unconditionally calls whereabouts_extension:set_jumped()
 mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, input, dt, context, t, previous_state, params)
@@ -125,7 +125,7 @@ mod:hook(PlayerCharacterStateLunging, "on_enter", function (func, self, unit, in
 end)
 
 -- Jump cancel out of the ult
-local JUMP_CANCEL_MOMENTUM_MODIFIER = 0.67
+local JUMP_CANCEL_MOMENTUM_MODIFIER = 1.0
 mod:hook(PlayerCharacterStateLunging, "update", function (func, self, unit, input, dt, context, t)
     local career_extension = ScriptUnit.has_extension(unit, "career_system")
 

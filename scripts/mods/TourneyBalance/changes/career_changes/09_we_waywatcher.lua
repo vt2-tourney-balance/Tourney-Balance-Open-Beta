@@ -27,7 +27,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Increased cooldown reduction to 10% (from 5%).
 
 		**Fervent Huntress**
-		- Additionally allows Kerillian to pass through enemies for 10s.
+		- Grants 1 stack enhancing jump-dodges (Max 10).
 
 		**Ricochet**
 		- Fully charging for 1 second grants ricochet projectiles true-flight.
@@ -313,6 +313,7 @@ mod_api.update_talent("we_waywatcher", 2, 3, {
 --[[
 	Fervent Huntress
 ]]
+--[[
 local apply_movement_buff = BuffFunctionTemplates.functions.apply_movement_buff
 local remove_movement_buff = BuffFunctionTemplates.functions.remove_movement_buff
 mod_api.insert_buff_function("tb_apply_movement_buff_and_noclip", function (unit, buff, params)
@@ -337,7 +338,65 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_movement_s
 	apply_buff_func = "tb_apply_movement_buff_and_noclip",
 	remove_buff_func = "tb_remove_movement_buff_and_noclip",
 })
-mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", "Killing a special or elite enemy increases movement speed by 15.0%% and lets Kerillian pass through enemies for 10 seconds.")
+--]]
+mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", "Killing a special or elite enemy increases movement speed by 15.0%% for 10 seconds and grants one enhanced dodge-jump stack (Max 10).")
+
+-- jump dodges
+mod_api.insert_talent_buff_template("wood_elf", "tb_waywatcher_jump_cancel_charges", {
+	max_stacks = 10,
+	icon = "kerillian_waywatcher_movement_speed_on_special_kill",
+})
+
+local function tb_add_jump_cancel_charge(unit)
+	if ALIVE[unit] then
+		local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+
+		if buff_extension then
+			buff_extension:add_buff("tb_waywatcher_jump_cancel_charges")
+		end
+	end
+end
+
+local apply_movement_buff = BuffFunctionTemplates.functions.apply_movement_buff
+mod_api.insert_buff_function("tb_apply_movement_buff_and_jump_cancel", function (unit, buff, params)
+	apply_movement_buff(unit, buff, params)
+
+	tb_add_jump_cancel_charge(unit)
+end)
+mod_api.insert_buff_function("tb_reapply_jump_cancel", function (unit, buff, params)
+	tb_add_jump_cancel_charge(unit)
+end)
+mod_api.update_talent_buff_template("wood_elf", "kerillian_waywatcher_movement_speed_on_special_kill_buff", {
+	apply_buff_func = "tb_apply_movement_buff_and_jump_cancel",
+	reapply_buff_func = "tb_reapply_jump_cancel",
+})
+
+-- Jumping out of a dodge consumes one charge and carries the dodge's momentum into the jump.
+local JUMP_CANCEL_MOMENTUM_MODIFIER = 1.0
+mod:hook(PlayerCharacterStateJumping, "on_enter", function (func, self, unit, input, dt, context, t, previous_state, params)
+	local dodge_jump_velocity, dodge_jump_speed
+
+	if previous_state == "dodging" and params.post_dodge_jump then
+		local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+		local charges = buff_extension and buff_extension:get_stacking_buff("tb_waywatcher_jump_cancel_charges")
+
+		if charges and #charges > 0 then
+			buff_extension:remove_buff(charges[#charges].id)
+
+			dodge_jump_velocity = Vector3.flat(self.locomotion_extension:current_velocity()) * JUMP_CANCEL_MOMENTUM_MODIFIER
+			dodge_jump_speed = Vector3.length(dodge_jump_velocity)
+		end
+	end
+
+	func(self, unit, input, dt, context, t, previous_state, params)
+
+	if dodge_jump_speed and dodge_jump_speed > 0 then
+		local locomotion_extension = self.locomotion_extension
+
+		locomotion_extension:set_external_velocity_enabled(true)
+		locomotion_extension:add_external_velocity(dodge_jump_velocity, dodge_jump_speed)
+	end
+end)
 
 --[[
 	Richochet
