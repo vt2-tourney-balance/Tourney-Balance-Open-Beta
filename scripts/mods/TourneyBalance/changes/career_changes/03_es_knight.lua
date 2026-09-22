@@ -299,6 +299,59 @@ local tb_is_comrades_in_arms_knight = false
 local tb_next_comrades_in_arms_check_t = 0
 local COMRADES_IN_ARMS_TALENT_CHECK_INTERVAL = 0.5
 
+-- Chat print of the current guard target. The cycle state lives on the server, but the indicator
+-- stack count (0 = closest, N = teammate index + 1) is synced to the Knight, so read it back from there.
+-- The server clears then re-adds every stack on a switch, so wait for the count to settle before printing.
+local tb_guard_announced_unit = nil
+local tb_guard_announced_count = nil
+local tb_guard_pending_count = nil
+local tb_guard_pending_since_t = 0
+local COMRADES_IN_ARMS_ANNOUNCE_SETTLE_TIME = 0.2
+
+local function tb_announce_comrades_in_arms_target(owner_unit, t)
+	local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+	if not buff_extension then
+		return
+	end
+
+	local count = buff_extension:num_buff_type("tb_markus_knight_guard_mode_manual")
+
+	-- New unit (spawn/respawn/talent swap): take the current state silently.
+	if tb_guard_announced_unit ~= owner_unit then
+		tb_guard_announced_unit = owner_unit
+		tb_guard_announced_count = count
+		tb_guard_pending_count = nil
+
+		return
+	end
+
+	if count ~= tb_guard_pending_count then
+		tb_guard_pending_count = count
+		tb_guard_pending_since_t = t
+
+		return
+	end
+
+	if count == tb_guard_announced_count or t - tb_guard_pending_since_t < COMRADES_IN_ARMS_ANNOUNCE_SETTLE_TIME then
+		return
+	end
+
+	tb_guard_announced_count = count
+
+	if count == 0 then
+		mod:echo("Guarding the closest comrade.")
+
+		return
+	end
+
+	local teammates = tb_get_comrades_in_arms_teammates(owner_unit)
+	local target_entry = teammates[count - 1]
+	local target_name = target_entry and target_entry.player:name() or "unknown"
+
+	mod:echo(string.format("Guarding %s (%d).", target_name, count))
+end
+
 mod:add_update_function(function (dt)
 	local local_player = Managers.player:local_player_safe(1)
 	local owner_unit = local_player and local_player.player_unit
@@ -320,8 +373,12 @@ mod:add_update_function(function (dt)
 	end
 
 	if not tb_is_comrades_in_arms_knight then
+		tb_guard_announced_unit = nil
+
 		return
 	end
+
+	tb_announce_comrades_in_arms_target(owner_unit, t)
 
 	local status_extension = ScriptUnit.has_extension(owner_unit, "status_system")
 

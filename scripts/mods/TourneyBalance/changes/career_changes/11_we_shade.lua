@@ -116,11 +116,11 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_passive_stealth
 	event = "on_timed_block_long", -- "on_timed_block"
 })
 --[[
-	Spring-Heeled Gladerunner
+	Gladerunner
 ]]
 -- Move Spring-Heeled Assassin (movement speed on crit) and Gladerunner (flat movement speed) onto the base passive
 mod_api.insert_career_passives("we_1", {
-	"kerillian_shade_movement_speed_on_critical_hit",
+	-- "kerillian_shade_movement_speed_on_critical_hit", -- Spring-Heeled Assasin
 	"kerillian_shade_movement_speed",
 })
 -- Also triggers the crit movement speed burst when Blur activates, not just on critical hit

@@ -44,7 +44,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Reduced ammo regen to 20% (from 30%) per kill.
 	$END_TB
 ]]
-	
+
 --[[
 	
 	Ultimate
@@ -353,7 +353,7 @@ mod_api.update_talent("we_waywatcher", 5, 1, {
 		"tb_fervent_huntress_no_movement_penalties",
 	},
 })
-mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", "Kerillian is no longer affect by movement penalties. Killing a special or elite enemy increases movement speed by 15.0%% for 10 seconds.")
+mod_api.insert_text("kerillian_waywatcher_movement_speed_on_special_kill_desc", "Killing a special or elite enemy increases movement speed by 15.0%% for 10 seconds. Kerillian is no longer affect by movement penalties.")
 
 -- Attacking, aiming and slowing debuffs (bile, plague, fire, etc.) all slow the player through buffs that scale the movement settings.
 -- Those buffs are simply never added while the player has Fervent Huntress.

@@ -32,6 +32,7 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 
 		**No Dawdling**
 		- Additionally removes the limit on dodging efficiently.
+		- Additionally removes the movement penalty from melee weapon attacks and holding block.
 
 		**Exuberance**
 		- Also procs on picking up Survivalist pouches.
@@ -218,7 +219,48 @@ mod:hook(GenericStatusExtension, "get_dodge_item_data", function (func, self, ..
 		self.dodge_count = 99
 	end
 end)
-mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10%% and removes the limit on dodging efficiently.")
+mod_api.insert_text("bardin_ranger_movement_speed_desc", "Increases movement speed by 10%%. Removes the limit on dodging efficiently and the movement penalty from melee weapons.")
+
+-- Removes the "planted_*_decrease_movement" family's move-speed penalty (attacks and holding
+-- block use these) while No Dawdling is active and the melee weapon is wielded. Ranged aiming
+-- slow is untouched since it doesn't use this shared apply_condition-gated buff family.
+local function tb_no_dawdling_removes_movement_penalty(unit)
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+
+	if not (talent_extension and talent_extension:has_talent("bardin_ranger_movement_speed")) then
+		return false
+	end
+
+	local inventory_extension = ScriptUnit.has_extension(unit, "inventory_system")
+
+	return not not (inventory_extension and inventory_extension:get_wielded_slot_name() == "slot_melee")
+end
+
+local TB_NO_DAWDLING_MOVEMENT_PENALTY_BUFFS = {
+	"planted_decrease_movement",
+	"planted_fast_decrease_movement",
+	"planted_charging_decrease_movement",
+}
+
+for _, buff_name in ipairs(TB_NO_DAWDLING_MOVEMENT_PENALTY_BUFFS) do
+	local buff_template = BuffTemplates[buff_name]
+
+	for _, sub_buff in ipairs(buff_template.buffs) do
+		local original_condition = sub_buff.apply_condition
+
+		sub_buff.apply_condition = function (unit, template, params)
+			if tb_no_dawdling_removes_movement_penalty(unit) then
+				return false
+			end
+
+			if original_condition then
+				return original_condition(unit, template, params)
+			end
+
+			return true
+		end
+	end
+end
 
 --[[
 	Exuberance
