@@ -461,10 +461,12 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		local wall_index = state_int
 		local despawn_sound_event = "career_ability_kerillian_sister_wall_disappear"
 		local life_time = 6
-		-- forward.z is exactly 0 for an untilted wall_rotation; any deviation means a tilt was folded in above.
+		-- forward.z is ~0 for an untilted wall_rotation and ~±1 for a flat (pi/2-tilted) one. Coarse threshold on
+		-- purpose: when a client casts, the rotation arrives via rpc_request_spawn_template_unit with network
+		-- compression, so an upright wall's forward.z is only approximately 0 - a tight epsilon misread it as flat.
 		-- Also gates the nav-tag volume below, which is rotation-independent and would otherwise still block
 		-- AI pathing through a flat wall regardless of the mesh/collision itself being tilted.
-		local is_tilted = math.abs(Quaternion.forward(rotation).z) > 0.0001
+		local is_tilted = math.abs(Quaternion.forward(rotation).z) > 0.5
 		local area_damage_params = {
 			aoe_dot_damage = 0,
 			radius = 0.3,

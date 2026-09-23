@@ -251,7 +251,7 @@ end)
 --[[
 	Rile the Mob
 ]]
--- Ranged crits grant attack speed.
+-- Ranged crits grant attack speed to Victor and all allies within 40m (same team proc as the vanilla movespeed buff).
 mod_api.insert_talent_buff_template("witch_hunter", "tb_wh2_rile_the_mob_attack_speed_buff", {
 	stat_buff = "attack_speed",
 	multiplier = 0.1,
