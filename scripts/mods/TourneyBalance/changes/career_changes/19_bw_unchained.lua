@@ -20,6 +20,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Dissipate Nerf
 ]]
 -- Overcharge dissipation reduce to 20% or vanilla
+--[[
 local block_breaking_fatigue_types = {
 	blocked_attack = true,
 	blocked_attack_2 = true,
@@ -113,3 +114,4 @@ mod:hook_origin(GenericStatusExtension, "add_fatigue_points", function (self, fa
 		first_person_extension:play_hud_sound_event("Play_player_combat_heavy_block_sweetner", nil, false)
 	end
 end)
+]]
