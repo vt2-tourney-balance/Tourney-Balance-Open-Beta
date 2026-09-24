@@ -233,7 +233,7 @@ local talent_first_row = {
 	{ "dr_engineer", 		VANGUARD, 	REAPER, 	BLOODLUST },
 
 	{ "we_waywatcher", 		REGROWTH, 	REAPER, 	BLOODLUST },
-	{ "we_maidenguard", 	REAPER, 	BLOODLUST, 	VANGUARD },
+	{ "we_maidenguard", 	REAPER, 	BLOODLUST, 	REGROWRTH }, -- Second Wind -> Sting
 	{ "we_shade", 			REGROWTH, 	BLOODLUST, 	REAPER },
 	{ "we_thornsister", 	REGROWTH, 	BLOODLUST, 	REAPER },
 

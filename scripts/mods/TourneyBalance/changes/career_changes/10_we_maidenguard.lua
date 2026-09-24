@@ -11,11 +11,10 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		---
 		## Handmaiden
 		### Career Ability
-		- Increased hitbox width for non-bleed ult to 5.0 (from 1.5).
+		- Increased hitbox width/depth ult to 3/2 (from 1.5/0.4).
+		- Added effect: Enemies hit by the ult are taunted for 3 seconds. Does not apply to Lords and Bosses.
 
 		### Passives
-		**Dance of Season**
-		- Added effect: Pushing enemies taunts them for 2 seconds. Does not apply to Lords and Bosses.
 
 		**Renewal**
 		- Stam regen aura range increased to 20 (from 5).
@@ -23,6 +22,7 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		**Oak Guard (listed)**
 		- (Added to list) Increases maximum stamina by 1.
 		- Added effect: Blocking starts immediately, even mid-attack.
+		- Added 40% increased healing received (moved from Heart of Oak).
 
 		### Talents
 		**Focused Spirit**
@@ -42,7 +42,6 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 
 		**Heart of Oak**
 		- Increased health bonus to 20% (from 15%).
-		- Added 40% increased healing received.
 
 		**Birch Stance**
 		- Added 30% reduced damage taken while blocking.
@@ -61,23 +60,12 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 mod:hook(CareerAbilityWEMaidenGuard, "_run_ability", function (func, self, ...)
     func(self, ...)
 
-    local owner_unit = self._owner_unit
-    local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
-    local bleed = talent_extension:has_talent("kerillian_maidenguard_activated_ability_damage")
+    local status_extension = self._status_extension
+    -- hitbox is a rectangular cube / cuboid with given width, height and length, and offset_forward changes its position relative to character's
+    status_extension.do_lunge.damage.width = 3    --1.5    --width of hitbox
+    status_extension.do_lunge.damage.depth_padding = 2  --0.4    --length of hitbox
+    status_extension.do_lunge.damage.offset_forward = 0   --0    --position of hitbox
 
-    if bleed then
-        local status_extension = self._status_extension
-        -- hitbox is a rectangular cube / cuboid with given width, height and length, and offset_forward changes its position relative to character's
-        status_extension.do_lunge.damage.width = 1.5    --1.5    --width of hitbox
-        status_extension.do_lunge.damage.depth_padding = 0.4   --0.4    --length of hitbox
-        status_extension.do_lunge.damage.offset_forward = 0   --0    --position of hitbox
-    else
-        local status_extension = self._status_extension
-        -- hitbox is a rectangular cube / cuboid with given width, height and length, and offset_forward changes its position relative to character's
-        status_extension.do_lunge.damage.width = 5.0    --1.5    --width of hitbox
-        status_extension.do_lunge.damage.depth_padding = 5.0   --0.4    --length of hitbox
-        status_extension.do_lunge.damage.offset_forward = 0   --0    --position of hitbox
-    end
 end)
 
 local function tb_noop() end
@@ -107,9 +95,11 @@ end)
 
 ]]
 --[[
-    Oak Guard - listed + 2s taunt on push
+    Oak Guard - listed
+    + 3s taunt on enemies hit by the ult hitbox. on_charge_ability_hit is triggered server-side in
+    DamageUtils.server_apply_hit for every enemy the lunge hits (params[1] = hit unit).
 ]]
-mod_api.insert_proc_function("tb_maidenguard_taunt_on_push", function (owner_unit, buff, params)
+mod_api.insert_proc_function("tb_maidenguard_taunt_on_ult_hit", function (owner_unit, buff, params)
     if not is_server() then
         return
     end
@@ -140,15 +130,21 @@ mod_api.insert_proc_function("tb_maidenguard_taunt_on_push", function (owner_uni
     blackboard.target_unit = owner_unit
     blackboard.target_unit_found_time = t
 end)
-mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_on_push", {
-    buff_func = "tb_maidenguard_taunt_on_push",
-    event = "on_push",
-    taunt_duration = 2,
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_on_ult_hit", {
+    buff_func = "tb_maidenguard_taunt_on_ult_hit",
+    event = "on_charge_ability_hit",
+    taunt_duration = 3,
+})
+-- 40% increased healing received (moved from Heart of Oak)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_oak_guard_healing_received", {
+	stat_buff = "healing_received",
+	multiplier = 0.4,
 })
 mod_api.insert_career_passives("we_2", {
-    "tb_kerillian_maidenguard_taunt_on_push"
+    "tb_kerillian_maidenguard_taunt_on_ult_hit",
+    "tb_kerillian_maidenguard_oak_guard_healing_received",
 })
-mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1. Blocking starts instantly.")
+mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1 and healing received by 40%. Blocking starts instantly.")
 mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
 
 --[[
@@ -161,7 +157,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_s
 --[[
     Dance of Season
 ]]
-mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Pushing enemies taunts them for 2 seconds (excludes Lords and Bosses).")
+mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Enemies hit by Dash are taunted for 3 seconds (excludes Lords and Bosses).")
 
 -- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
 -- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
@@ -436,20 +432,14 @@ end
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_max_health", {
 	multiplier = 0.2 -- 0.15
 })
--- Also grants 40% increased healing received
-mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_heart_of_oak_healing_received", {
-	stat_buff = "healing_received",
-	multiplier = 0.4,
-})
 mod_api.update_talent("we_maidenguard", 5, 1, {
     description = "kerillian_maidenguard_max_health_desc",
     description_values = {},
     buffs = {
         "kerillian_maidenguard_max_health",
-        "tb_kerillian_maidenguard_heart_of_oak_healing_received",
     },
 })
-mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0% and healing received by 40.0%.")
+mod_api.insert_text("kerillian_maidenguard_max_health_desc", "Increases max health by 20.0%.")
 
 --[[
     Birch Stance

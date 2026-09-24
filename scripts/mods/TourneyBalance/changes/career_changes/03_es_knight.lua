@@ -6,8 +6,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Foot Knight
 		### Career Ability
-		- Baseline ult damage/stagger cleave buffed to 4 (from 2). Exludes wide charge.
-		- Baseline ult on_interrupt_blast.radius buffed to 4 (from 3). Excludes wide charge.
+		- Baseline ult is now the Battering Ram charge: wider (5 from 2) and no longer stops on large enemies.
 		
 		### Passives
 		**Protective Presence**
@@ -28,9 +27,10 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Duration increased to 5s (from 3s).
 
 		**Rock of Reikland**
-		- Global team passive
+		- Global team passive; allies keep it while the Foot Knight is dead. Shows a buff icon.
 		- Increased block cost reduction to 30% (from 20%)
 		- Added 30% stamina recovery
+		- Added 10% damage reduction
 
 		**Comrades in Arms**
 		- Closest player mode (green outline).
@@ -45,10 +45,14 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Now only affects the Foot Knight himself (no longer nearby allies).
 		- Increased cooldown regeneration effect to 200% (from 100%) and duration to 1.5s (from 0.5s).
 		- Also procs when Mainstay marks an elite with a stagger count, even if the hit doesn't actually stagger it.
-		- Mainstay grants official realm effect 100% cooldown regeneration for 0.5s
+		- Mainstay grants official realm effect 20% cooldown regeneration for 0.5s
 
 		**Numb to Pain**
 		- Invulnerability duration on ult increased to 6s (from 3s).
+
+		**Battering Ram**
+		- Wide charge is now baseline.
+		- New effect: after using the ult, gain 50% melee damage for 10s.
 	$END_TB
 ]]
 
@@ -61,36 +65,42 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 -- mod_api.update_career_ability_cooldown("es_2", 40)
 
 -- reuse static tables instead of allocating new ones
-local charge_cleave_distribution_buffed = {
-	attack = 4, -- 2
-	impact = 4, -- 2
-}
 local charge_cleave_distribution_default = {
 	attack = 2,
 	impact = 2,
 }
 
--- baseline ult buff
--- TODO: needs looking, inconsistency between baseline and wide charge
--- TODO: wide charge description should be 2.5x instead of double width
+-- Baseline ult is the Battering Ram charge (wide, doesn't stop on max hit mass) with the vanilla blast radius
 mod:hook(CareerAbilityESKnight, "_run_ability", function (func, self, ...)
 	func(self, ...)
 
 	local owner_unit = self._owner_unit
 	local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
 	local status_extension = self._status_extension
-	local has_battering_ram = talent_extension:has_talent("markus_knight_wide_charge", "empire_soldier", true)
 
-	if has_battering_ram then
-		-- battering ram replaces the baseline ult buff entirely
-		PowerLevelTemplates.cleave_distribution_markus_knight_charge = charge_cleave_distribution_default
-		status_extension.do_lunge.damage.on_interrupt_blast.radius = 3 -- 3, remove buff from baseline for battering ram specifically
-		status_extension.do_lunge.damage.width = 5
-		status_extension.do_lunge.damage.interrupt_on_max_hit_mass = false
-	else
-		-- increase radius of explosion and double cleave of explosion and normal charge
-		PowerLevelTemplates.cleave_distribution_markus_knight_charge = charge_cleave_distribution_buffed
-		status_extension.do_lunge.damage.on_interrupt_blast.radius = 4 -- 3
+	PowerLevelTemplates.cleave_distribution_markus_knight_charge = charge_cleave_distribution_default
+	status_extension.do_lunge.damage.on_interrupt_blast.radius = 3 -- 3
+	status_extension.do_lunge.damage.width = 5 -- 2
+	status_extension.do_lunge.damage.interrupt_on_max_hit_mass = false -- true
+
+	-- Battering Ram: melee damage after ult. Same local add + rpc as vanilla's Numb to Pain buff in _run_ability,
+	-- so the server (where melee damage is calculated) and the Knight (icon) both have it.
+	if talent_extension:has_talent("markus_knight_wide_charge", "empire_soldier", true) then
+		local buff_name = "tb_markus_knight_battering_ram_melee_damage_buff"
+		local network_manager = self._network_manager
+		local network_transmit = network_manager.network_transmit
+		local owner_unit_id = network_manager:unit_game_object_id(owner_unit)
+		local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
+
+		self._buff_extension:add_buff(buff_name, {
+			attacker_unit = owner_unit,
+		})
+
+		if self._is_server then
+			network_transmit:send_rpc_clients("rpc_add_buff", owner_unit_id, buff_template_name_id, owner_unit_id, 0, false)
+		else
+			network_transmit:send_rpc_server("rpc_add_buff", owner_unit_id, buff_template_name_id, owner_unit_id, 0, false)
+		end
 	end
 end)
 
@@ -115,64 +125,42 @@ mod_api.insert_text("career_passive_desc_es_2a_2", "Aura that reduces damage tak
 --[[
 	Rock of Reikland - global passive
 ]]
-mod_api.insert_talent_buff_template("empire_soldier", "tb_markus_knight_rock_of_reikland_buff", {
-	{ 
-		name = "tb_markus_knight_rock_of_reikland_buff", 
-		max_stacks = 1, 
-		stat_buff = "block_cost", 
-		multiplier = -0.3 
+local ROCK_OF_REIKLAND_BUFF = "tb_markus_knight_rock_of_reikland_buff"
+
+mod_api.insert_talent_buff_template("empire_soldier", ROCK_OF_REIKLAND_BUFF, {
+	{
+		name = ROCK_OF_REIKLAND_BUFF,
+		max_stacks = 1,
+		stat_buff = "block_cost",
+		multiplier = -0.3,
+		icon = "markus_knight_passive_block_cost_aura",
 	},
-	{ 
-		name = "tb_markus_knight_rock_of_reikland_buff", 
-		max_stacks = 1, 
-		stat_buff = "fatigue_regen", 
-		multiplier = 0.3
+	{
+		name = "tb_markus_knight_rock_of_reikland_stamina_regen",
+		max_stacks = 1,
+		stat_buff = "fatigue_regen",
+		multiplier = 0.3,
 	},
-	{ 
-		name = "tb_markus_knight_rock_of_reikland_buff", 
-		max_stacks = 1, 
-		stat_buff = "damage_taken", 
-		multiplier = -0.1 
+	{
+		name = "tb_markus_knight_rock_of_reikland_damage_taken",
+		max_stacks = 1,
+		stat_buff = "damage_taken",
+		multiplier = -0.1,
 	},
 })
--- Same loop as activate_buff_on_distance (buff_function_templates.lua), minus the distance check
-mod_api.insert_buff_function("tb_activate_buff_on_team", function (owner_unit, buff, params)
-	if not Managers.state.network.is_server then
-		return
-	end
 
-	local side = Managers.state.side.side_by_unit[owner_unit]
-
-	if not side then
-		return
-	end
-
-	local buff_to_add = buff.template.buff_to_add
-	local buff_system = Managers.state.entity:system("buff_system")
-	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
-
-	for i = 1, #player_and_bot_units do
-		local unit = player_and_bot_units[i]
-
-		if Unit.alive(unit) then
-			local buff_extension = ScriptUnit.extension(unit, "buff_system")
-
-			if not buff_extension:has_buff_type(buff_to_add) then
-				buff_system:add_buff(unit, buff_to_add, owner_unit, true)
-			end
-		end
-	end
-end)
+-- Same pattern as Sister of the Thorn's team auras (range = 100)
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive_block_cost_aura", {
-	buff_to_add = "tb_markus_knight_rock_of_reikland_buff",
-	update_func = "tb_activate_buff_on_team",
+	buff_to_add = ROCK_OF_REIKLAND_BUFF,
+	update_func = "activate_buff_on_distance",
+	range = 1000, -- 10
 })
 mod_api.update_talent("es_knight", 4, 1, {
 	buffs = { "markus_knight_passive_block_cost_aura" },
 	description = "tb_markus_knight_rock_of_reikland_desc",
 	description_values = {},
 })
-mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presence is always active and grants 30%% block cost reduction and 30%% stamina regeneration.")
+mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presence affects the whole team, stays active on allies while Kruber is dead, and grants 30%% block cost reduction, 30%% stamina regeneration and 10%% damage reduction.")
 
 --[[
 	Comrades in Arms - Adjustment from Passive
@@ -669,7 +657,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_bu
 	multiplier = 3, -- 2
 	icon = "markus_knight_improved_passive_defence_aura"
 })
-mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates his own cooldown by 200%% (100%%) for 1.5 (0.5) seconds.")
+mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates your own cooldown by 200%% (20%%) for 1.5 (0.5) seconds.")
 
 -- Separate, weaker buff for the Mainstay stagger-count proc
 mod_api.insert_buff_template("tb_markus_knight_cooldown_buff_mainstay", {
@@ -677,7 +665,7 @@ mod_api.insert_buff_template("tb_markus_knight_cooldown_buff_mainstay", {
 	refresh_durations = true,
 	stat_buff = "cooldown_regen",
 	duration = 0.5,
-	multiplier = 2,
+	multiplier = 1.2,
 	icon = "markus_knight_improved_passive_defence_aura",
 })
 
@@ -695,6 +683,24 @@ mod_api.update_talent("es_knight", 6, 1, {
 		}
 	},
 })
+
+--[[
+	Battering Ram
+	Wide charge is now baseline (see Ultimate). Talent grants melee damage after ult instead.
+	Buff is added in the CareerAbilityESKnight._run_ability hook.
+]]
+mod_api.insert_buff_template("tb_markus_knight_battering_ram_melee_damage_buff", {
+	max_stacks = 1,
+	refresh_durations = true,
+	stat_buff = "increased_weapon_damage_melee",
+	multiplier = 0.5,
+	duration = 10,
+	icon = "markus_knight_ability_hit_target_damage_taken",
+})
+mod_api.update_talent("es_knight", 6, 2, {
+	description_values = {},
+})
+mod_api.insert_text("markus_knight_wide_charge_desc", "After using Valiant Charge, gain 50%% melee damage for 10 seconds.")
 
 
 
