@@ -6,8 +6,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Foot Knight
 		### Career Ability
-		- Baseline ult is now the Battering Ram charge: wider (5 from 2) and no longer stops on large enemies.
-		
+		- Ult damage/stagger cleave buffed to 4 (from 2), including wide charge.
+		- Ult blast radius buffed to 5 (from 3), including wide charge.
+
 		### Passives
 		**Protective Presence**
 		- Aura radius increased to 20 (from 5).
@@ -43,16 +44,19 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		
 		**Inspiring Blow**
 		- Now only affects the Foot Knight himself (no longer nearby allies).
-		- Increased cooldown regeneration effect to 200% (from 100%) and duration to 1.5s (from 0.5s).
+		- Increased cooldown regeneration duration to 1.0s (from 0.5s).
 		- Also procs when Mainstay marks an elite with a stagger count, even if the hit doesn't actually stagger it.
-		- Mainstay grants official realm effect 20% cooldown regeneration for 0.5s
+		- Mainstay grants effect at 10% cooldown regeneration for 1.0s
 
 		**Numb to Pain**
-		- Invulnerability duration on ult increased to 6s (from 3s).
+		- Invulnerability duration on ult increased to 5s (from 3s).
+		- Damage prevented by the invulnerability still charges the ult at the normal on-damage-taken rate (hit trading).
 
 		**Battering Ram**
-		- Wide charge is now baseline.
-		- New effect: after using the ult, gain 50% melee damage for 10s.
+		- Charge width reduced to 4 (from 5), matching the description's double width.
+
+		**Bull of Ostland**
+		- Attack speed buff from ult hits lasts 15s (from 10s).
 	$END_TB
 ]]
 
@@ -61,46 +65,26 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Ultimate
 
 ]]
--- cooldown increase
--- mod_api.update_career_ability_cooldown("es_2", 40)
+-- Charge + blast damage/stagger cleave. Edited in place: damage profiles resolve their cleave_distribution name to
+-- this exact table at load (damage_profile_templates.lua), so swapping in a new table at runtime has no effect.
+local charge_cleave_distribution = PowerLevelTemplates.cleave_distribution_markus_knight_charge
+charge_cleave_distribution.attack = 4 -- 2
+charge_cleave_distribution.impact = 4 -- 2
 
--- reuse static tables instead of allocating new ones
-local charge_cleave_distribution_default = {
-	attack = 2,
-	impact = 2,
-}
-
--- Baseline ult is the Battering Ram charge (wide, doesn't stop on max hit mass) with the vanilla blast radius
+-- do_lunge is rebuilt on every activation, so it's adjusted after vanilla's _run_ability.
+-- Battering Ram's wide charge (no stop on max hit mass) is applied by vanilla _run_ability itself.
 mod:hook(CareerAbilityESKnight, "_run_ability", function (func, self, ...)
 	func(self, ...)
 
-	local owner_unit = self._owner_unit
-	local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
-	local status_extension = self._status_extension
+	local lunge_damage = self._status_extension.do_lunge.damage
 
-	PowerLevelTemplates.cleave_distribution_markus_knight_charge = charge_cleave_distribution_default
-	status_extension.do_lunge.damage.on_interrupt_blast.radius = 3 -- 3
-	status_extension.do_lunge.damage.width = 5 -- 2
-	status_extension.do_lunge.damage.interrupt_on_max_hit_mass = false -- true
+	lunge_damage.on_interrupt_blast.radius = 5 -- 3
 
-	-- Battering Ram: melee damage after ult. Same local add + rpc as vanilla's Numb to Pain buff in _run_ability,
-	-- so the server (where melee damage is calculated) and the Knight (icon) both have it.
+	-- Battering Ram: match the talent description's "double width" (2x the baseline width of 2)
+	local talent_extension = ScriptUnit.extension(self._owner_unit, "talent_system")
+
 	if talent_extension:has_talent("markus_knight_wide_charge", "empire_soldier", true) then
-		local buff_name = "tb_markus_knight_battering_ram_melee_damage_buff"
-		local network_manager = self._network_manager
-		local network_transmit = network_manager.network_transmit
-		local owner_unit_id = network_manager:unit_game_object_id(owner_unit)
-		local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
-
-		self._buff_extension:add_buff(buff_name, {
-			attacker_unit = owner_unit,
-		})
-
-		if self._is_server then
-			network_transmit:send_rpc_clients("rpc_add_buff", owner_unit_id, buff_template_name_id, owner_unit_id, 0, false)
-		else
-			network_transmit:send_rpc_server("rpc_add_buff", owner_unit_id, buff_template_name_id, owner_unit_id, 0, false)
-		end
+		lunge_damage.width = 4 -- 5
 	end
 end)
 
@@ -386,6 +370,16 @@ mod:add_update_function(function (dt)
 	tb_action_inspect_was_pressed = is_pressed
 end)
 
+-- Remove the guard buff we previously put on `unit` (tracked via buff.server_id, like activate_buff_on_distance)
+local function tb_remove_guard_buff(buff_system, unit, buff_to_add)
+	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+	local guard_buff = buff_extension and buff_extension:get_non_stacking_buff(buff_to_add)
+
+	if guard_buff and guard_buff.server_id then
+		buff_system:remove_server_controlled_buff(unit, guard_buff.server_id)
+	end
+end
+
 mod_api.insert_buff_function("tb_activate_buff_on_selected_or_closest", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
@@ -399,8 +393,11 @@ mod_api.insert_buff_function("tb_activate_buff_on_selected_or_closest", function
 		return
 	end
 
+	local buff_to_add = buff.template.buff_to_add
+	local buff_system = Managers.state.entity:system("buff_system")
+	local current_unit = buff.current_unit
 	local teammates = tb_get_comrades_in_arms_teammates(owner_unit)
-	local target_entry = teammates and teammates[state.index]
+	local target_entry = teammates[state.index]
 	local target_unit = target_entry and target_entry.player.player_unit
 
 	-- The selected teammate died or their slot is gone (disconnected) - auto-revert to closest
@@ -409,15 +406,8 @@ mod_api.insert_buff_function("tb_activate_buff_on_selected_or_closest", function
 		state.mode = "closest"
 		state.index = 0
 
-		local stale_unit = buff.current_unit
-
-		if stale_unit then
-			local stale_buff_extension = ScriptUnit.has_extension(stale_unit, "buff_system")
-			local stale_buff = stale_buff_extension and stale_buff_extension:get_non_stacking_buff(buff.template.buff_to_add)
-
-			if stale_buff and stale_buff.server_id then
-				Managers.state.entity:system("buff_system"):remove_server_controlled_buff(stale_unit, stale_buff.server_id)
-			end
+		if current_unit then
+			tb_remove_guard_buff(buff_system, current_unit, buff_to_add)
 
 			buff.current_unit = nil
 		end
@@ -428,34 +418,20 @@ mod_api.insert_buff_function("tb_activate_buff_on_selected_or_closest", function
 		return
 	end
 
-	local template = buff.template
-	local buff_to_add = template.buff_to_add
-	local buff_system = Managers.state.entity:system("buff_system")
-	local current_unit = buff.current_unit
-
 	if current_unit and current_unit ~= target_unit then
-		local current_buff_extension = ScriptUnit.has_extension(current_unit, "buff_system")
-		local current_buff = current_buff_extension and current_buff_extension:get_non_stacking_buff(buff_to_add)
-
-		if current_buff and current_buff.server_id then
-			buff_system:remove_server_controlled_buff(current_unit, current_buff.server_id)
-		end
-
-		buff.current_unit = nil
+		tb_remove_guard_buff(buff_system, current_unit, buff_to_add)
 	end
 
-	if target_unit and ALIVE[target_unit] then
-		buff.current_unit = target_unit
+	buff.current_unit = target_unit
 
-		local target_buff_extension = ScriptUnit.extension(target_unit, "buff_system")
+	local target_buff_extension = ScriptUnit.extension(target_unit, "buff_system")
 
-		if not target_buff_extension:has_buff_type(buff_to_add) then
-			local server_id = buff_system:add_buff(target_unit, buff_to_add, owner_unit, true)
-			local new_buff = target_buff_extension:get_non_stacking_buff(buff_to_add)
+	if not target_buff_extension:has_buff_type(buff_to_add) then
+		local server_id = buff_system:add_buff(target_unit, buff_to_add, owner_unit, true)
+		local new_buff = target_buff_extension:get_non_stacking_buff(buff_to_add)
 
-			if new_buff then
-				new_buff.server_id = server_id
-			end
+		if new_buff then
+			new_buff.server_id = server_id
 		end
 	end
 end)
@@ -560,9 +536,7 @@ mod_api.insert_buff_template("tb_markus_knight_hero_time_cooldown_buff", {
 	duration_end_func = "add_buff_local",
 	buff_to_add = "tb_markus_knight_hero_time_ready_buff",
 })
-mod_api.insert_buff_function("markus_hero_time_reset", function (unit, buff, params)
-	local player_unit = unit
-
+mod_api.insert_buff_function("markus_hero_time_reset", function (player_unit, buff, params)
 	if not Unit.alive(player_unit) then
 		return
 	end
@@ -589,7 +563,7 @@ mod_api.insert_buff_function("markus_hero_time_reset", function (unit, buff, par
 
 	buff_extension:add_buff("tb_markus_knight_hero_time_cooldown_buff")
 end)
-mod_api.insert_text("markus_knight_charge_reset_on_incapacitated_allies_desc", "Refunds 100% of cooldown upon allied incapacitation, unless the ultimate is already fully charged. 30 second internal cooldown.")
+mod_api.insert_text("markus_knight_charge_reset_on_incapacitated_allies_desc", "Refunds 100% of cooldown upon allied incapacitation, unless the ultimate is already fully charged. 15 second internal cooldown.")
 
 -- Fix Hero Time not proccing if ally already disabled
 mod_api.insert_buff_function("markus_knight_movespeed_on_incapacitated_ally", function (owner_unit, buff, params)
@@ -653,19 +627,19 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on
 	buff_func = "buff_on_stagger_enemy"
 })
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_buff", {
-	duration = 1.5, -- 0.5
-	multiplier = 3, -- 2
+	duration = 1, -- 0.5
+	multiplier = 2, -- 2
 	icon = "markus_knight_improved_passive_defence_aura"
 })
-mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates your own cooldown by 200%% (20%%) for 1.5 (0.5) seconds.")
+mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates your own cooldown by 100%% (10%%) for 1.0 (1.0) seconds.")
 
 -- Separate, weaker buff for the Mainstay stagger-count proc
 mod_api.insert_buff_template("tb_markus_knight_cooldown_buff_mainstay", {
 	max_stacks = 1,
 	refresh_durations = true,
 	stat_buff = "cooldown_regen",
-	duration = 0.5,
-	multiplier = 1.2,
+	duration = 1,
+	multiplier = 1.1,
 	icon = "markus_knight_improved_passive_defence_aura",
 })
 
@@ -674,33 +648,101 @@ mod_api.insert_buff_template("tb_markus_knight_cooldown_buff_mainstay", {
 ]]
 -- Invulnerability on ult duration increased to 6s
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_invulnerability_buff", {
-	duration = 6 -- 3
+	duration = 5 -- 3
 })
 mod_api.update_talent("es_knight", 6, 1, {
 	description_values = {
 		{
-			value = 6 -- 3
+			value = 5 -- 3
 		}
 	},
 })
+mod_api.insert_text("markus_knight_ability_invulnerability_desc", "Valiant Charge makes Kruber immune to damage for %s seconds. Damage prevented this way still reduces the cooldown of Valiant Charge.")
+
+-- Hit trading: damage prevented by Numb to Pain still charges the ult at the normal on-damage-taken rate.
+-- Numb to Pain is a damage_taken -100% stat buff, so the hit reaches the health extension as 0 and vanilla's
+-- on_damage_taken proc (reduce_activated_ability_cooldown_on_damage_taken) never fires. Server-side, we lift just
+-- Numb to Pain's share of the damage_taken stat for this one call to get the damage the hit would have dealt
+-- (after every other reduction), then still return 0 and refund the cooldown for that amount.
+local NUMB_TO_PAIN_BUFF = "markus_knight_ability_invulnerability_buff"
+local CDR_ON_DAMAGE_TAKEN_BUFF = "markus_knight_ability_cooldown_on_damage_taken"
+
+-- Cooldown lives on the owning peer only (CareerExtension doesn't sync), same routing as CareerSystem's own rpc
+local function tb_reduce_cooldown_on_owner(unit, amount)
+	local owner_player = Managers.player:owner(unit)
+
+	if not owner_player then
+		return
+	end
+
+	if not owner_player.remote then
+		local career_extension = ScriptUnit.has_extension(unit, "career_system")
+
+		if career_extension then
+			career_extension:reduce_activated_ability_cooldown(amount)
+		end
+
+		return
+	end
+
+	local network_manager = Managers.state.network
+	local unit_id = network_manager:unit_game_object_id(unit)
+
+	if unit_id then
+		network_manager.network_transmit:send_rpc("rpc_reduce_activated_ability_cooldown", owner_player:network_id(), unit_id, amount, 1, false)
+	end
+end
+
+-- Registered through the dispatcher in TourneyBalance.lua, not mod:hook: 02_damage_taken_changes.lua already
+-- owns this function, and this mod hooking it a second time wouldn't reliably run.
+mod:add_apply_buffs_to_damage_wrapper(function (func, current_damage, attacked_unit, attacker_unit, damage_source, ...)
+	local buff_extension = ScriptUnit.has_extension(attacked_unit, "buff_system")
+	local numb_to_pain = buff_extension and buff_extension:get_non_stacking_buff(NUMB_TO_PAIN_BUFF)
+	local damage_taken_stat = numb_to_pain and numb_to_pain.stat_buff_index and buff_extension._stat_buffs.damage_taken[numb_to_pain.stat_buff_index]
+
+	if not damage_taken_stat then
+		return func(current_damage, attacked_unit, attacker_unit, damage_source, ...)
+	end
+
+	local saved_multiplier = damage_taken_stat.multiplier
+
+	damage_taken_stat.multiplier = saved_multiplier - numb_to_pain.multiplier
+
+	local prevented_damage = func(current_damage, attacked_unit, attacker_unit, damage_source, ...)
+
+	damage_taken_stat.multiplier = saved_multiplier
+
+	-- Same conditions as vanilla's proc: real damage, not self-inflicted, not temp health decay
+	if prevented_damage > 0 and attacker_unit ~= attacked_unit and damage_source ~= "temporary_health_degen" then
+		local bonus = BuffTemplates[CDR_ON_DAMAGE_TAKEN_BUFF].buffs[1].bonus
+
+		tb_reduce_cooldown_on_owner(attacked_unit, bonus * prevented_damage)
+	end
+
+	return 0
+end)
 
 --[[
-	Battering Ram
-	Wide charge is now baseline (see Ultimate). Talent grants melee damage after ult instead.
-	Buff is added in the CareerAbilityESKnight._run_ability hook.
+	Bull of Ostland
 ]]
-mod_api.insert_buff_template("tb_markus_knight_battering_ram_melee_damage_buff", {
-	max_stacks = 1,
-	refresh_durations = true,
-	stat_buff = "increased_weapon_damage_melee",
-	multiplier = 0.5,
-	duration = 10,
-	icon = "markus_knight_ability_hit_target_damage_taken",
+-- Attack speed buff from ult hits lasts 15s (from 10s)
+mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_attack_speed_enemy_hit_buff", {
+	duration = 15 -- 10
 })
-mod_api.update_talent("es_knight", 6, 2, {
-	description_values = {},
+mod_api.update_talent("es_knight", 6, 3, { -- update description (update_talent replaces the whole list, so all three values are listed)
+	description_values = {
+		{
+			value_type = "percent",
+			value = 0.03, -- buff_tweak_data.markus_knight_ability_attack_speed_enemy_hit_buff.multiplier
+		},
+		{
+			value = 15, -- 10, buff_tweak_data.markus_knight_ability_attack_speed_enemy_hit_buff.duration
+		},
+		{
+			value = 10, -- buff_tweak_data.markus_knight_ability_attack_speed_enemy_hit_buff.max_stacks
+		},
+	},
 })
-mod_api.insert_text("markus_knight_wide_charge_desc", "After using Valiant Charge, gain 50%% melee damage for 10 seconds.")
 
 
 

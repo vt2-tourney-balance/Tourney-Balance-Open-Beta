@@ -78,6 +78,50 @@ mod.on_game_state_changed = function (...)
     end
 end
 
+--- DamageUtils.apply_buffs_to_damage dispatcher
+-- Same hook-collision problem as IngameHud above: 02_damage_taken_changes.lua replaces this function
+-- with mod:hook_origin, so any other file calling mod:hook on it as well would not reliably run.
+-- The base implementation is set once via mod:set_apply_buffs_to_damage(fn), and features that need to
+-- wrap it register through mod:add_apply_buffs_to_damage_wrapper(fn), with fn(func, ...) shaped like a
+-- mod:hook callback (func = next wrapper in line, ending at the base implementation).
+-- Wrappers run in registration order, outermost first.
+local _apply_buffs_to_damage_wrappers = {}
+local _apply_buffs_to_damage_base = DamageUtils.apply_buffs_to_damage -- vanilla, until set_apply_buffs_to_damage replaces it
+local _apply_buffs_to_damage_chain = nil -- composed lazily, rebuilt when a wrapper is added
+
+function mod.add_apply_buffs_to_damage_wrapper(self, wrapper)
+    _apply_buffs_to_damage_wrappers[#_apply_buffs_to_damage_wrappers + 1] = wrapper
+    _apply_buffs_to_damage_chain = nil
+end
+
+function mod.set_apply_buffs_to_damage(self, base)
+    _apply_buffs_to_damage_base = base
+    _apply_buffs_to_damage_chain = nil
+end
+
+local function compose_apply_buffs_to_damage_chain()
+    local chain = _apply_buffs_to_damage_base
+
+    for i = #_apply_buffs_to_damage_wrappers, 1, -1 do
+        local wrapper = _apply_buffs_to_damage_wrappers[i]
+        local inner = chain
+
+        chain = function (...)
+            return wrapper(inner, ...)
+        end
+    end
+
+    return chain
+end
+
+mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function (...)
+    if not _apply_buffs_to_damage_chain then
+        _apply_buffs_to_damage_chain = compose_apply_buffs_to_damage_chain()
+    end
+
+    return _apply_buffs_to_damage_chain(...)
+end)
+
 --- In-game localization
 -- Replace original strings, if _quick_localize can fetch custom strings
 local localization_api = require("scripts/mods/TourneyBalance/_api/_localization_api")

@@ -46,7 +46,9 @@ local IGNORE_DAMAGE_REDUCTION_DAMAGE_SOURCE = {
 local POSITION_LOOKUP = POSITION_LOOKUP
 local unit_get_data = Unit.get_data
 
-mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function(current_damage, attacked_unit, attacker_unit, damage_source, victim_units, damage_type, buff_attack_type, first_hit, source_attacker_unit)
+-- Base implementation for the apply_buffs_to_damage dispatcher (TourneyBalance.lua), which owns the single
+-- hook_origin on DamageUtils.apply_buffs_to_damage. Other files wrap it via mod:add_apply_buffs_to_damage_wrapper.
+mod:set_apply_buffs_to_damage(function(current_damage, attacked_unit, attacker_unit, damage_source, victim_units, damage_type, buff_attack_type, first_hit, source_attacker_unit)
 	local damage = current_damage
 	local network_manager = Managers.state.network
 	local attacker_unit_buff_extension = ScriptUnit.has_extension(attacker_unit, "buff_system") or ScriptUnit.has_extension(source_attacker_unit, "buff_system")

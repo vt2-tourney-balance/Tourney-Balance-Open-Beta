@@ -3,7 +3,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 local is_server = require("scripts/mods/TourneyBalance/_api/shared_utils").is_server
 
 -- Forward-declared: defined in the Birch Stance section further down, but called from the shared
--- update_weapon_actions hook in the Dance of Season section above it.
+-- update_weapon_actions hook in the Oak Guard section above it.
 local tb_maidenguard_update_birch_stance_damage_reduction
 
 --[[
@@ -11,10 +11,11 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		---
 		## Handmaiden
 		### Career Ability
-		- Increased hitbox width/depth ult to 3/2 (from 1.5/0.4).
-		- Added effect: Enemies hit by the ult are taunted for 3 seconds. Does not apply to Lords and Bosses.
+		- Increased hitbox width/depth ult to 2/3 (from 1.5/0.4).
 
 		### Passives
+		**Dance of Seasons**
+		- Added effect: Hitting enemies taunts them for 1 seconds. Does not apply to Lords and Bosses.
 
 		**Renewal**
 		- Stam regen aura range increased to 20 (from 5).
@@ -62,8 +63,8 @@ mod:hook(CareerAbilityWEMaidenGuard, "_run_ability", function (func, self, ...)
 
     local status_extension = self._status_extension
     -- hitbox is a rectangular cube / cuboid with given width, height and length, and offset_forward changes its position relative to character's
-    status_extension.do_lunge.damage.width = 3    --1.5    --width of hitbox
-    status_extension.do_lunge.damage.depth_padding = 2  --0.4    --length of hitbox
+    status_extension.do_lunge.damage.width = 2    --1.5    --width of hitbox
+    status_extension.do_lunge.damage.depth_padding = 3  --0.4    --length of hitbox
     status_extension.do_lunge.damage.offset_forward = 0   --0    --position of hitbox
 
 end)
@@ -96,69 +97,17 @@ end)
 ]]
 --[[
     Oak Guard - listed
-    + 3s taunt on enemies hit by the ult hitbox. -> Written under Dance of Seasons
 ]]
-mod_api.insert_proc_function("tb_maidenguard_taunt_on_ult_hit", function (owner_unit, buff, params)
-    if not is_server() then
-        return
-    end
-
-    local hit_unit = params[1]
-
-    if not hit_unit or not HEALTH_ALIVE[hit_unit] then
-        return
-    end
-
-    local ai_extension = ScriptUnit.has_extension(hit_unit, "ai_system")
-
-    if not ai_extension then
-        return
-    end
-
-    local breed = ai_extension:breed()
-
-    if breed.ignore_taunts or breed.boss then
-        return
-    end
-
-    local blackboard = ai_extension:blackboard()
-    local t = Managers.time:time("game")
-
-    blackboard.taunt_unit = owner_unit
-    blackboard.taunt_end_time = t + buff.template.taunt_duration
-    blackboard.target_unit = owner_unit
-    blackboard.target_unit_found_time = t
-end)
-mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_on_ult_hit", {
-    buff_func = "tb_maidenguard_taunt_on_ult_hit",
-    event = "on_charge_ability_hit",
-    taunt_duration = 3,
-})
 -- 40% increased healing received (moved from Heart of Oak)
 mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_oak_guard_healing_received", {
 	stat_buff = "healing_received",
 	multiplier = 0.4,
 })
 mod_api.insert_career_passives("we_2", {
-    "tb_kerillian_maidenguard_taunt_on_ult_hit",
     "tb_kerillian_maidenguard_oak_guard_healing_received",
 })
 mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases stamina by 1. Blocking starts instantly.")
 mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
-
---[[
-    Renewal
-]]
-mod_api.insert_perk_text("tb_we_2b", "Renewal", "Aura that increases stamina regeneration speed by 100%. Increase Kerillian's healing received by 40%.")
-mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
-mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_stamina_regen_aura", {
-	range = 20 -- 5
-})
-
---[[
-    Dance of Season
-]]
-mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Enemies hit by Dash are taunted for 3 seconds (excludes Lords and Bosses).")
 
 -- Blocking starts immediately: raise the "blocking" status the instant block is pressed, independent of the
 -- current weapon action, so the current attack's animation keeps playing while damage mitigation is already active.
@@ -224,6 +173,60 @@ mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit,
     ]]
     tb_maidenguard_update_birch_stance_damage_reduction(unit, status_extension)
 end)
+
+--[[
+    Renewal
+]]
+-- Replace the vanilla Renewal perk text (career_passive_name_we_2b) instead of adding a second Renewal entry
+mod_api.insert_text("career_passive_desc_we_2b_2", "Aura that increases stamina regeneration speed by 100%. Increase Kerillian's healing received by 40%.")
+mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_stamina_regen_aura", {
+	range = 20 -- 5
+})
+
+--[[
+    Dance of Season
+    + 1s taunt on hit
+]]
+mod_api.insert_proc_function("tb_maidenguard_taunt_on_hit", function (owner_unit, buff, params)
+    if not is_server() then
+        return
+    end
+
+    local hit_unit = params[1]
+
+    if not hit_unit or not HEALTH_ALIVE[hit_unit] then
+        return
+    end
+
+    local ai_extension = ScriptUnit.has_extension(hit_unit, "ai_system")
+
+    if not ai_extension then
+        return
+    end
+
+    local breed = ai_extension:breed()
+
+    if breed.ignore_taunts or breed.boss then
+        return
+    end
+
+    local blackboard = ai_extension:blackboard()
+    local t = Managers.time:time("game")
+
+    blackboard.taunt_unit = owner_unit
+    blackboard.taunt_end_time = t + buff.template.taunt_duration
+    blackboard.target_unit = owner_unit
+    blackboard.target_unit_found_time = t
+end)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_maidenguard_taunt_on_hit", {
+    buff_func = "tb_maidenguard_taunt_on_hit",
+    event = "on_hit",
+    taunt_duration = 1,
+})
+mod_api.insert_career_passives("we_2", {
+    "tb_kerillian_maidenguard_taunt_on_hit",
+})
+mod_api.insert_text("career_passive_desc_we_2a_2", "Increased dodge distance by 15%. Hitting enemies taunts them for 1 seconds (excludes Lords and Bosses).")
 
 --[[
 
@@ -456,7 +459,7 @@ mod_api.update_talent("we_maidenguard", 5, 2, {
 })
 mod_api.insert_text("kerillian_maidenguard_block_cost_desc", "Reduces block cost by 30.0% and damage taken by 30.0% while blocking.")
 
--- The damage reduction only applies while actually blocking. Called from the shared update_weapon_actions hook above (Dance of Season)
+-- The damage reduction only applies while actually blocking. Called from the shared update_weapon_actions hook above (Oak Guard)
 tb_maidenguard_update_birch_stance_damage_reduction = function (unit, status_extension)
     local talent_extension = ScriptUnit.extension(unit, "talent_system")
 

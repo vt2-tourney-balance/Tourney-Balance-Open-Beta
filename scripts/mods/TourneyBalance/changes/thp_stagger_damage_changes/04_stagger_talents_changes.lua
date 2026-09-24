@@ -68,7 +68,7 @@ mod_api.insert_buff_template("tb_tank_unbalance_buff", {
 -- Visible to all players, includes bosses/lords.
 mod_api.insert_buff_template("tb_tank_stagger_mark_buff", {
 	refresh_durations = true,
-	max_stacks = 2, -- Bulwark Stacks
+	max_stacks = 1, -- Bulwark Stacks
 	duration = 10,
 })
 -- Apply Bulwark Damage Debuff and stagger mark from any attack
