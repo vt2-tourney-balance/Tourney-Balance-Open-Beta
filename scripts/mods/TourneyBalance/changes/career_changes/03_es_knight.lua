@@ -6,8 +6,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Foot Knight
 		### Career Ability
-		- Ult damage/stagger cleave buffed to 4 (from 2), including wide charge.
-		- Ult blast radius buffed to 5 (from 3), including wide charge.
+		- Ult blast radius buffed to 5 (from 3) for all ults.
 
 		### Passives
 		**Protective Presence**
@@ -79,13 +78,6 @@ mod:hook(CareerAbilityESKnight, "_run_ability", function (func, self, ...)
 	local lunge_damage = self._status_extension.do_lunge.damage
 
 	lunge_damage.on_interrupt_blast.radius = 5 -- 3
-
-	-- Battering Ram: match the talent description's "double width" (2x the baseline width of 2)
-	local talent_extension = ScriptUnit.extension(self._owner_unit, "talent_system")
-
-	if talent_extension:has_talent("markus_knight_wide_charge", "empire_soldier", true) then
-		lunge_damage.width = 4 -- 5
-	end
 end)
 
 --[[
