@@ -22,7 +22,7 @@ local tb_maidenguard_update_birch_stance_damage_reduction
 		**Oak Guard (listed)**
 		- (Added to list) Increases maximum stamina by 1.
 		- Added effect: Blocking starts immediately, even mid-attack.
-		- Added 40% increased healing received (moved from Heart of Oak).
+		- Added 40% increased healing received.
 
 		### Talents
 		**Focused Spirit**
@@ -96,8 +96,7 @@ end)
 ]]
 --[[
     Oak Guard - listed
-    + 3s taunt on enemies hit by the ult hitbox. on_charge_ability_hit is triggered server-side in
-    DamageUtils.server_apply_hit for every enemy the lunge hits (params[1] = hit unit).
+    + 3s taunt on enemies hit by the ult hitbox. -> Written under Dance of Seasons
 ]]
 mod_api.insert_proc_function("tb_maidenguard_taunt_on_ult_hit", function (owner_unit, buff, params)
     if not is_server() then
@@ -144,12 +143,14 @@ mod_api.insert_career_passives("we_2", {
     "tb_kerillian_maidenguard_taunt_on_ult_hit",
     "tb_kerillian_maidenguard_oak_guard_healing_received",
 })
-mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases maximum stamina by 1 and healing received by 40%. Blocking starts instantly.")
+mod_api.insert_perk_text("tb_we_2d", "Oak Guard", "Increases stamina by 1. Blocking starts instantly.")
 mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
 
 --[[
     Renewal
 ]]
+mod_api.insert_perk_text("tb_we_2b", "Renewal", "Aura that increases stamina regeneration speed by 100%. Increase Kerillian's healing received by 40%.")
+mod_api.insert_career_perk_descriptions("we_2", "tb_we_2d")
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_passive_stamina_regen_aura", {
 	range = 20 -- 5
 })
