@@ -100,15 +100,16 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 
 		if is_direct_hit and is_center_hit and is_melee_hit and buff_extension and buff_extension:has_buff_perk("linesman_stagger_damage") then
 			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
+			local mainstay_target_breed = Unit.get_data(target_unit, "breed")
+			-- Mainstay stagger counts are not applied to bosses/lords
+			local is_boss_or_lord = mainstay_target_breed and (mainstay_target_breed.boss or mainstay_target_breed.lord_damage_reduction)
 
-			if target_buff_extension then
+			if target_buff_extension and not is_boss_or_lord then
 				target_buff_extension:add_buff("tb_mainstay_stagger_mark_buff")
 
 				--[[
 					Foot Knight: Have At Thee! / Inspiring Blow - Proc from Mainstay stagger count
 				]]
-				local mainstay_target_breed = Unit.get_data(target_unit, "breed")
-
 				if mainstay_target_breed and mainstay_target_breed.elite then
 					local attacker_talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
 
@@ -159,12 +160,10 @@ local function apply_buffs_to_stagger_damage(attacker_unit, target_unit, target_
 	if attacker_buff_extension then
 		local finesse_perk = attacker_buff_extension:has_buff_perk("finesse_stagger_damage")
 		local smiter_perk = attacker_buff_extension:has_buff_perk("smiter_stagger_damage")
-
-		--local mainstay_perk = attacker_buff_extension:has_buff_perk("linesman_stagger_damage")
-		--if mainstay_perk and new_stagger_number > 0 then
-		--	new_stagger_number = new_stagger_number + 1
-		--else
-		if (hit_zone == "head" or hit_zone == "neck") and finesse_perk then
+		local mainstay_perk = attacker_buff_extension:has_buff_perk("linesman_stagger_damage")
+		if mainstay_perk and new_stagger_number > 0 then
+			new_stagger_number = new_stagger_number + 1
+		elseif (hit_zone == "head" or hit_zone == "neck") and finesse_perk then
 			new_stagger_number = 2
 		elseif smiter_perk then
 			if target_index and target_index <= 1 then
@@ -176,6 +175,23 @@ local function apply_buffs_to_stagger_damage(attacker_unit, target_unit, target_
 	end
 
 	return new_stagger_number
+end
+
+-- Stagger marks on the target:
+-- Mainstay marks (dummy_stagger) only count for attackers with Mainstay.
+-- Bulwark marks (tb_tank_stagger_mark_buff stacks) count for every attacker.
+local function add_stagger_marks(target_unit, has_mainstay, stagger_number)
+	local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
+
+	if not target_buff_extension then
+		return stagger_number
+	end
+
+	if has_mainstay then
+		stagger_number = target_buff_extension:apply_buffs_to_value(stagger_number, "dummy_stagger")
+	end
+
+	return stagger_number + target_buff_extension:num_buff_type("tb_tank_stagger_mark_buff")
 end
 
 local function do_damage_calculation(attacker_unit, damage_source, original_power_level, damage_output, hit_zone_name, damage_profile, target_index, boost_curve, boost_damage_multiplier, is_critical_strike, backstab_multiplier, breed, range_scalar_multiplier, static_base_damage, is_player_friendly_fire, has_power_boost, difficulty_level, target_unit_armor, target_unit_primary_armor, has_crit_head_shot_killing_blow_perk, has_crit_backstab_killing_blow_perk, target_max_health, target_unit)
@@ -515,6 +531,7 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 	if damage_profile and not damage_profile.is_dot then
 		local blackboard = BLACKBOARDS[target_unit]
 		local stagger_number = 0
+		local has_mainstay = buff_extension and buff_extension:has_buff_perk("linesman_stagger_damage")
 
 		if blackboard then
 			local ignore_stagger_damage_reduction = damage_profile.no_stagger_damage_reduction or breed.no_stagger_damage_reduction
@@ -532,21 +549,13 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 				stagger_number = math.max(stagger_number_override, stagger_number)
 			end
 
-			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
-
-			if target_buff_extension and target_index and target_index <= 5 then
-				stagger_number = target_buff_extension:apply_buffs_to_value(stagger_number, "dummy_stagger") -- Apply mainstay stagger, first 5 enemies hit only
-			end
+			stagger_number = add_stagger_marks(target_unit, has_mainstay, stagger_number)
 
 			if not damage_profile.no_stagger_damage_reduction_ranged then
 				stagger_number = apply_buffs_to_stagger_damage(attacker_unit, target_unit, target_index, hit_zone_name, is_critical_strike, stagger_number)
 			end
 		elseif dummy_unit_armor then
-			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
-
-			if target_buff_extension and target_index and target_index <= 5 then
-				stagger_number = target_buff_extension:apply_buffs_to_value(0, "dummy_stagger") -- Apply mainstay stagger, first 5 enemies hit only
-			end
+			stagger_number = add_stagger_marks(target_unit, has_mainstay, 0)
 
 			if damage_profile.no_stagger_damage_reduction_ranged then
 				local stagger_number_override = 1
@@ -558,7 +567,7 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 			end
 		end
 
-		stagger_number = math.min(stagger_number, 2) -- Mainstay cap
+		stagger_number = math.min(stagger_number, has_mainstay and 3 or 2) -- Cap: 3 for Mainstay users (0%/40%/60%), 2 for everyone else
 
 		local min_stagger_damage_coefficient = difficulty_settings.min_stagger_damage_coefficient
 		--local stagger_damage_multiplier = difficulty_settings.stagger_damage_multiplier

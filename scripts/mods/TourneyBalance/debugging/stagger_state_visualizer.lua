@@ -7,7 +7,8 @@ local color_presets = require("scripts/mods/TourneyBalance/debugging/_color_pres
 
 	Outlines enemies based on the sum of whichever stagger counts are enabled
 	(real stagger count from blackboard.stagger, Mainstay's marked stagger count
-	from the target's dummy_stagger buff):
+	from the target's dummy_stagger buff - only shown if the local player has Mainstay,
+	Bulwark's marked stagger count from the target's tb_tank_stagger_mark_buff stacks):
 		0        -> no outline
 		1        -> green
 		2        -> yellow
@@ -74,6 +75,25 @@ local function get_mainstay_count(unit)
 	end
 
 	return target_buff_extension:apply_buffs_to_value(0, "dummy_stagger")
+end
+
+local function get_tank_count(unit)
+	local target_buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+
+	if not target_buff_extension then
+		return 0
+	end
+
+	return target_buff_extension:num_buff_type("tb_tank_stagger_mark_buff")
+end
+
+-- Mainstay marks only count for players with Mainstay, so only show them if the local player has it
+local function local_player_has_mainstay()
+	local local_player = Managers.player and Managers.player:local_player()
+	local player_unit = local_player and local_player.player_unit
+	local buff_extension = player_unit and ScriptUnit.has_extension(player_unit, "buff_system")
+
+	return buff_extension and buff_extension:has_buff_perk("linesman_stagger_damage")
 end
 
 -- unit -> { outline_id = ..., state = ... }
@@ -168,11 +188,13 @@ local next_update_t = 0
 local stagger_state_visualizer_enabled = mod:get("stagger_state_visualizer")
 local include_real = mod:get("stagger_state_visualizer_include_real")
 local include_mainstay = mod:get("stagger_state_visualizer_include_mainstay")
+local include_tank = mod:get("stagger_state_visualizer_include_tank")
 
 mod:add_setting_changed_function(function ()
 	stagger_state_visualizer_enabled = mod:get("stagger_state_visualizer")
 	include_real = mod:get("stagger_state_visualizer_include_real")
 	include_mainstay = mod:get("stagger_state_visualizer_include_mainstay")
+	include_tank = mod:get("stagger_state_visualizer_include_tank")
 
 	if not stagger_state_visualizer_enabled and next(outlined_units) then
 		clear_all_outlines()
@@ -206,6 +228,8 @@ mod:add_update_function(function (dt)
 		end
 	end
 
+	local show_mainstay = include_mainstay and local_player_has_mainstay()
+
 	for unit, blackboard in pairs(BLACKBOARDS) do
 		if ALIVE[unit] then
 			local total = 0
@@ -214,8 +238,12 @@ mod:add_update_function(function (dt)
 				total = total + (blackboard.stagger or 0)
 			end
 
-			if include_mainstay then
+			if show_mainstay then
 				total = total + get_mainstay_count(unit)
+			end
+
+			if include_tank then
+				total = total + get_tank_count(unit)
 			end
 
 			local state = get_stagger_state(total)

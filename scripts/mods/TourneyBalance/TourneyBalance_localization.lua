@@ -472,7 +472,14 @@ local localization = {
 		en = "Include Mainstay Stagger Count",
 	},
 	stagger_state_visualizer_include_mainstay_description = {
-		en = "Include the Mainstay talent's marked stagger count (from the target's dummy_stagger buff) in the visualized sum.",
+		en = "Include the Mainstay talent's marked stagger count (from the target's dummy_stagger buff) in the visualized sum."
+			.. "\nOnly shown if you have Mainstay, since only Mainstay users benefit from these marks.",
+	},
+	stagger_state_visualizer_include_tank_title = {
+		en = "Include Bulwark Stagger Count",
+	},
+	stagger_state_visualizer_include_tank_description = {
+		en = "Include the Bulwark talent's marked stagger count (from the target's tb_tank_stagger_mark_buff stacks) in the visualized sum.",
 	},
 	outline_colors_stagger_state_visualizer = {
 		en = "Outline Colors",

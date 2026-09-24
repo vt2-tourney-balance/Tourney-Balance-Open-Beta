@@ -11,15 +11,6 @@ local stagger_types = require("scripts/utils/stagger_types")
 		**Huntsman**
 		- Replaced Bulwark with Assassin.
 
-		**Waystalker**
-		- Replaced Mainstay with Smiter.
-
-		**Sister of the Thorn**
-		- Replaced Smiter with Bulwark.
-
-		**Witch Hunter Captain**
-		- Replaced Mainstay with Smiter.
-
 		### Talents
 		**Assassin**
 		- Removed damage bonus to apply on crits.
@@ -27,18 +18,20 @@ local stagger_types = require("scripts/utils/stagger_types")
 		**Bulwark**
 		- Added 10% Stagger Power.
 		- Increased damage debuff duration to 10s (from 2s).
-		- Damage debuff can be applied with any form of stagger.
+		- Changes damage debuff to apply with any stagger (from melee stagger).
+		- Staggering an enemy adds 1 stagger count for 10s, up to 2 stacks.
+		- Stagger counts from Bulwark benefit all player.
+
+		**Mainstay**
+		- Melee hits apply 1 stagger count for 2s, up to 2 stacks.
+		- Stagger counts from Mainstay only benefit players with Mainstay.
+		- Stagger count can not be applied by pushes or shield bash splash hits.
+		- Stagger count can not be applied to bosses/lords.
 
 		**Enhanced Power**
 		- Increased power to 10% (from 7.5%).
 
-		**Mainstay**
-		- Reduced damage bonus on stagger count 1 to 20% (from 40%).
-		- Reduced damage bonus on stagger count 2 to 40% (from 60%).
-		- Added melee hits apply 1 stagger count, regardless of actual stagger from the attack.
-		- Stagger count only applied to first 5 enemies hit and caps at 2 stagger counts.
-
-		**Assassin/Bulwark/Mainstay/Smiter**
+		**Assassin/Bulwark/Enhanced Power/Mainstay/Smiter**
 		- Reformatted description.
 	$END_TB
 ]]
@@ -71,7 +64,14 @@ mod_api.insert_buff_template("tb_tank_unbalance_buff", {
 	duration = 10,
 	bonus = 0.10,
 })
--- Apply Bulwark Damage Debuff from any attack
+-- Bulwark stagger marks (tank_stagger_counts), counted by stacks via num_buff_type in 01_damage_calc_changes.lua.
+-- Visible to all players, includes bosses/lords.
+mod_api.insert_buff_template("tb_tank_stagger_mark_buff", {
+	refresh_durations = true,
+	max_stacks = 2, -- Bulwark Stacks
+	duration = 10,
+})
+-- Apply Bulwark Damage Debuff and stagger mark from any attack
 mod_api.insert_proc_function("tb_unbalance_debuff_on_stagger", function (owner_unit, buff, params)
 	local hit_unit = params[1]
 	local is_dummy = Unit.get_data(hit_unit, "is_dummy")
@@ -83,6 +83,7 @@ mod_api.insert_proc_function("tb_unbalance_debuff_on_stagger", function (owner_u
 
 		if buff_extension then
 			buff_extension:add_buff("tb_tank_unbalance_buff")
+			buff_extension:add_buff("tb_tank_stagger_mark_buff")
 		end
 	end
 end )
@@ -117,11 +118,12 @@ mod_api.insert_buff_template("tb_linesman_unbalance", {
 	perks = { buff_perks.linesman_stagger_damage }
 })
 -- Mainstay stagger marks
+-- Only visible to mainstay players, excludes bosses/lords.
 mod_api.insert_buff_template("tb_mainstay_stagger_mark_buff", {
 	refresh_durations = true,
 	name = "mainstay_stagger_mark_buff",
 	stat_buff = "dummy_stagger",
-	max_stacks = 2,
+	max_stacks = 2, -- Mainstay stacks
 	duration = 2,
 	bonus = 1,
 })
@@ -143,16 +145,25 @@ mod_api.insert_buff_template("tb_smiter_unbalance", {
 	Text Localization
 
 ]]
-mod_api.insert_text("assassin_name", "Assassin")
-mod_api.insert_text("bulwark_name", "Bulwark")
-mod_api.insert_text("enhanced_power_name", "Enhanced Power")
-mod_api.insert_text("mainstay_name", "Mainstay")
-mod_api.insert_text("smiter_name", "Smiter")
-mod_api.insert_text("tb_finesse_unbalance_desc", 		"Melee headshots inflict 40% bonus damage.												\n\nDeal 20% more melee damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
-mod_api.insert_text("tb_linesman_unbalance_desc", 		"Melee hits always add a count of stagger lasting 2s. Max 5 enemies.					\n\nDeal 20% more melee damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
-mod_api.insert_text("tb_power_level_unbalance_desc",	"Increases total Power Level by 10%. This is calculated before other buffs are applied.")
-mod_api.insert_text("tb_tank_unbalance_desc", 			"Gain 10% stagger power. Enemies that you stagger take 10% more damage for 10 seconds.	\n\nDeal 20% more melee damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
-mod_api.insert_text("tb_smiter_unbalance_desc", 		"The first enemy hit always counts as staggered.										\n\nDeal 20% more melee damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect.")
+mod_api.insert_text("assassin_name", 		"Assassin")
+mod_api.insert_text("bulwark_name", 		"Bulwark")
+mod_api.insert_text("enhanced_power_name", 	"Enhanced Power")
+mod_api.insert_text("mainstay_name", 		"Mainstay")
+mod_api.insert_text("smiter_name", 			"Smiter")
+
+base_stagger_talent_text = "\n\nDeal 20% more melee damage to staggered enemies, increased to 40% against targets afflicted by more than one stagger effect."
+mainstay_stagger_talent_text = "\n\nDeal 40% more melee damage to staggered enemies, increased to 60% against targets afflicted by more than one stagger effect."
+
+mod_api.insert_text("tb_finesse_unbalance_desc",
+"Melee headshots inflict 40% bonus damage. Does not stack with damage bonus from stagger effects." .. base_stagger_talent_text)
+mod_api.insert_text("tb_linesman_unbalance_desc",
+"Melee hits apply a 2 second stagger count only accounted by Mainstay. Excludes Lords and Bosses." .. mainstay_stagger_talent_text)
+mod_api.insert_text("tb_power_level_unbalance_desc",
+"Increases total Power Level by 10%. This is calculated before other buffs are applied." .. base_stagger_talent_text)
+mod_api.insert_text("tb_tank_unbalance_desc",
+"Gain 10% stagger power. Staggered enemies take 10% more damage and gain one count of stagger for 10 seconds." .. base_stagger_talent_text)
+mod_api.insert_text("tb_smiter_unbalance_desc",
+"The first enemy hit always counts as staggered." .. base_stagger_talent_text)
 
 -- Replacing Stagger Talents
 local FINESSE = 1
@@ -204,12 +215,12 @@ local talent_third_row = {
 	{ "dr_slayer", 			SMITER, 	MAINSTAY, 	ENHANCED_POWER },
 	{ "dr_engineer", 		TANK, 		MAINSTAY, 	ENHANCED_POWER },
 
-	{ "we_waywatcher", 		SMITER, 	FINESSE, 	ENHANCED_POWER }, -- Mainstay > Smiter
+	{ "we_waywatcher", 		MAINSTAY, 	FINESSE, 	ENHANCED_POWER },
 	{ "we_maidenguard", 	SMITER, 	MAINSTAY, 	ENHANCED_POWER },
 	{ "we_shade", 			SMITER, 	FINESSE, 	ENHANCED_POWER },
-	{ "we_thornsister", 	SMITER, 	TANK, 		ENHANCED_POWER }, -- Mainstay > Bulwark
+	{ "we_thornsister", 	SMITER, 	MAINSTAY, 	ENHANCED_POWER },
 
-	{ "wh_captain", 		SMITER, 	FINESSE, 	ENHANCED_POWER }, -- Mainstay > Smiter
+	{ "wh_captain", 		MAINSTAY, 	FINESSE, 	ENHANCED_POWER },
 	{ "wh_bountyhunter", 	SMITER, 	FINESSE, 	ENHANCED_POWER },
 	{ "wh_zealot", 			SMITER, 	MAINSTAY, 	ENHANCED_POWER },
 	{ "wh_priest", 			SMITER, 	MAINSTAY, 	ENHANCED_POWER },

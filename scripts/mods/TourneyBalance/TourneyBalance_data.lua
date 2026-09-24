@@ -171,6 +171,13 @@ return {
 								tooltip = "stagger_state_visualizer_include_mainstay_description",
 							},
 							{
+								type = "checkbox",
+								setting_id = "stagger_state_visualizer_include_tank",
+								default_value = true,
+								title = "stagger_state_visualizer_include_tank_title",
+								tooltip = "stagger_state_visualizer_include_tank_description",
+							},
+							{
 								setting_id = "outline_colors_stagger_state_visualizer",
 								type = "group",
 								sub_widgets = {
