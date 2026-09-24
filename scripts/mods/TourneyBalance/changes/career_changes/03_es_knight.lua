@@ -136,7 +136,7 @@ mod_api.update_talent("es_knight", 4, 1, {
 	description = "tb_markus_knight_rock_of_reikland_desc",
 	description_values = {},
 })
-mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presence affects the whole team, stays active on allies while Kruber is dead, and grants 30%% block cost reduction, 30%% stamina regeneration and 10%% damage reduction.")
+mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presence is always active and grants 30%% block cost reduction and 30%% stamina regeneration.")
 
 --[[
 	Comrades in Arms - Adjustment from Passive
@@ -649,15 +649,13 @@ mod_api.update_talent("es_knight", 6, 1, {
 		}
 	},
 })
-mod_api.insert_text("markus_knight_ability_invulnerability_desc", "Valiant Charge makes Kruber immune to damage for %s seconds. Damage prevented this way still reduces the cooldown of Valiant Charge.")
+mod_api.insert_text("markus_knight_ability_invulnerability_desc", "Valiant Charge makes Kruber immune to damage for %s seconds. Damage prevented reduces the cooldown of Valiant Charge at half effectiveness.")
 
+-- Numb to Pain is a damage_taken -100% stat buff
 -- Hit trading: damage prevented by Numb to Pain still charges the ult at the normal on-damage-taken rate.
--- Numb to Pain is a damage_taken -100% stat buff, so the hit reaches the health extension as 0 and vanilla's
--- on_damage_taken proc (reduce_activated_ability_cooldown_on_damage_taken) never fires. Server-side, we lift just
--- Numb to Pain's share of the damage_taken stat for this one call to get the damage the hit would have dealt
--- (after every other reduction), then still return 0 and refund the cooldown for that amount.
 local NUMB_TO_PAIN_BUFF = "markus_knight_ability_invulnerability_buff"
 local CDR_ON_DAMAGE_TAKEN_BUFF = "markus_knight_ability_cooldown_on_damage_taken"
+local ULT_REGEN_MODIFIER = 0.5 -- x * 0.35
 
 -- Cooldown lives on the owning peer only (CareerExtension doesn't sync), same routing as CareerSystem's own rpc
 local function tb_reduce_cooldown_on_owner(unit, amount)
@@ -685,8 +683,7 @@ local function tb_reduce_cooldown_on_owner(unit, amount)
 	end
 end
 
--- Registered through the dispatcher in TourneyBalance.lua, not mod:hook: 02_damage_taken_changes.lua already
--- owns this function, and this mod hooking it a second time wouldn't reliably run.
+-- Registered through the dispatcher in TourneyBalance.lua
 mod:add_apply_buffs_to_damage_wrapper(function (func, current_damage, attacked_unit, attacker_unit, damage_source, ...)
 	local buff_extension = ScriptUnit.has_extension(attacked_unit, "buff_system")
 	local numb_to_pain = buff_extension and buff_extension:get_non_stacking_buff(NUMB_TO_PAIN_BUFF)
@@ -708,7 +705,7 @@ mod:add_apply_buffs_to_damage_wrapper(function (func, current_damage, attacked_u
 	if prevented_damage > 0 and attacker_unit ~= attacked_unit and damage_source ~= "temporary_health_degen" then
 		local bonus = BuffTemplates[CDR_ON_DAMAGE_TAKEN_BUFF].buffs[1].bonus
 
-		tb_reduce_cooldown_on_owner(attacked_unit, bonus * prevented_damage)
+		tb_reduce_cooldown_on_owner(attacked_unit, bonus * prevented_damage * ULT_REGEN_MODIFIER)
 	end
 
 	return 0

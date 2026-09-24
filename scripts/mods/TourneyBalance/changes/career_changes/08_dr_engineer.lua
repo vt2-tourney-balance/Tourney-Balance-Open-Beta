@@ -5,8 +5,67 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	$BEGIN_TB
 		---
 		## Outcast Engineer
+		### Career Skill
+		**Crank Gun**
+		- The Crank Gun now always starts at full rotation speed. Previously this required Linked Compression Chamber.
+
+		### Talents
+		**Linked Compression Chamber**
+		- Full starting fire rate is now baseline (see above).
+		- Still increases the Crank Gun's maximum fire rate by 30%.
 	$END_TB
 ]]
+
+--[[
+
+	Ultimate
+
+]]
+-- Linked Compression Chamber's instant windup is baseline for every crank gun variant.
+-- Mirrors the talent branch in ActionCareerDREngineerSpin / ActionCareerDREngineer; the talent's
+-- 30% max_rps boost is applied before this runs, so talented players keep their higher cap.
+local function starting_windup()
+	if Managers.mechanism:current_mechanism_name() == "versus" then
+		return CareerConstants.dr_engineer.talent_6_2_starting_rps_vs
+	end
+
+	return CareerConstants.dr_engineer.talent_6_2_starting_rps
+end
+
+mod:hook_safe(ActionCareerDREngineerSpin, "client_owner_start_action", function (self, new_action, t)
+	self._current_windup = starting_windup()
+end)
+
+mod:hook_safe(ActionCareerDREngineer, "client_owner_start_action", function (self, new_action, t)
+	self._current_rps = math.max(self._current_rps, self._max_rps * starting_windup())
+end)
+
+--[[
+
+	Talents
+
+]]
+--[[
+	Linked Compression Chamber
+]]
+-- skip the 0.5s spin-up, so the spin action can chain into fire immediately.
+-- The spin -> fire chain's start_time is static template data, so it's bypassed here instead.
+mod:hook(WeaponUnitExtension, "is_chain_action_available", function (func, self, next_chain_action, t, time_offset)
+	local current_action_settings = self.current_action_settings
+
+	if current_action_settings and current_action_settings.kind == "career_dr_four_spin" and next_chain_action.sub_action == "fire" then
+		local lookup_data = current_action_settings.lookup_data
+		local talent_extension = self._talent_extension
+
+		if lookup_data and lookup_data.sub_action_name == "spin" and talent_extension and talent_extension:has_talent("bardin_engineer_reduced_ability_fire_slowdown") then
+			return true
+		end
+	end
+
+	return func(self, next_chain_action, t, time_offset)
+end)
+
+mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "Increases the Crank Gun's maximum fire rate by 30%%.")
 
 
 --[[
