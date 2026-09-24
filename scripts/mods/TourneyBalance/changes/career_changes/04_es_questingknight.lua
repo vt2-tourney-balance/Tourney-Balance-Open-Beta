@@ -7,7 +7,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		## Grail Knight
 		### Talents
 		**Virtue of Knightly Temper**
-		- Reduced instant slay damage multiplier for non-Lords-and-Bosses to 3 (from 4).
+		- Reduced instant slay damage multiplier for non-Lords-and-Bosses to 2 (from 4).
 		
 		**Virtue of the Penitent**
 		- Increased required kills as follows
@@ -44,9 +44,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Virtue of Knightly Temper
 ]]
 mod_api.update_talent_buff_template("empire_soldier", "markus_questing_knight_crit_can_insta_kill",  {
-	damage_multiplier = 3 --4
+	damage_multiplier = 2 --4
 })
-mod_api.insert_text("markus_questing_knight_crit_can_insta_kill_desc", "Critical Strikes instantly slay enemies if their current health is less than 3 times the amount of damage of the Critical Strike. Half effect versus Lords and Monsters.")
+mod_api.insert_text("markus_questing_knight_crit_can_insta_kill_desc", "Critical Strikes instantly slay enemies if their current health is less than 2 times the amount of damage of the Critical Strike. Half of 4 effect versus Lords and Monsters.")
 
 --[[
 	Virtue of the Penitent
