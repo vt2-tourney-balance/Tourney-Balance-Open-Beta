@@ -6,6 +6,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Foot Knight
 		### Career Ability
+		- Ult cooldown increased to 40s (from 30s).
 		- Ult blast radius buffed to 5 (from 3) for all ults.
 
 		### Passives
@@ -64,6 +65,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Ultimate
 
 ]]
+-- Increased ult cooldown
+ActivatedAbilitySettings.es_2[1].cooldown = 40 -- 30
+
 -- Charge + blast damage/stagger cleave. Edited in place: damage profiles resolve their cleave_distribution name to
 -- this exact table at load (damage_profile_templates.lua), so swapping in a new table at runtime has no effect.
 local charge_cleave_distribution = PowerLevelTemplates.cleave_distribution_markus_knight_charge
