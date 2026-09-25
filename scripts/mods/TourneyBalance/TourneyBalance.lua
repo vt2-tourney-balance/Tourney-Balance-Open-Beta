@@ -122,6 +122,41 @@ mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function (...)
     return _apply_buffs_to_damage_chain(...)
 end)
 
+--- PlayerUnitHealthExtension.add_heal dispatcher
+-- Same hook-collision problem as IngameHud above: 15_wh_zealot.lua and 04_es_questingknight.lua both need to
+-- wrap add_heal. Register through mod:add_player_add_heal_wrapper(fn) instead of calling
+-- mod:hook(PlayerUnitHealthExtension, "add_heal", ...) directly. fn(func, self, ...) is shaped like a mod:hook
+-- callback (func = next wrapper in line, ending at the original add_heal).
+-- Wrappers run in registration order, outermost first.
+local _player_add_heal_wrappers = {}
+local _player_add_heal_chain = nil -- composed lazily, rebuilt when a wrapper is added or the original changes
+local _player_add_heal_chain_base = nil
+
+function mod.add_player_add_heal_wrapper(self, wrapper)
+    _player_add_heal_wrappers[#_player_add_heal_wrappers + 1] = wrapper
+    _player_add_heal_chain = nil
+end
+
+mod:hook(PlayerUnitHealthExtension, "add_heal", function (func, ...)
+    if not _player_add_heal_chain or _player_add_heal_chain_base ~= func then
+        local chain = func
+
+        for i = #_player_add_heal_wrappers, 1, -1 do
+            local wrapper = _player_add_heal_wrappers[i]
+            local inner = chain
+
+            chain = function (...)
+                return wrapper(inner, ...)
+            end
+        end
+
+        _player_add_heal_chain = chain
+        _player_add_heal_chain_base = func
+    end
+
+    return _player_add_heal_chain(...)
+end)
+
 --- In-game localization
 -- Replace original strings, if _quick_localize can fetch custom strings
 local localization_api = require("scripts/mods/TourneyBalance/_api/_localization_api")

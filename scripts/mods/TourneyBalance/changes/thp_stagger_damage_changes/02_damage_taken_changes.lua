@@ -364,16 +364,6 @@ mod:set_apply_buffs_to_damage(function(current_damage, attacked_unit, attacker_u
 						damage = attacker_unit_buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_poisoned_or_bleeding")
 					end
 				end
-
-				-- Shade's Elthrai's Mockery: 20% more damage to enemies Kerillian has taunted
-				if attacker_unit_buff_extension:has_buff_perk("tb_kerillian_shade_elthrais_mockery") then
-					local hit_ai_extension = ScriptUnit.has_extension(attacked_unit, "ai_system")
-					local hit_blackboard = hit_ai_extension and hit_ai_extension:blackboard()
-
-					if hit_blackboard and hit_blackboard.taunt_unit == attacker_unit and hit_blackboard.taunt_end_time and hit_blackboard.taunt_end_time > Managers.time:time("game") then
-						damage = damage * 1.2
-					end
-				end
 			end
 
 			if damage_type == "burninating" then

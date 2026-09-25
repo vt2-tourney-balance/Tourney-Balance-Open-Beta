@@ -283,13 +283,13 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_power_lev
 	stat_buff = "power_level_melee", -- power_level
 })
 mod_api.update_talent_buff_template("wood_elf", "kerillian_maidenguard_power_level_on_unharmed_cooldown", {
-    duration = 4 -- 10
+    duration = 3 -- 10
 })
 mod_api.update_talent("we_maidenguard", 2, 1, {
     description = "kerillian_maidenguard_power_level_on_unharmed_desc",
     description_values = {},
 })
-mod_api.insert_text("kerillian_maidenguard_power_level_on_unharmed_desc", "After not taking damage for 4 seconds, increases Kerillian's melee power by 30.0%. Reset upon taking damage, friendly fire will not reset the buff.")
+mod_api.insert_text("kerillian_maidenguard_power_level_on_unharmed_desc", "After not taking damage for 3 seconds, increases Kerillian's melee power by 30.0%. Reset upon taking damage, friendly fire will not reset the buff.")
 
 
 --[[

@@ -107,9 +107,15 @@ mod_api.insert_text("markus_mercenary_passive_group_proc_desc", "Paced Strikes a
 ]]
 -- Added Random Crits: clears the vanilla "no_random_crits" talent perk
 Talents.empire_soldier[52].perks = nil -- talent_settings_markus.lua:2503
--- on_hit only consumes the stack when an enemy is hit, but not if that hit was critical
+-- on_hit only consumes the stack when an enemy is hit (not on whiffs), and only if that hit was critical, so cleave/dual-weapon follow-up
+mod_api.insert_proc_function("tb_remove_crit_count_buff_on_crit_hit_helborg", function (owner_unit, buff, params)
+	local is_critical = params[6]
+
+	return is_critical and true or false
+end)
 mod_api.update_talent_buff_template("empire_soldier", "markus_mercenary_crit_count_buff", {
-	event = "on_hit" -- "on_critical_action"
+	event = "on_hit", -- "on_critical_action"
+	buff_func = "tb_remove_crit_count_buff_on_crit_hit_helborg" -- "dummy_function"
 })
 mod_api.insert_talent_text("markus_mercenary_crit_count", "Hellborg's Tutelage", "Every 5 hits grant a guaranteed critical strike. Random Crits can still occur.")
 -- (FIX) Clients get 2 stack counts per hit

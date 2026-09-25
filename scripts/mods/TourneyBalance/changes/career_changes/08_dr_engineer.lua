@@ -8,6 +8,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		### Career Skill
 		**Crank Gun**
 		- The Crank Gun now always starts at full rotation speed. Previously this required Linked Compression Chamber.
+		- Dodge count increased to 3 (from 1).
 
 		### Talents
 		**Linked Compression Chamber**
@@ -39,6 +40,9 @@ end)
 mod:hook_safe(ActionCareerDREngineer, "client_owner_start_action", function (self, new_action, t)
 	self._current_rps = math.max(self._current_rps, self._max_rps * starting_windup())
 end)
+
+Weapons.bardin_engineer_career_skill_weapon.dodge_count = 3 -- 1
+Weapons.bardin_engineer_career_skill_weapon_special.dodge_count = 3 -- 1
 
 --[[
 
