@@ -243,23 +243,9 @@ local TB_NO_DAWDLING_MOVEMENT_PENALTY_BUFFS = {
 }
 
 for _, buff_name in ipairs(TB_NO_DAWDLING_MOVEMENT_PENALTY_BUFFS) do
-	local buff_template = BuffTemplates[buff_name]
-
-	for _, sub_buff in ipairs(buff_template.buffs) do
-		local original_condition = sub_buff.apply_condition
-
-		sub_buff.apply_condition = function (unit, template, params)
-			if tb_no_dawdling_removes_movement_penalty(unit) then
-				return false
-			end
-
-			if original_condition then
-				return original_condition(unit, template, params)
-			end
-
-			return true
-		end
-	end
+	mod:add_buff_apply_condition(buff_name, function (unit, template, params)
+		return mod:is_action_movement_speed_up(params) or not tb_no_dawdling_removes_movement_penalty(unit)
+	end)
 end
 
 --[[

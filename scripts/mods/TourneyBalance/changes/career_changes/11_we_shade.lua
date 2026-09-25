@@ -1,4 +1,3 @@
-local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
@@ -11,8 +10,8 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		### Passives
 		**Assassin's Blade**
-		- Added Spring-Heeled Assassin and Gladerunner as one passive.
-		- Increased movement speed by 10%. Critical hits and entering stealth further increase movement speed by 10% for 5s.
+		- Added Gladerunner to the passive.
+		- Increased movement speed by 10%.
 
 		**Blur**
 		- Increased parry window to 0.75s (from 0.5s).
@@ -31,11 +30,13 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Critical hits also restore 3 permanent health.
 
 		**Elthrai's Mockery** (new, replaces Spring-Heeled Assassin)
-		- Blur no longer grants invisibility. Instead, dodging during Blur grants 3 stacks of guaranteed backstabs.
+		- Blur no longer grants invisibility. Instead grants 6 guaranteed backstabs and 1 guaranteed critical strike.
+		- Melee attacks cause enemies to bleed (same bleed as Witch Hunter Captain's Flense).
 
 		**Lingering Shadow** (new, replaces Gladerunner)
 		- Increases Blur invisibility duration to 2 seconds (from 1.5s).
-		- When Blur's invisibility ends, gain 3 stacks of guaranteed critical strike.
+		- Attacking no longer ends Blur's invisibility.
+		- Ranged attacks from stealth are guaranteed critical strikes.
 
 		**Shimmer Strike**
 		- Limited extending stealth to 4 times.
@@ -44,6 +45,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Hungry Wind**
 		- After activating Infiltrate, the next 10 melee hits are considered backstabs.
+		- Melee attacks are guaranteed critical strikes for the 10 seconds after leaving Infiltrate.
 	$END_TB
 ]]
 
@@ -117,27 +119,14 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_passive_stealth
 --[[
 	Gladerunner
 ]]
--- Move Spring-Heeled Assassin (movement speed on crit) and Gladerunner (flat movement speed) onto the base passive
+-- Move Gladerunner (flat movement speed) onto the base passive
 mod_api.insert_career_passives("we_1", {
-	-- "kerillian_shade_movement_speed_on_critical_hit", -- Spring-Heeled Assasin
 	"kerillian_shade_movement_speed",
 })
--- Also triggers the crit movement speed burst when Blur activates, not just on critical hit
--- (re-inserted with the original on-crit entry kept by reference, since a 2nd entry can't be merged in via update_talent_buff_template)
-local original_movement_speed_on_critical_hit_entry = TalentBuffTemplates.wood_elf.kerillian_shade_movement_speed_on_critical_hit.buffs[1]
-mod_api.insert_talent_buff_template("wood_elf", "kerillian_shade_movement_speed_on_critical_hit", {
-	original_movement_speed_on_critical_hit_entry,
-	{
-		buff_func = "add_buff",
-		buff_to_add = "kerillian_shade_movement_speed_on_critical_hit_buff",
-		event = "on_invisible",
-	},
+mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_movement_speed", {
+	multiplier = 1.1 -- 1.1
 })
--- Reduced the proc's own movement speed bonus, since it now also fires whenever Kerillian enters any stealth (not just on crit)
-mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_movement_speed_on_critical_hit_buff", {
-	multiplier = 1.1 -- 1.2
-})
-mod_api.insert_text("career_passive_desc_we_1b_2", "Double damage when attacking enemies from behind with melee attacks. Kerillian moves 10.0% faster. Critical hits or entering stealth increases movement speed by a further 10.0% for 5 seconds.")
+mod_api.insert_text("career_passive_desc_we_1b_2", "Double damage when attacking enemies from behind with melee attacks. Kerillian moves 10.0% faster.")
 mod_api.insert_career_perk_descriptions("we_1", "tb_we_1_gladerunner")
 
 --[[
@@ -254,57 +243,72 @@ mod_api.update_talent("we_shade", 5, 1, {
 	description_values = {},
 	buffs = {
 		"kerillian_shade_damage_reduction_on_critical_hit",
-		"tb_kerillian_shade_heal_on_critical_hit",
+		--"tb_kerillian_shade_heal_on_critical_hit",
 	},
 })
-mod_api.insert_text("kerillian_shade_damage_reduction_on_critical_hit_desc", "Critical hits reduce damage taken by 20.0% for 5 seconds and restore 3 permanent health.")
+mod_api.insert_text("kerillian_shade_damage_reduction_on_critical_hit_desc", "Critical hits reduce damage taken by 20.0% for 5 seconds.")
 
 --[[
 	Elthrai's Mockery
-	Lingering Shadow
+	Hungry Wind
 ]]
--- Consumes the oldest stack of buff_to_remove on hit. Stacks granted this same frame are skipped, so the hit
--- that breaks Blur can't instantly eat the Lingering Shadow crit stack it just produced (procs added mid-hit
--- still run in the same trigger_procs pass)
+-- Consumes the oldest stack of buff_to_remove on hit. Stacks granted this same frame are skipped, so a stack
+-- granted mid-hit can't be eaten by the hit that produced it (procs added mid-hit still run in the same
+-- trigger_procs pass)
 -- melee_only: only melee hits consume a stack (guaranteed_backstab does nothing for ranged hits)
 mod_api.insert_proc_function("tb_shade_consume_stack_on_hit", function (owner_unit, buff, params)
 	if not ALIVE[owner_unit] then
 		return
 	end
 
+	local template = buff.template
 	local attack_type = params[2]
 
-	if buff.template.melee_only and attack_type ~= "light_attack" and attack_type ~= "heavy_attack" then
+	if template.melee_only and attack_type ~= "light_attack" and attack_type ~= "heavy_attack" then
 		return
 	end
 
 	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
-	local stacks = buff_extension:get_stacking_buff(buff.template.buff_to_remove)
+	local stacks = buff_extension:get_stacking_buff(template.buff_to_remove)
 	local oldest_stack = stacks and stacks[1]
 
 	if oldest_stack and oldest_stack.start_time < Managers.time:time("game") then
 		buff_extension:remove_buff(oldest_stack.id)
 	end
 end)
-
---[[
-	Elthrai's Mockery (new, replaces Spring-Heeled Assassin, which moved to the passive as part of Spring-Heeled Gladerunner)
-]]
-mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_mockery_backstab_stack", {
-	max_stacks = 3,
-	icon = "kerillian_shade_movement_speed_on_critical_hit",
+-- Shared guaranteed-backstab stack granted by both Elthrai's Mockery and Hungry Wind, so their stacks pool together
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_backstab_stack", {
+	max_stacks = 20,
+	icon = "kerillian_shade_movement_speed_on_critical_hit", -- Spring-Heeled Assassin's icon marks backstab stacks
 	perks = {
 		"guaranteed_backstab",
 	},
 })
-mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_mockery_backstab_consumer", {
+-- Shared consumer; max_stacks = 1 keeps it to a single instance when both talents are taken, so a hit only spends one stack
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_backstab_consumer", {
 	buff_func = "tb_shade_consume_stack_on_hit",
-	buff_to_remove = "tb_kerillian_shade_mockery_backstab_stack",
+	buff_to_remove = "tb_kerillian_shade_backstab_stack",
 	event = "on_hit",
 	melee_only = true,
 	max_stacks = 1,
 })
--- Blur's post-parry dodge normally adds kerillian_shade_dash_stealth_active (the invisibility); with Mockery it grants a backstab stack instead
+
+--[[
+	Elthrai's Mockery (new, replaces Spring-Heeled Assassin)
+]]
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_crit_stack", {
+	max_stacks = 6,
+	icon = "kerillian_shade_movement_speed",
+	stat_buff = "critical_strike_chance",
+	bonus = 1,
+})
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_crit_consumer", {
+	buff_func = "tb_shade_consume_stack_on_hit",
+	buff_to_remove = "tb_kerillian_shade_crit_stack",
+	event = "on_hit",
+	max_stacks = 1,
+})
+-- 6 backstabs, 1 crit
 mod_api.insert_proc_function("tb_shade_blur_on_dodge", function (owner_unit, buff, params)
 	if not ALIVE[owner_unit] then
 		return
@@ -315,12 +319,12 @@ mod_api.insert_proc_function("tb_shade_blur_on_dodge", function (owner_unit, buf
 	if talent_extension and talent_extension:has_talent("tb_kerillian_shade_elthrais_mockery") then
 		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 
-		for i = 1, 3 do -- grant 3 backstab stacks
-			buff_extension:add_buff("tb_kerillian_shade_mockery_backstab_stack")
+		for i = 1, 6 do
+			buff_extension:add_buff("tb_kerillian_shade_backstab_stack")
 		end
 
-		-- Shares Lingering Shadow's crit stack (same tier, so the two talents can never both be taken)
-		-- buff_extension:add_buff("tb_kerillian_shade_lingering_shadow_crit_stack")
+		buff_extension:add_buff("tb_kerillian_shade_crit_stack")
+
 		buff_extension:remove_buff(buff.id)
 
 		return
@@ -331,18 +335,28 @@ end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_dash_stealth", {
 	buff_func = "tb_shade_blur_on_dodge", -- "kerillian_thorn_sister_add_buff_remove"
 })
-mod_api.insert_talent("we_shade", 5, 2, "tb_kerillian_shade_elthrais_mockery", {
-	buffer = "client",
-	icon = "kerillian_shade_movement_speed_on_critical_hit", -- reuse Spring-Heeled Assassin's old icon, since this replaces it in this slot
-	buffs = {
-		"tb_kerillian_shade_mockery_backstab_consumer",
-		-- "tb_kerillian_shade_lingering_shadow_crit_consumer",
+-- Flense's bleed: every melee hit applies weapon_bleed_dot_whc (despite the perk's name, the damage calc in
+-- thp_stagger_damage_changes/01_damage_calc_changes.lua doesn't check for crits). That check runs on the server,
+-- so the talent must be buffered "both" (vanilla Flense is "server"); the stack consumers are harmless there,
+-- since the stacks themselves are only ever added on the owning client
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_bleed_on_critical_hit", {
+	perks = {
+		"victor_witchhunter_bleed_on_critical_hit",
 	},
 })
-mod_api.insert_talent_text("tb_kerillian_shade_elthrais_mockery", "Elthrai's Mockery", "Blur no longer grants invisibility and instead grants 3 stacks of guaranteed backstabs.")
+mod_api.insert_talent("we_shade", 5, 2, "tb_kerillian_shade_elthrais_mockery", {
+	buffer = "both",
+	icon = "kerillian_shade_movement_speed_on_critical_hit", -- reuse Spring-Heeled Assassin's icon, since this replaces it in this slot
+	buffs = {
+		"tb_kerillian_shade_backstab_consumer",
+		"tb_kerillian_shade_crit_consumer",
+		"tb_kerillian_shade_bleed_on_critical_hit",
+	},
+})
+mod_api.insert_talent_text("tb_kerillian_shade_elthrais_mockery", "Elthrai's Mockery","Blur no longer grants invisibility and instead grants 6 guaranteed backstabs and 1 guaranteed critical strike. Melee attacks cause enemies to bleed.")
 
 --[[
-	Lingering Shadow (new, replaces Gladerunner, which moved to the passive as part of Spring-Heeled Gladerunner)
+	Lingering Shadow (new, replaces Gladerunner, which moved to the passive)
 ]]
 mod_api.insert_proc_function("tb_shade_extend_blur_duration", function (owner_unit, buff, params)
 	if not ALIVE[owner_unit] then
@@ -363,57 +377,54 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_lingering_sh
 	buff_func = "tb_shade_extend_blur_duration",
 	event = "on_invisible",
 })
-mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_lingering_shadow_crit_stack", {
-	max_stacks = 3,
-	icon = "kerillian_shade_movement_speed", -- same icon as the talent
-	stat_buff = "critical_strike_chance",
-	bonus = 1,
-})
-mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_lingering_shadow_crit_consumer", {
-	buff_func = "tb_shade_consume_stack_on_hit",
-	buff_to_remove = "tb_kerillian_shade_lingering_shadow_crit_stack",
-	event = "on_hit",
-	max_stacks = 1,
-})
--- Grant 3 crit stacks when Blur's invisibility ends (timed out or broken by an attack)
--- Blur's invisibility buff is network-synced, so only the owning peer grants the (local) stacks
-local tb_vanilla_on_remove_shade_dash_stealth = BuffFunctionTemplates.functions.on_remove_shade_dash_stealth
-mod_api.insert_buff_function("tb_on_remove_shade_dash_stealth", function (unit, buff, params, world)
-	tb_vanilla_on_remove_shade_dash_stealth(unit, buff, params, world)
-
-	if not ALIVE[unit] then
-		return
-	end
-
-	local player = Managers.player:owner(unit)
-
-	if not player or player.remote then
-		return
-	end
-
-	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+-- Attacking no longer ends Blur's stealth. Blur gets its own proc instead of overriding the shared vanilla
+-- shade_short_stealth_on_hit, which kerillian_shade_activated_ability_short also uses
+mod_api.insert_proc_function("tb_shade_blur_stealth_on_hit", function (owner_unit, buff, params)
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
 
 	if talent_extension and talent_extension:has_talent("tb_kerillian_shade_lingering_shadow") then
-		local buff_extension = ScriptUnit.extension(unit, "buff_system")
-
-		for i = 1, 3 do
-			buff_extension:add_buff("tb_kerillian_shade_lingering_shadow_crit_stack")
-		end
+		return
 	end
+
+	return ProcFunctions.shade_short_stealth_on_hit(owner_unit, buff, params)
 end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_dash_stealth_active", {
-	remove_buff_func = "tb_on_remove_shade_dash_stealth", -- "on_remove_shade_dash_stealth"
+	buff_func = "tb_shade_blur_stealth_on_hit", -- "shade_short_stealth_on_hit"
+})
+-- Ranged attacks are guaranteed crits while stealthed (mirrors the passive's melee stealth crits:
+-- kerillian_shade_stealth_crits / kerillian_shade_stealth_crits_remover)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_lingering_shadow_ranged_stealth_crits", {
+	buff_func = "add_buff_local",
+	buff_to_add = "tb_kerillian_shade_lingering_shadow_ranged_stealth_crits_buff",
+	event = "on_invisible",
+})
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_lingering_shadow_ranged_stealth_crits_remover", {
+	buff_func = "remove_buff_stack",
+	event = "on_visible",
+	remove_buff_stack_data = {
+		{
+			buff_to_remove = "tb_kerillian_shade_lingering_shadow_ranged_stealth_crits_buff",
+			num_stacks = 1,
+			server_controlled = false,
+		},
+	},
+})
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_lingering_shadow_ranged_stealth_crits_buff", {
+	max_stacks = 1,
+	stat_buff = "critical_strike_chance_ranged",
+	bonus = 1,
 })
 mod_api.insert_talent("we_shade", 5, 3, "tb_kerillian_shade_lingering_shadow", {
 	buffer = "both",
 	icon = "kerillian_shade_movement_speed", -- reuse Gladerunner's old icon, since this replaces it in this slot
 	buffs = {
 		"tb_kerillian_shade_lingering_shadow_duration",
-		"tb_kerillian_shade_lingering_shadow_crit_consumer",
+		"tb_kerillian_shade_lingering_shadow_ranged_stealth_crits",
+		"tb_kerillian_shade_lingering_shadow_ranged_stealth_crits_remover",
 	},
 })
 -- Blur baseline lasts 1.5 seconds
-mod_api.insert_talent_text("tb_kerillian_shade_lingering_shadow", "Lingering Shadow", "Increases Blur invisibility duration to 2 seconds. When Blur's invisibility ends, gain 3 stacks of guaranteed critical strikes.")
+mod_api.insert_talent_text("tb_kerillian_shade_lingering_shadow", "Lingering Shadow", "Blur invisibility lasts 2 seconds and no longer breaks when attacking. Ranged attacks from stealth are guaranteed critical strikes.")
 
 --[[
 	Shimmer Strike
@@ -436,11 +447,9 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_shimmer_activator", {
 	event = "on_ability_activated",
 	max_stacks = 1,
 	amount_to_add = 4, -- gives 4 shimmer uses when you ult
-	reference_buff = "tb_shimmer_handler"
 })
 -- controls how many shimmer uses you have left
 mod_api.insert_talent_buff_template("wood_elf", "tb_shimmer_charges", {
-	buff_func = "shade_activated_ability_on_hit",
 	max_stacks = 4, -- maximum shimmer uses at once
 	icon = "kerillian_shade_passive_stealth_on_backstab_kill"
 })
@@ -536,39 +545,41 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_movespeed_buff"
 })
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_power_buff", {
 	duration = 10,
+	apply_buff_func = "tb_hungry_wind_add_crit_buff",
+	reapply_buff_func = "tb_hungry_wind_add_crit_buff", -- re-ulting while the window is active refreshes the power buff
 })
--- Backstabs-on-hit is now a limited resource (10 charges, consumed by melee hits) instead of
--- unlimited for the whole power-buff window
-mod_api.insert_talent_buff_template("wood_elf", "tb_hungry_wind_backstab_charges", {
-	max_stacks = 10,
-	icon = "kerillian_shade_activated_ability_quick_cooldown",
-	perks = {
-		"guaranteed_backstab",
-	},
-})
-mod_api.insert_talent_buff_template("wood_elf", "tb_hungry_wind_backstab_handler", {
-	buff_func = "tb_shade_consume_stack_on_hit",
-	buff_to_remove = "tb_hungry_wind_backstab_charges",
-	event = "on_hit",
-	melee_only = true,
+-- Guaranteed melee crits for the Hungry Wind window (same approach as WHC's Fervency:
+-- victor_witchhunter_activated_ability_guaranteed_crit_self_buff). Only Hungry Wind adds kerillian_shade_power_buff,
+-- from vanilla on_shade_activated_ability_remove, which only runs on the owning peer
+mod_api.insert_talent_buff_template("wood_elf", "tb_hungry_wind_crit_buff", {
+	duration = 10, -- keep in sync with kerillian_shade_power_buff
 	max_stacks = 1,
+	refresh_durations = true,
+	stat_buff = "critical_strike_chance_melee",
+	bonus = 1,
 })
+mod_api.insert_buff_function("tb_hungry_wind_add_crit_buff", function (unit, buff, params, world)
+	if ALIVE[unit] then
+		ScriptUnit.extension(unit, "buff_system"):add_buff("tb_hungry_wind_crit_buff")
+	end
+end)
+-- Backstabs-on-hit is now a limited resource (shared backstab stacks consumed by melee hits) instead of
+-- unlimited for the whole power-buff window
 mod_api.insert_talent_buff_template("wood_elf", "tb_hungry_wind_backstab_activator", {
 	buff_func = "add_buff_reff_buff_stack",
-	buff_to_add = "tb_hungry_wind_backstab_charges",
+	buff_to_add = "tb_kerillian_shade_backstab_stack",
 	event = "on_ability_activated",
-	amount_to_add = 10,
+	amount_to_add = 12,
 	max_stacks = 1,
-	reference_buff = "tb_hungry_wind_backstab_handler",
 })
 mod_api.update_talent("we_shade", 6, 2, {
 	description = "kerillian_shade_activated_ability_phasing_desc",
 	description_values = {},
 	buffs = {
 		"tb_hungry_wind_backstab_activator", -- adds necessary buffs to handle having capped backstab hits
-		"tb_hungry_wind_backstab_handler",
+		"tb_kerillian_shade_backstab_consumer",
 	},
 })
-mod_api.insert_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10% movement speed and 15% Power with the ability to pass through enemies for 10 seconds. Infiltrate no longer grants bonus damage, instead the next 10 melee hits are considered backstabs.")
+mod_api.insert_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10% movement speed, 15% Power, guaranteed melee critical strikes and the ability to pass through enemies for 10 seconds. Infiltrate no longer grants bonus damage, instead grants 10 guaranteed backstabs.")
 
 

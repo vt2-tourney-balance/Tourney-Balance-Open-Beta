@@ -157,6 +157,43 @@ mod:hook(PlayerUnitHealthExtension, "add_heal", function (func, ...)
     return _player_add_heal_chain(...)
 end)
 
+--- Buff apply conditions
+-- To stop specific buffs from being added (e.g. movement penalties), chain a condition onto the template's
+-- sub-buffs instead of hooking BuffExtension.add_buff: add_buff checks sub_buff.apply_condition itself, so the
+-- check only costs anything when that template is added, not on every add_buff of every unit.
+-- condition(unit, sub_buff_template, params) returns false to block the sub-buff. Conditions chain, so
+-- several features can gate the same template (09_we_waywatcher.lua, 07_dr_slayer.lua, 05_dr_ranger.lua).
+function mod.add_buff_apply_condition(self, buff_template_name, condition)
+    local buff_template = BuffTemplates[buff_template_name]
+
+    if not (buff_template and buff_template.buffs) then
+        return
+    end
+
+    for _, sub_buff in ipairs(buff_template.buffs) do
+        local original_condition = sub_buff.apply_condition
+
+        sub_buff.apply_condition = function (unit, template, params)
+            if not condition(unit, template, params) then
+                return false
+            end
+
+            if original_condition then
+                return original_condition(unit, template, params)
+            end
+
+            return true
+        end
+    end
+end
+
+-- Weapon actions pass their own multiplier to movement buffs, above 1 means the action speeds the player up
+function mod.is_action_movement_speed_up(self, params)
+    local external_multiplier = params and params.external_optional_multiplier
+
+    return not not (external_multiplier and external_multiplier > 1)
+end
+
 --- In-game localization
 -- Replace original strings, if _quick_localize can fetch custom strings
 local localization_api = require("scripts/mods/TourneyBalance/_api/_localization_api")

@@ -12,8 +12,8 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Quests** (Adventure)
 		- The Grimoire and Tome quests can now roll on maps without Grimoires or Tomes.
-		- Health Regeneration quest: find a Grimoire, or restore 3000 health (healing, temporary health or regeneration).
-		- Damage Reduction quest: find a Tome, or land 1000 headshots.
+		- Health Regeneration quest: find a Grimoire, or the team restores 3000 health (healing, temporary health or regeneration).
+		- Damage Reduction quest: find a Tome, or the team lands 1000 headshots.
 		- Cooldown Regeneration quest: kill a Monster, or use 50 Career Skills as a team.
 		- Cooldown Regeneration reward increased to 20% (from 10%), and 30% with improved rewards (from 15%).
 
@@ -37,7 +37,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Virtue of the Impetuous Knight**
 		- Increased buff duration to 25s (from 15s).
 		- Added 30% cooldown reduction.
-		- Using Blessed Blade or killing an enemy with it now grants 90% ranged damage reduction for 25s (includes Ratling Gunners, Warpfire Throwers, Stormfiends, Deathrattler and Ungor Archers).
+		- Killing an enemy with Blessed Blade now grants 90% ranged damage reduction for 25s (includes Ratling Gunners, Warpfire Throwers, Stormfiends, Deathrattler and Ungor Archers).
 
 		**Virtue of Confidence**
 		- Removed infinite damage cleave, but keep infinite stagger cleave.
@@ -65,14 +65,14 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_questing_knight_pe
 		"no_ranged_knockback"
 	}
 })
-mod_api.insert_text("career_passive_desc_es_4d", "Can block Warpfire with a shield. Immune to knockback from Warpfire Throwers, Ratling Gunners, Ungor Archer arrows, Stormfiends and the Deathrattler.")
+mod_api.insert_text("career_passive_desc_es_4d", "Immune to knockback from ranged projectiles and Warpfire. Can block Warpfire damage with shields. ")
 
 --[[
 	Quests (Adventure only - Weave, Versus and Chaos Wastes keep their own vanilla quest pools)
 ]]
 local QUEST_HEALTH_GOAL = 3000
-local QUEST_HEADSHOT_GOAL = 769
-local QUEST_TEAM_ULTIMATES_GOAL = 67
+local QUEST_HEADSHOT_GOAL = 1000
+local QUEST_TEAM_ULTIMATES_GOAL = 50
 
 local function flat_amount(amount)
 	local amounts = {}
@@ -84,7 +84,7 @@ local function flat_amount(amount)
 	return amounts
 end
 
--- New quest: the whole team uses 67 career skills, or anyone kills a Monster (the vanilla kill_monsters condition).
+-- New quest: the whole team uses 50 career skills, or anyone kills a Monster (the vanilla kill_monsters condition).
 -- Its progress is synced to clients like any other quest, so the template needs a NetworkLookup entry
 -- (appended, same as insert_talent_buff_template does for buffs).
 InGameChallengeTemplates.tb_team_use_ultimates = {
@@ -150,9 +150,9 @@ mod:hook(PassiveAbilityQuestingKnight, "_get_possible_challenges", function (fun
 end)
 
 -- The quest HUD shows Localize(<challenge template name>)
-mod_api.insert_text("find_grimoire", "Find a Grimoire or restore " .. QUEST_HEALTH_GOAL .. " health")
+mod_api.insert_text("find_grimoire", "Find a Grimoire or gain " .. QUEST_HEALTH_GOAL .. " health")
 mod_api.insert_text("find_tome", "Find a Tome or land " .. QUEST_HEADSHOT_GOAL .. " headshots")
-mod_api.insert_text("tb_team_use_ultimates", "Kill a Monster or use " .. QUEST_TEAM_ULTIMATES_GOAL .. " Career Skills as a team")
+mod_api.insert_text("tb_team_use_ultimates", "Kill a Monster or use " .. QUEST_TEAM_ULTIMATES_GOAL .. " Career")
 
 -- Cooldown regeneration reward: 20% base, 30% with Virtue of the Grail (improved rewards)
 BuffTemplates.markus_questing_knight_passive_cooldown_reduction.buffs[1].multiplier = 0.2 -- 0.1
@@ -161,61 +161,50 @@ mod_api.insert_text("markus_questing_knight_passive_cooldown_reduction", "+20%% 
 mod_api.insert_text("markus_questing_knight_passive_cooldown_reduction_improved", "+30%% Cooldown Regeneration")
 
 -- Grimoire/Tome quests: the goal is the health/headshot count, so the vanilla quest HUD counts them down.
+-- The whole team contributes: the server broadcasts team-wide events, and every active Grail Knight quest of that
+-- type progresses (same as the vanilla book pickup events, which fire for whoever picks the book up).
 -- A book pickup (vanilla event returns 1) completes the quest outright instead; progress is clamped to the goal.
 -- (These templates are only used by Grail Knight quests.)
-InGameChallengeTemplates.find_grimoire.events.player_pickup_grimoire = function (t, data, player)
+local find_grimoire_events = InGameChallengeTemplates.find_grimoire.events
+local find_tome_events = InGameChallengeTemplates.find_tome.events
+
+find_grimoire_events.player_pickup_grimoire = function (t, data, player)
 	return QUEST_HEALTH_GOAL
 end
-InGameChallengeTemplates.find_tome.events.player_pickup_tome = function (t, data, player)
+find_grimoire_events.tb_hero_health_gained = function (t, data, amount)
+	return amount
+end
+find_tome_events.player_pickup_tome = function (t, data, player)
 	return QUEST_HEADSHOT_GOAL
+end
+find_tome_events.tb_hero_headshot = function (t, data)
+	return 1
 end
 
 -- Health gains are fractional, but quest progress is synced to clients as a whole number, so keep the remainder here
-local health_remainders = {} -- [player unique_id] = fraction of a health point not yet added to the quest
+local team_health_remainder = 0
 
 mod:add_game_state_changed_function(function ()
-	table.clear(health_remainders)
+	team_health_remainder = 0
 end)
 
-local function grail_knight_unique_id(unit)
-	local player = unit and Managers.player:owner(unit)
-	local career_extension = player and ScriptUnit.has_extension(unit, "career_system")
-
-	if career_extension and career_extension:career_name() == "es_questingknight" then
-		return player:unique_id()
+local function is_hero_player_unit(unit)
+	if not unit or not Managers.player:owner(unit) then
+		return false
 	end
+
+	local side = Managers.state.side.side_by_unit[unit]
+
+	return side and side:name() == "heroes"
 end
 
--- Same as the vanilla event path in InGameChallenge._register_events, but only for this player's quest
-local owned_challenges = {}
-local function add_quest_progress(unique_id, challenge_name, amount)
-	local challenge_manager = Managers.venture.challenge
-
-	if not challenge_manager then
-		return
-	end
-
-	table.clear(owned_challenges)
-	challenge_manager:get_challenges_filtered(owned_challenges, "questing_knight", unique_id)
-
-	for i = 1, #owned_challenges do
-		local challenge = owned_challenges[i]
-
-		if challenge:get_challenge_name() == challenge_name and challenge:get_status() == InGameChallengeStatus.InProgress then
-			challenge._progress = math.clamp(challenge._progress + amount, 0, challenge._required_progress)
-			challenge:_on_progress_updated()
-		end
-	end
-end
-
--- Grimoire alternative: health the Grail Knight actually gains from any heal, THP or regen (overheal doesn't count).
--- Registered through the add_heal dispatcher in TourneyBalance.lua.
+-- Grimoire alternative: health any hero (players and bots) actually gains from any heal, THP or regen
+-- (overheal doesn't count). Registered through the add_heal dispatcher in TourneyBalance.lua.
 mod:add_player_add_heal_wrapper(function (func, self, healer_unit, heal_amount, heal_source_name, heal_type)
 	local game = self.game
 	local game_object_id = self.health_game_object_id
-	local unique_id = self.is_server and game and game_object_id and heal_amount > 0 and grail_knight_unique_id(self.unit)
 
-	if not unique_id then
+	if not (self.is_server and game and game_object_id and heal_amount > 0 and is_hero_player_unit(self.unit)) then
 		return func(self, healer_unit, heal_amount, heal_source_name, heal_type)
 	end
 
@@ -230,25 +219,25 @@ mod:add_player_add_heal_wrapper(function (func, self, healer_unit, heal_amount, 
 	local gained = math.max(health_after - health_before, 0) + math.max(temporary_health_after - temporary_health_before, 0)
 
 	if gained > 0 then
-		local total = (health_remainders[unique_id] or 0) + gained
+		local total = team_health_remainder + gained
 		local whole = math.floor(total)
 
-		health_remainders[unique_id] = total - whole
+		team_health_remainder = total - whole
 
 		if whole > 0 then
-			add_quest_progress(unique_id, "find_grimoire", whole)
+			Managers.state.event:trigger("tb_hero_health_gained", whole)
 		end
 	end
 end)
 
--- Tome alternative: headshots on living enemies (same hit zone check as the vanilla "headshots" stat)
+-- Tome alternative: headshots by any hero on living enemies (same hit zone check as the vanilla "headshots" stat)
 mod:hook(GenericHealthExtension, "add_damage", function (func, self, attacker_unit, damage_amount, hit_zone_name, ...)
-	local unique_id = hit_zone_name == "head" and self.is_server and HEALTH_ALIVE[self.unit] and grail_knight_unique_id(attacker_unit)
+	local counts = hit_zone_name == "head" and self.is_server and HEALTH_ALIVE[self.unit] and is_hero_player_unit(attacker_unit)
 
 	func(self, attacker_unit, damage_amount, hit_zone_name, ...)
 
-	if unique_id then
-		add_quest_progress(unique_id, "find_tome", 1)
+	if counts then
+		Managers.state.event:trigger("tb_hero_headshot")
 	end
 end)
 
@@ -322,7 +311,6 @@ mod_api.update_talent("es_questingknight", 6, 2, {
     buffs = {
         "tb_cd_grail",
 		"markus_questing_knight_ability_buff_on_kill",
-		"tb_grail_ranged_dr_activator",
 		"tb_grail_ranged_dr_on_kill"
     }
 })
@@ -332,7 +320,7 @@ mod_api.insert_talent_buff_template("empire_soldier", "tb_cd_grail", {
 	multiplier = -0.3,
 	max_stacks = 1
 })
--- 90% ranged damage reduction for 25s after using Blessed Blade
+-- 90% ranged damage reduction for 25s after killing an enemy with Blessed Blade
 -- damage_taken_ranged covers projectile attacks (Ratling Gunner, Ungor Archer arrows)
 mod_api.insert_talent_buff_template("empire_soldier", "tb_grail_ranged_dr", {
 	stat_buff = "damage_taken_ranged",
@@ -342,13 +330,7 @@ mod_api.insert_talent_buff_template("empire_soldier", "tb_grail_ranged_dr", {
 	refresh_durations = true,
 	icon = "markus_questing_knight_ability_buff_on_kill"
 })
-mod_api.insert_talent_buff_template("empire_soldier", "tb_grail_ranged_dr_activator", {
-	buff_func = "add_buff",
-	buff_to_add = "tb_grail_ranged_dr",
-	event = "on_ability_activated",
-	max_stacks = 1
-})
--- Also (re)applied on Blessed Blade kills, like the vanilla movement speed buff.
+-- Applied on Blessed Blade kills, like the vanilla movement speed buff.
 -- Goes through the networked add_buff proc, since the damage reduction has to exist on the server.
 mod_api.insert_proc_function("tb_grail_ranged_dr_on_blessed_blade_kill", function (owner_unit, buff, params)
 	local killing_blow_table = params[1]
@@ -380,7 +362,7 @@ mod:add_apply_buffs_to_damage_wrapper(function (func, current_damage, attacked_u
 
 	return func(current_damage, attacked_unit, attacker_unit, damage_source, victim_units, damage_type, ...)
 end)
-mod_api.insert_text("markus_questing_knight_ability_buff_on_kill_desc", "Killing an enemy with Blessed Blade increases movement speed by 35%% for 25 seconds. Using Blessed Blade or killing an enemy with it reduces ranged damage taken by 90%% for 25 seconds, including Warpfire. Reduces cooldown by 30%%.")
+mod_api.insert_text("markus_questing_knight_ability_buff_on_kill_desc", "Killing an enemy with Blessed Blade grants 35%% movement speed and 90%% damage reduction against ranged projectiles and Warpfire for 25 seconds. Reduces cooldown by 30%%.")
 
 --[[
 	Virtue of Confidence

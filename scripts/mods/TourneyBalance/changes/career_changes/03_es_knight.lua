@@ -493,7 +493,7 @@ mod_api.update_talent("es_knight", 2, 2, { -- update description
 	description_values = {
 	},
 })
-mod_api.insert_text("markus_knight_power_level_on_stagger_elite_desc", "Inflicting stagger counts on an elite enemy increases power by 15.0%% for 10 seconds.")
+mod_api.insert_text("markus_knight_power_level_on_stagger_elite_desc", "Inflicting stagger counts on an elite enemy increases power by 15.0% for 10 seconds.")
 
 --[[
 	Crowd Clearer
@@ -619,19 +619,19 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_on
 	buff_func = "buff_on_stagger_enemy"
 })
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_cooldown_buff", {
-	duration = 1, -- 0.5
+	duration = 1.5, -- 0.5
 	multiplier = 2, -- 2
 	icon = "markus_knight_improved_passive_defence_aura"
 })
-mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates your own cooldown by 100%% (10%%) for 1.0 (1.0) seconds.")
+mod_api.insert_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite enemy (with Mainstay) accelerates your own cooldown by 200%% (20%%) for 1.5 (1.5) seconds.")
 
 -- Separate, weaker buff for the Mainstay stagger-count proc
 mod_api.insert_buff_template("tb_markus_knight_cooldown_buff_mainstay", {
 	max_stacks = 1,
 	refresh_durations = true,
 	stat_buff = "cooldown_regen",
-	duration = 1,
-	multiplier = 1.1,
+	duration = 1.5,
+	multiplier = 0.2,
 	icon = "markus_knight_improved_passive_defence_aura",
 })
 

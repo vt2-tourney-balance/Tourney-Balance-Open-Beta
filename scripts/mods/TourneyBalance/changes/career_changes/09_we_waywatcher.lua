@@ -363,51 +363,53 @@ local TB_MOVEMENT_SPEED_SETTINGS = {
 	crouch_move_speed = true,
 	walk_move_speed = true,
 }
-local tb_movement_penalty_buff_cache = {}
-local function tb_is_movement_penalty_buff(template_name)
-	local cached = tb_movement_penalty_buff_cache[template_name]
-
-	if cached ~= nil then
-		return cached
+local function tb_is_movement_penalty_buff(template)
+	if not template.buffs then
+		return false
 	end
 
-	local is_penalty = false
-	local template = BuffUtils.get_buff_template(template_name)
+	for _, sub_buff in ipairs(template.buffs) do
+		local path = sub_buff.path_to_movement_setting_to_modify
+		local multiplier = sub_buff.multiplier
 
-	if template then
-		for _, sub_buff in ipairs(template.buffs) do
-			local path = sub_buff.path_to_movement_setting_to_modify
-			local multiplier = sub_buff.multiplier
+		if path and TB_MOVEMENT_SPEED_SETTINGS[path[1]] then
+			-- actions (melee swings, aiming) and debuffs use the lerped variant, the multiplier of actions is passed in externally
+			local is_lerp_penalty = sub_buff.apply_buff_func == "apply_action_lerp_movement_buff" and not sub_buff.bonus and (type(multiplier) ~= "number" or multiplier <= 1)
+			local is_static_penalty = sub_buff.apply_buff_func == "apply_movement_buff" and type(multiplier) == "number" and multiplier < 1
 
-			if path and TB_MOVEMENT_SPEED_SETTINGS[path[1]] then
-				-- actions (melee swings, aiming) and debuffs use the lerped variant, the multiplier of actions is passed in externally
-				local is_lerp_penalty = sub_buff.apply_buff_func == "apply_action_lerp_movement_buff" and not sub_buff.bonus and (type(multiplier) ~= "number" or multiplier <= 1)
-				local is_static_penalty = sub_buff.apply_buff_func == "apply_movement_buff" and type(multiplier) == "number" and multiplier < 1
-
-				if is_lerp_penalty or is_static_penalty then
-					is_penalty = true
-
-					break
-				end
+			if is_lerp_penalty or is_static_penalty then
+				return true
 			end
 		end
 	end
 
-	tb_movement_penalty_buff_cache[template_name] = is_penalty
-
-	return is_penalty
+	return false
 end
-mod:hook(BuffExtension, "add_buff", function (func, self, template_name, params, ...)
-	if self:has_buff_type("tb_fervent_huntress_no_movement_penalties") and tb_is_movement_penalty_buff(template_name) then
-		-- add_buff uses the external multiplier of the action over the template's own, above 1 means the action speeds the player up
-		local external_multiplier = params and params.external_optional_multiplier
 
-		if not (external_multiplier and external_multiplier > 1) then
-			return
+local function tb_fervent_huntress_allows_buff(unit, template, params)
+	if mod:is_action_movement_speed_up(params) then
+		return true
+	end
+
+	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+
+	return not (buff_extension and buff_extension:has_buff_type("tb_fervent_huntress_no_movement_penalties"))
+end
+
+-- Penalty buffs are gated once through apply_condition, so the check only runs when one of them is added.
+-- Done after all mods load so templates added by later files are covered too.
+mod:add_all_mods_loaded_function(function ()
+	local penalty_buff_names = {}
+
+	for buff_name, template in pairs(BuffTemplates) do
+		if tb_is_movement_penalty_buff(template) then
+			penalty_buff_names[#penalty_buff_names + 1] = buff_name
 		end
 	end
 
-	return func(self, template_name, params, ...)
+	for _, buff_name in ipairs(penalty_buff_names) do
+		mod:add_buff_apply_condition(buff_name, tb_fervent_huntress_allows_buff)
+	end
 end)
 
 
