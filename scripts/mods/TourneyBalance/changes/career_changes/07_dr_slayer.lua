@@ -21,7 +21,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Attack speed increased to 15% (from 10%).
 
 		**Impatience**
-		- Doubles the duration of Trophy Hunter stacks to 10 seconds (from 2).
+		- Trophy Hunter stacks last 10 seconds (from 2).
 
 		**High Tally**
 		- Increases Trophy Hunter's maximum stacks to 5 (from 4).
@@ -31,17 +31,16 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Oblivious to Pain**
 		- Damage reduction now also applies to Specials.
-		- Additionally grants Barge's dodge push.
-		- Stagger strength on dodge increased to medium_push (from light_push).
-		- Stagger radius on dodge increased to 5 (from 1.5).
+		- Each Trophy Hunter stack additionally reduces damage taken by 5%.
 
 		**Barge**
-		- Dodge push moved to Oblivious to Pain.
+		- Stagger strength on dodge increased to medium_push (from light_push).
+		- Stagger radius on dodge increased to 3/6 (from 1.5).
 		- Now increases healing received by 50%.
 		- Now converts 50% of damage taken into a non-lethal bleed lasting 10 seconds.
 
 		**Dawi Drop**
-		- Additionally grants max Trophy Hunter stacks (up to 5, with High Tally) while airborne.
+		- Additionally grants max Trophy Hunter stacks (up to 5, with High Tally) when Leap starts.
 
 		**No Escape**
 		- Melee attacks no longer slow movement while Leap is active.
@@ -59,22 +58,24 @@ local function tb_slayer_has_talent(unit, talent_name)
 	return not not (talent_extension and talent_extension:has_talent(talent_name, "dwarf_ranger", true))
 end
 
--- Impatience doubles Trophy Hunter stack duration, runs wherever the buff is added (server and owner)
+-- Impatience extends Trophy Hunter stacks, runs wherever the buff is added (server and owner)
+local TB_IMPATIENCE_STACK_DURATION = 10
+
 local function tb_slayer_trophy_hunter_duration(unit, sub_buff_template, duration, buff_extension, params)
 	if duration and tb_slayer_has_talent(unit, "bardin_slayer_passive_movement_speed") then
-		duration = duration * 2
+		duration = TB_IMPATIENCE_STACK_DURATION
 	end
 
 	return duration, nil
 end
 
+--[[
+	Trophy Hunter
+]]
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_passive_stacking_damage_buff", {
 	duration_modifier_func = tb_slayer_trophy_hunter_duration, -- Added
 })
 
---[[
-	Trophy Hunter
-]]
 -- 5% attack speed per stack. High Tally gets its own template since max_stacks lives on the sub-buff
 mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_attack_speed", {
 	stat_buff = "attack_speed",
@@ -92,6 +93,49 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_at
 	refresh_durations = true,
 })
 mod_api.insert_text("career_passive_desc_dr_2a_3", "Hitting an enemy grants a stack of Trophy Hunter, increasing melee damage by 10% and attack speed by 5%. Lasts 2 seconds, stacks up to 3 times.")
+
+-- Buffs making up one Trophy Hunter stack for this Slayer's talents (Impatience, High Tally, Adrenaline Surge)
+local function tb_slayer_trophy_hunter_buff_names(owner_unit)
+	local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
+	local buff_names = {
+		"bardin_slayer_passive_stacking_damage_buff",
+		"tb_bardin_slayer_passive_attack_speed",
+	}
+
+	if talent_extension:has_talent("bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) then
+		buff_names[1] = "bardin_slayer_passive_increased_max_stacks"
+		buff_names[2] = "tb_bardin_slayer_passive_attack_speed_high_tally"
+	end
+
+	if talent_extension:has_talent("bardin_slayer_passive_movement_speed", "dwarf_ranger", true) then
+		buff_names[#buff_names + 1] = "bardin_slayer_passive_movement_speed"
+	end
+
+	if talent_extension:has_talent("bardin_slayer_passive_cooldown_reduction_on_max_stacks", "dwarf_ranger", true) then
+		buff_names[#buff_names + 1] = "bardin_slayer_passive_cooldown_reduction_on_max_stacks"
+	end
+
+	-- Oblivious to Pain is in a different row, so it combines with High Tally
+	if talent_extension:has_talent("bardin_slayer_damage_taken_capped", "dwarf_ranger", true) then
+		local has_high_tally = buff_names[1] == "bardin_slayer_passive_increased_max_stacks"
+
+		buff_names[#buff_names + 1] = has_high_tally and "tb_bardin_slayer_oblivious_damage_reduction_high_tally" or "tb_bardin_slayer_oblivious_damage_reduction"
+	end
+
+	return buff_names
+end
+
+mod_api.insert_proc_function("add_bardin_slayer_passive_buff", function(owner_unit, buff, params)
+	if not Managers.state.network.is_server or not Unit.alive(owner_unit) then
+		return
+	end
+
+	local buff_system = Managers.state.entity:system("buff_system")
+
+	for _, buff_name in ipairs(tb_slayer_trophy_hunter_buff_names(owner_unit)) do
+		buff_system:add_buff(owner_unit, buff_name, owner_unit, false)
+	end
+end)
 
 --[[
 	Path of Carnage
@@ -128,42 +172,10 @@ mod_api.insert_text("bardin_slayer_attack_speed_on_double_one_handed_weapons_des
 
 --[[
 	Impatience
-	Adrenaline Surge
 ]]
-mod_api.insert_proc_function("add_bardin_slayer_passive_buff", function(owner_unit, buff, params)
-	if not Managers.state.network.is_server then
-		return
-	end
-
-	local buff_system = Managers.state.entity:system("buff_system")
-
-	if Unit.alive(owner_unit) then
-		local buff_name = "bardin_slayer_passive_stacking_damage_buff"
-		local attack_speed_buff_name = "tb_bardin_slayer_passive_attack_speed"
-		local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
-
-		if talent_extension:has_talent("bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) then
-			buff_name = "bardin_slayer_passive_increased_max_stacks"
-			attack_speed_buff_name = "tb_bardin_slayer_passive_attack_speed_high_tally"
-		end
-		buff_system:add_buff(owner_unit, buff_name, owner_unit, false)
-		buff_system:add_buff(owner_unit, attack_speed_buff_name, owner_unit, false) -- 5% attack speed per stack
-
-		if talent_extension:has_talent("bardin_slayer_passive_movement_speed", "dwarf_ranger", true) then
-			buff_system:add_buff(owner_unit, "bardin_slayer_passive_movement_speed", owner_unit, false)
-		end
-
-		if talent_extension:has_talent("bardin_slayer_passive_cooldown_reduction_on_max_stacks", "dwarf_ranger", true) then
-			buff_system:add_buff(owner_unit, "bardin_slayer_passive_cooldown_reduction_on_max_stacks", owner_unit, false)
-		end
-	end
-end)
---[[
-	Impatience
-]]
--- Only granted with Impatience, so it uses the doubled Trophy Hunter duration directly
+-- Only granted with Impatience, so it uses the extended Trophy Hunter duration directly
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_passive_movement_speed", {
-	duration = 10, -- 2
+	duration = TB_IMPATIENCE_STACK_DURATION, -- 2
 })
 mod_api.insert_text("bardin_slayer_passive_movement_speed_desc", "Trophy Hunter stacks now last 10 seconds. Each stack of Trophy Hunter increases movement speed by 10.0%%.")
 
@@ -188,44 +200,62 @@ mod_api.insert_text("bardin_slayer_passive_cooldown_reduction_on_max_stacks_desc
 --[[
 	Oblivious to Pain
 ]]
--- Keeps its damage cap (specials added in 02_damage_taken_changes.lua) and takes Barge's dodge push.
--- The cap is read server side while the push procs on the owner, so both
-ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.damage_profile = "medium_push" -- light_push
-ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.radius = 5 -- 1.5
-ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.max_damage_radius = 5 -- 1.5
+-- Damage cap now also covers specials (02_damage_taken_changes.lua), the cap is read server side
 mod_api.update_talent("dr_slayer", 5, 1, {
 	description = "bardin_slayer_damage_taken_capped_desc_2",
 	description_values = {},
-	buffer = "both",
+	buffer = "server",
 	buffs = {
 		"bardin_slayer_damage_taken_capped",
-		"bardin_slayer_push_on_dodge",
 	},
 })
-mod_api.insert_text("bardin_slayer_damage_taken_capped_desc_2", "Damage taken from Bosses, Elites and Specials is reduced by half, down to a minimum of 10 damage. Effective dodges push nearby enemies.")
+-- 5% damage reduction per Trophy Hunter stack, granted with each stack (tb_slayer_trophy_hunter_buff_names).
+-- Separate High Tally template since max_stacks lives on the sub-buff
+mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_oblivious_damage_reduction", {
+	stat_buff = "damage_taken",
+	multiplier = -0.05,
+	max_stacks = 3,
+	duration = 2,
+	refresh_durations = true,
+	duration_modifier_func = tb_slayer_trophy_hunter_duration,
+})
+mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_oblivious_damage_reduction_high_tally", {
+	stat_buff = "damage_taken",
+	multiplier = -0.05,
+	max_stacks = 5,
+	duration = 2,
+	refresh_durations = true,
+})
+mod_api.insert_text("bardin_slayer_damage_taken_capped_desc_2", "Damage taken from Bosses, Elites and Specials is reduced by half, down to a minimum of 10 damage. Each stack of Trophy Hunter reduces damage taken by 5%.")
 
 --[[
 	Barge
 ]]
--- Dodge push moved to Oblivious to Pain, instead increases healing received and converts damage taken into a bleed
+-- Medium push
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.damage_profile = "medium_push" -- light_push
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.radius = 3 -- 1.5
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.max_damage_radius = 6 -- 1.5
+-- Also increases healing received and converts damage taken into a bleed
 mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_barge_healing_received", {
 	stat_buff = "healing_received",
 	multiplier = 0.5,
 })
 mod_api.update_talent("dr_slayer", 5, 3, {
 	description = "bardin_slayer_push_on_dodge_desc",
-	buffer = "server", -- heals and damage are resolved server side
+	buffer = "both", -- the push procs on the owner, heals are resolved server side
 	buffs = {
+		"bardin_slayer_push_on_dodge",
 		"tb_bardin_slayer_barge_healing_received",
 	},
 })
-mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Increases healing received by 50%. Converts 50% of damage taken into a non-lethal bleed lasting 10 seconds.")
+mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Effective dodges push nearby enemies. Increases healing received by 50%. Converts 50% of damage taken into a non-lethal bleed lasting 10 seconds.")
 
 -- Barge bleed: pooled DoT buff like Warrior Priest Shield-of-Faith
 -- new hits add to it and refresh duration
 local TB_BARGE_BLEED_SOURCE = "life_tap"
 local TB_BARGE_BLEED_TYPE = "knockdown_bleed"
 local TB_BARGE_BLEED_DURATION = 10
+local TB_BARGE_BLEED_RATIO = 0.5 -- share of each hit moved into the bleed
 
 -- add_buff params don't reach reapply (the common case here), so smuggle the amount via upvalue instead
 local tb_barge_pending_damage_amount = 0
@@ -263,7 +293,7 @@ mod_api.insert_buff_function("tb_barge_bleed_tick", function (unit, buff, params
 	DamageUtils.add_damage_network(unit, unit, damage_per_tick, "full", TB_BARGE_BLEED_TYPE, nil, Vector3(0, 0, 0), TB_BARGE_BLEED_SOURCE, nil, unit, nil, nil, nil, nil, nil, nil, nil, nil, 1)
 end)
 mod_api.insert_buff_template("tb_bardin_slayer_barge_bleed", {
-	icon = "bardin_slayer_crit_chance", -- twich bleed icon
+	icon = "bardin_slayer_crit_chance", -- twitch bleed icon
 	debuff = true,
 	max_stacks = 1,
 	duration = TB_BARGE_BLEED_DURATION,
@@ -282,13 +312,11 @@ mod:hook(PlayerUnitHealthExtension, "add_damage", function (func, self, attacker
 	if self.is_server and damage_amount and damage_amount > 0 and damage_source_name ~= TB_BARGE_BLEED_SOURCE and damage_source_name ~= "temporary_health_degen" and HEALTH_ALIVE[unit] and tb_slayer_has_talent(unit, "bardin_slayer_push_on_dodge") then
 		local buff_extension = ScriptUnit.extension(unit, "buff_system")
 
-		-- Converted into the bleed
-		local bleed_ratio = 0.5
-		tb_barge_pending_damage_amount = damage_amount * bleed_ratio
+		tb_barge_pending_damage_amount = damage_amount * TB_BARGE_BLEED_RATIO
 		buff_extension:add_buff("tb_bardin_slayer_barge_bleed")
 		tb_barge_pending_damage_amount = 0
 
-		return func(self, attacker_unit, damage_amount * (1 - bleed_ratio), hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
+		return func(self, attacker_unit, damage_amount * (1 - TB_BARGE_BLEED_RATIO), hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
 	end
 
 	return func(self, attacker_unit, damage_amount, hit_zone_name, damage_type, hit_position, damage_direction, damage_source_name, ...)
@@ -297,7 +325,9 @@ end)
 --[[
 	Dawi Drop
 ]]
--- With Dawi Drop selected, max Trophy Hunter
+-- With Dawi Drop selected, starting a Leap grants max Trophy Hunter stacks
+-- description_values holds the vanilla power bonus, so % has to be escaped
+mod_api.insert_text("bardin_slayer_activated_ability_leap_damage_desc", "Increases power by %g%% while airborne during Leap. Starting a Leap grants maximum Trophy Hunter stacks.")
 mod:hook_safe(CareerAbilityDRSlayer, "_do_leap", function (self)
 	local do_leap = self._status_extension.do_leap
 
@@ -314,16 +344,24 @@ mod:hook_safe(CareerAbilityDRSlayer, "_do_leap", function (self)
 		end
 
 		local unit_3p = this.unit
-		local talent_extension = ScriptUnit.has_extension(unit_3p, "talent_system")
 
-		if not talent_extension or not talent_extension:has_talent("bardin_slayer_activated_ability_leap_damage") then -- Dawi Drop only
+		if not tb_slayer_has_talent(unit_3p, "bardin_slayer_activated_ability_leap_damage") then -- Dawi Drop only
 			return
 		end
 
-		local proc_function = ProcFunctions.add_bardin_slayer_passive_buff
+		-- Leap events only run on the Slayer's own machine. The host adds the stacks directly,
+		-- a client asks the host to add them, which syncs them back to the client
+		local buff_names = tb_slayer_trophy_hunter_buff_names(unit_3p)
+		local buff_system = Managers.state.network.is_server and Managers.state.entity:system("buff_system")
 
 		for _ = 1, 5 do -- covers max_stacks 3 (base/Impatience/Adrenaline Surge) and 5 (High Tally)
-			proc_function(unit_3p, nil, nil)
+			for _, buff_name in ipairs(buff_names) do
+				if buff_system then
+					buff_system:add_buff(unit_3p, buff_name, unit_3p, false)
+				else
+					mod_api.add_buff(unit_3p, buff_name)
+				end
+			end
 		end
 	end
 end)
@@ -331,7 +369,8 @@ end)
 --[[
 	No Escape
 ]]
--- No movement slowdown.
+-- While the No Escape Leap buff is up, melee actions don't apply their movement slowdown.
+-- Every player melee weapon slows through these three action buffs
 local TB_NO_ESCAPE_MOVEMENT_PENALTY_BUFFS = {
 	"planted_decrease_movement",
 	"planted_fast_decrease_movement",
@@ -355,5 +394,5 @@ for _, buff_name in ipairs(TB_NO_ESCAPE_MOVEMENT_PENALTY_BUFFS) do
 		return mod:is_action_movement_speed_up(params) or not tb_no_escape_removes_movement_penalty(unit)
 	end)
 end
-mod_api.insert_text("bardin_slayer_activated_ability_movement_desc_2", "Leap increases movement speed by 25% for its duration, and melee attacks no longer slow movement.")
+mod_api.insert_text("bardin_slayer_activated_ability_movement_desc_2", "Leap increases movement speed by %g%% for 10 seconds. During this time melee attacks no longer slow movement.")
 
