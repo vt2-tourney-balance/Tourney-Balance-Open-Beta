@@ -418,17 +418,25 @@ mod:hook_safe(ActionCareerWEThornsisterTargetWall, "_update_targeting", function
 	self._wall_tilt_angle = tb_flat_wall_toggle_state[owner_unit] and math.pi / 2 or 0
 end)
 -- Carry the tilt angle through the action chain to spawn_func.
-mod:hook(ActionCareerWEThornsisterTargetWall, "finish", function (func, self, reason)
-	local targeting_data = func(self, reason)
+mod:hook(ActionCareerWEThornsisterTargetWall, "finish", function (func, self, reason, data)
+	local targeting_data = func(self, reason, data)
 
 	if targeting_data then
 		targeting_data.wall_tilt_angle = self._wall_tilt_angle or 0
 	end
 
-	-- Reset unconditionally: finish() is the one guaranteed exit point for this action, cast or not. Vanilla's
+	-- Left click while aiming chains into another targeting sub-action (thorn_wall_target_flip / _flip_back),
+	-- which also finishes this one - keep the toggle across that, since the ult is still being aimed.
+	local next_action_settings = data and data.new_action_settings
+
+	if next_action_settings and next_action_settings.kind == "career_we_thornsister_target_wall" then
+		return targeting_data
+	end
+
+	-- Otherwise reset: finish() is the one guaranteed exit point for this action, cast or not. Vanilla's
 	-- targeting_data is non-nil whenever a valid target was ever found, even if the actual interrupting action
 	-- turns out not to be the fire action (e.g. cancelling via a weapon swap after aiming at a valid spot) - so
-	-- branching on it here would miss that case. Safe to do unconditionally: a genuine cast's angle was already
+	-- branching on it here would miss that case. Safe to do here: a genuine cast's angle was already
 	-- copied onto targeting_data above, as a plain number disconnected from this table from this point on.
 	local owner_unit = self.owner_unit
 
