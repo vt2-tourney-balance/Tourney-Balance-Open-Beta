@@ -558,7 +558,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		end
 	end
 }
-mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall.")
+mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall and duration to 10 seconds.\n\nPressing weapon special toggles carpet mode slowing enemies walking through it by 50% for 10 seconds.")
 
 -- Registered last on purpose: piggybacks on the wall's own per-tick area-effect (which already slows nearby
 -- allies) to also slow nearby enemies, for segments tracked as flat above. If registering a hook on this
