@@ -16,7 +16,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Grim Fortune** (new, replaces Blur)
 		- Increases critical strike chance by 10%.
-		- Parrying an attack grants guaranteed melee critical strikes for 2s.
+		- Parrying an attack makes the next attack within 3s a guaranteed critical strike (melee or ranged).
 		- Blur moved to the talent tree (see Talents).
 
 		### Talents
@@ -126,20 +126,32 @@ mod_api.remove_career_perk_description("we_1", "career_passive_name_we_1d") -- v
 --[[
 	Grim Fortune
 ]]
--- 10% crit chance (vanilla kerillian_shade_passive_crit, 5% but never added to the passive in vanilla), plus
--- guaranteed melee crits for a short time after a (long) parry
+-- 10% crit chance (vanilla kerillian_shade_passive_crit, 5% but never added to the passive in vanilla)
+-- A guaranteed crit (melee or ranged) for 3 seconds after a (long) parry, used up by the next attack that hits.
 mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_grim_fortune_parry", {
-	buff_func = "add_buff",
+	buff_func = "add_buff_local",
 	buff_to_add = "tb_kerillian_shade_grim_fortune_crit_buff",
-	event = "on_timed_block_long", -- only fires on the owning client, where crits are rolled
+	event = "on_timed_block_long",
 })
 mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_grim_fortune_crit_buff", {
-	duration = 2,
+	duration = 3,
 	max_stacks = 1,
 	refresh_durations = true,
 	icon = "kerillian_shade_perk_dagger_in_the_dark",
-	stat_buff = "critical_strike_chance_melee",
+	stat_buff = "critical_strike_chance",
 	bonus = 1,
+})
+-- Removed on hit (same vanilla remover as the passive's kerillian_shade_stealth_crits_remover)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_grim_fortune_crit_consumer", {
+	buff_func = "remove_buff_stack",
+	event = "on_hit",
+	remove_buff_stack_data = {
+		{
+			buff_to_remove = "tb_kerillian_shade_grim_fortune_crit_buff",
+			num_stacks = 1,
+			server_controlled = false,
+		},
+	},
 })
 mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_passive_crit", {
 	bonus = 0.1 -- 0.05
@@ -147,8 +159,9 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_passive_crit", 
 mod_api.insert_career_passives("we_1", {
 	"kerillian_shade_passive_crit",
 	"tb_kerillian_shade_grim_fortune_parry",
+	"tb_kerillian_shade_grim_fortune_crit_consumer",
 })
-mod_api.insert_perk_text("tb_we_1_grim_fortune", "Grim Fortune", "Increases critical strike chance by 10%. Parrying an attack grants guaranteed melee critical strikes for 2 seconds.")
+mod_api.insert_perk_text("tb_we_1_grim_fortune", "Grim Fortune", "Increases critical strike chance by 10%. Parrying an attack graants a guaranteed critical strike lasting 3 seconds.")
 mod_api.insert_career_perk_descriptions("we_1", "tb_we_1_grim_fortune")
 
 --[[
