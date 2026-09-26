@@ -9,6 +9,9 @@ local is_local = shared_utils.is_local
 		---
 		## Witch Hunter Captain
 		### Talents
+		**Unending Hunt**
+		- Animosity's crit chance granted to allies reduced to 15% (from 25%) with this talent.
+
 		**Riposte**
 		- Fix description: crits also applpy to ranged attacks.
 
@@ -17,7 +20,7 @@ local is_local = shared_utils.is_local
 		- Elites and specials take 25% more direct damage from Saltzpyre.
 
 		**I Shall Judge You All**
-		- Apply Witch Hunt to all enemies within Animosity's range and all specials.
+		- Apply Witch Hunt and mark all enemies within Animosity's range.
 		- Headshotting Witch-Hunted enemies extends the duration by 1s.
 
 		**Fervency**
@@ -25,6 +28,40 @@ local is_local = shared_utils.is_local
 		- Added ult makes first hits 20 guaranteed melee crits.
 	$END_TB
 ]]
+
+--[[
+	Unending Hunt
+]]
+-- Team crit chance reduced to 15% only when the caster has Unending Hunt (6-3); other ults keep 25%.
+-- The ult always adds the same template to allies, so it gets two sub-buffs gated on the caster's
+-- talent. params.attacker_unit is the caster on every peer (synced through rpc_add_buff).
+local function caster_has_unending_hunt(params)
+	local caster_unit = params and params.attacker_unit
+	local talent_extension = caster_unit and ScriptUnit.has_extension(caster_unit, "talent_system")
+
+	return talent_extension and talent_extension:has_talent("victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit") or false
+end
+
+do
+	local crit_buff_template = TalentBuffTemplates.witch_hunter.victor_witchhunter_activated_ability_crit_buff
+	local sub_buffs = crit_buff_template.buffs
+	local vanilla_sub_buff = sub_buffs[1]
+
+	vanilla_sub_buff.apply_condition = function (unit, template, params)
+		return not caster_has_unending_hunt(params)
+	end
+
+	-- Distinct name so num_buff_type/max_stacks don't collide with the vanilla sub-buff
+	local unending_hunt_sub_buff = table.clone(vanilla_sub_buff)
+	unending_hunt_sub_buff.name = "tb_unending_hunt_crit_buff"
+	unending_hunt_sub_buff.bonus = 0.15 -- 0.25
+	unending_hunt_sub_buff.apply_condition = function (unit, template, params)
+		return caster_has_unending_hunt(params)
+	end
+
+	sub_buffs[2] = unending_hunt_sub_buff
+	BuffTemplates.victor_witchhunter_activated_ability_crit_buff = crit_buff_template
+end
 
 --[[
 
@@ -64,12 +101,12 @@ mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_crit_stacks", {
 	icon = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff",
 	stat_buff = "critical_strike_chance_melee",
 	bonus = 1,
-	max_stacks = 20,
+	max_stacks = 10,
 })
 mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_provider", { -- provides the 20 stacks on ult
 	buff_func = "add_buff_reff_buff_stack",
 	buff_to_add = "tb_fervency_crit_stacks",
-	amount_to_add = 20,
+	amount_to_add = 10,
 	event = "on_ability_activated",
 })
 mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_consumer", { -- consumes 1 stack per enemy hit
@@ -133,9 +170,9 @@ mod_api.update_talent("wh_captain", 6, 1, {
 		"tb_isjya_refresh_animosity_on_headshot",
 	},
 })
-mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Apply Witch Hunt to all enemies within Animosity's range and all specials. Headshotting Witch-Hunted enemies extends the duration by 1s.")
+mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Animosity grants an aura applying Witch Hunt and marking all enemies. Headshotting Witch-Hunted enemies extends the aura duration by 1s.")
 
---[[ Ping All Specials on WHC ISJYA ULT ]]
+--[[ Ping Specials within ult radius on WHC ISJYA ULT ]]
 local PING_DURATION = 15
 local marked_enemies = {}
 
@@ -205,8 +242,8 @@ mod:add_all_mods_loaded_function(function()
 	end)
 end)
 
--- Reveals/re-reveals every special tracked by the proximity system and applies Witch Hunt (+ Templar's Knowledge)
-local function apply_isjya_special_marks(attacker_unit, has_templars_knowledge)
+-- Reveals/re-reveals every special within radius of position and applies Witch Hunt (+ Templar's Knowledge)
+local function apply_isjya_special_marks(attacker_unit, position, radius, has_templars_knowledge)
 	-- Re-sync from AccessibilityOptions here too (not just on setting-changed) so mark color is
 	-- correct the first time it's actually used, regardless of mod load order.
 	do
@@ -218,12 +255,14 @@ local function apply_isjya_special_marks(attacker_unit, has_templars_knowledge)
 
 	local proximity_system = Managers.state.entity:system("proximity_system")
 	local t = Managers.time:time("game")
+	local radius_sq = radius * radius
 
 	for enemy_unit, _ in pairs(proximity_system.ai_unit_extensions_map) do
 		local breed = Unit.get_data(enemy_unit, "breed")
 		local is_special = breed and breed.special
+		local enemy_position = is_special and POSITION_LOOKUP[enemy_unit]
 
-		if ALIVE[enemy_unit] and is_special then
+		if ALIVE[enemy_unit] and enemy_position and Vector3.distance_squared(position, enemy_position) <= radius_sq then
 			if marked_enemies[enemy_unit] then
 				marked_enemies[enemy_unit].expire_t = t + PING_DURATION
 			else
@@ -298,8 +337,10 @@ mod_api.insert_buff_function("tb_isjya_aura_pulse", function (unit, buff, params
 	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
 	local has_templars_knowledge = talent_extension and talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
 
-	apply_isjya_special_marks(unit, has_templars_knowledge)
-	apply_isjya_radius_debuff(unit, POSITION_LOOKUP[unit], buff.range, has_templars_knowledge)
+	local position = POSITION_LOOKUP[unit]
+
+	apply_isjya_special_marks(unit, position, buff.range, has_templars_knowledge)
+	apply_isjya_radius_debuff(unit, position, buff.range, has_templars_knowledge)
 end)
 local ISJYA_AURA_DURATION = 6
 mod_api.insert_talent_buff_template("witch_hunter", "tb_isjya_aura", {
@@ -330,7 +371,7 @@ mod:hook_safe(DamageUtils, "create_explosion", function (world, attacker_unit, i
 
 	local has_templars_knowledge = talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
 
-	apply_isjya_special_marks(attacker_unit, has_templars_knowledge)
+	apply_isjya_special_marks(attacker_unit, impact_position, explosion_template.explosion.radius * (scale or 1), has_templars_knowledge)
 
 	-- Add ISJYA aura - if recasting while the old one is still active, reset
 	if Managers.state.network.is_server then

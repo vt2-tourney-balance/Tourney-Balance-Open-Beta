@@ -653,13 +653,13 @@ mod_api.update_talent("es_knight", 6, 1, {
 		}
 	},
 })
-mod_api.insert_text("markus_knight_ability_invulnerability_desc", "Valiant Charge makes Kruber immune to damage for %s seconds. Damage prevented reduces the cooldown of Valiant Charge at half effectiveness.")
+mod_api.insert_text("markus_knight_ability_invulnerability_desc", "Valiant Charge makes Kruber immune to damage for %s seconds. Damage prevented reduces the cooldown of Valiant Charge at 20% effectiveness.")
 
 -- Numb to Pain is a damage_taken -100% stat buff
 -- Hit trading: damage prevented by Numb to Pain still charges the ult at the normal on-damage-taken rate.
 local NUMB_TO_PAIN_BUFF = "markus_knight_ability_invulnerability_buff"
 local CDR_ON_DAMAGE_TAKEN_BUFF = "markus_knight_ability_cooldown_on_damage_taken"
-local ULT_REGEN_MODIFIER = 0.5 -- x * 0.35
+local ULT_REGEN_MODIFIER = 0.2 -- x * 0.35
 
 -- Cooldown lives on the owning peer only (CareerExtension doesn't sync), same routing as CareerSystem's own rpc
 local function tb_reduce_cooldown_on_owner(unit, amount)

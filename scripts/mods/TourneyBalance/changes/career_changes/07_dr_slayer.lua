@@ -8,6 +8,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		### Passive
 		**Trophy Hunter**
 		- Each stack additionally grants 5% attack speed.
+		- Damage bonus now also applies to ranged weapons.
 
 		**Path of Carnage**
 		- Attack speed increased to 10% (from 7.5%).
@@ -43,7 +44,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Additionally grants max Trophy Hunter stacks (up to 5, with High Tally) when Leap starts.
 
 		**No Escape**
-		- Melee attacks no longer slow movement while Leap is active.
+		- Melee and ranged attacks no longer slow movement while Leap is active.
 ]]
 
 --[[
@@ -73,6 +74,7 @@ end
 	Trophy Hunter
 ]]
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_slayer_passive_stacking_damage_buff", {
+	stat_buff = "increased_weapon_damage", -- increased_weapon_damage_melee, now ranged too (High Tally's stack already uses this)
 	duration_modifier_func = tb_slayer_trophy_hunter_duration, -- Added
 })
 
@@ -92,7 +94,7 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_at
 	duration = 2,
 	refresh_durations = true,
 })
-mod_api.insert_text("career_passive_desc_dr_2a_3", "Hitting an enemy grants a stack of Trophy Hunter, increasing melee damage by 10% and attack speed by 5%. Lasts 2 seconds, stacks up to 3 times.")
+mod_api.insert_text("career_passive_desc_dr_2a_3", "Hitting an enemy grants a stack of Trophy Hunter, increasing damage by 10% and attack speed by 5%. Lasts 2 seconds, stacks up to 3 times.")
 
 -- Buffs making up one Trophy Hunter stack for this Slayer's talents (Impatience, High Tally, Adrenaline Surge)
 local function tb_slayer_trophy_hunter_buff_names(owner_unit)
@@ -369,12 +371,17 @@ end)
 --[[
 	No Escape
 ]]
--- While the No Escape Leap buff is up, melee actions don't apply their movement slowdown.
--- Every player melee weapon slows through these three action buffs
+-- While the No Escape Leap buff is up, melee and ranged weapon actions don't apply their movement slowdown.
+-- Every player weapon slows through these three action buffs. Carried objects (sacks, statues, torches) use
+-- them too, so only the weapon slots are affected
 local TB_NO_ESCAPE_MOVEMENT_PENALTY_BUFFS = {
 	"planted_decrease_movement",
 	"planted_fast_decrease_movement",
 	"planted_charging_decrease_movement",
+}
+local TB_NO_ESCAPE_WEAPON_SLOTS = {
+	slot_melee = true,
+	slot_ranged = true,
 }
 
 local function tb_no_escape_removes_movement_penalty(unit)
@@ -386,7 +393,7 @@ local function tb_no_escape_removes_movement_penalty(unit)
 
 	local inventory_extension = ScriptUnit.has_extension(unit, "inventory_system")
 
-	return not not (inventory_extension and inventory_extension:get_wielded_slot_name() == "slot_melee")
+	return not not (inventory_extension and TB_NO_ESCAPE_WEAPON_SLOTS[inventory_extension:get_wielded_slot_name()])
 end
 
 for _, buff_name in ipairs(TB_NO_ESCAPE_MOVEMENT_PENALTY_BUFFS) do
@@ -394,5 +401,5 @@ for _, buff_name in ipairs(TB_NO_ESCAPE_MOVEMENT_PENALTY_BUFFS) do
 		return mod:is_action_movement_speed_up(params) or not tb_no_escape_removes_movement_penalty(unit)
 	end)
 end
-mod_api.insert_text("bardin_slayer_activated_ability_movement_desc_2", "Leap increases movement speed by %g%% for 10 seconds. During this time melee attacks no longer slow movement.")
+mod_api.insert_text("bardin_slayer_activated_ability_movement_desc_2", "Leap increases movement speed by %g%% for 10 seconds. During this time melee and ranged attacks no longer slow movement.")
 
