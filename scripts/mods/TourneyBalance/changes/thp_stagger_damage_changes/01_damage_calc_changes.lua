@@ -515,6 +515,13 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 		has_power_boost = buff_extension:has_buff_perk("potion_armor_penetration")
 		has_crit_head_shot_killing_blow_perk = buff_extension:has_buff_perk("crit_headshot_killing_blow")
 		has_crit_backstab_killing_blow_perk = buff_extension:has_buff_perk("crit_backstab_killing_blow")
+
+		-- Shade's Ruthless Precision: melee headshots count as backstabs. Done here rather than in
+		-- ActionSweep._check_backstab, which doesn't know the hit zone. Only the damage is affected; on_backstab
+		-- procs and the backstab sound still come from _check_backstab and don't fire for these hits
+		if breed and (not backstab_multiplier or backstab_multiplier <= 1) and damage_profile and (damage_profile.charge_value == "light_attack" or damage_profile.charge_value == "heavy_attack") and buff_extension:has_buff_perk("tb_headshot_counts_as_backstab") and DamageUtils.get_breed_damage_multiplier_type(breed, hit_zone_name) == "headshot" then
+			backstab_multiplier = buff_extension:apply_buffs_to_value(1, "backstab_multiplier")
+		end
 	end
 
 	local difficulty_level = Managers.state.difficulty:get_difficulty()

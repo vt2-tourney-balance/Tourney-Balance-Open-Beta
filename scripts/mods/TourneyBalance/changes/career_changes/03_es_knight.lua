@@ -661,31 +661,7 @@ local NUMB_TO_PAIN_BUFF = "markus_knight_ability_invulnerability_buff"
 local CDR_ON_DAMAGE_TAKEN_BUFF = "markus_knight_ability_cooldown_on_damage_taken"
 local ULT_REGEN_MODIFIER = 0.2 -- x * 0.35
 
--- Cooldown lives on the owning peer only (CareerExtension doesn't sync), same routing as CareerSystem's own rpc
-local function tb_reduce_cooldown_on_owner(unit, amount)
-	local owner_player = Managers.player:owner(unit)
-
-	if not owner_player then
-		return
-	end
-
-	if not owner_player.remote then
-		local career_extension = ScriptUnit.has_extension(unit, "career_system")
-
-		if career_extension then
-			career_extension:reduce_activated_ability_cooldown(amount)
-		end
-
-		return
-	end
-
-	local network_manager = Managers.state.network
-	local unit_id = network_manager:unit_game_object_id(unit)
-
-	if unit_id then
-		network_manager.network_transmit:send_rpc("rpc_reduce_activated_ability_cooldown", owner_player:network_id(), unit_id, amount, 1, false)
-	end
-end
+local tb_reduce_cooldown_on_owner = require("scripts/mods/TourneyBalance/_api/shared_utils").reduce_cooldown_on_owner
 
 -- Registered through the dispatcher in TourneyBalance.lua
 mod:add_apply_buffs_to_damage_wrapper(function (func, current_damage, attacked_unit, attacker_unit, damage_source, ...)

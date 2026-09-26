@@ -1,6 +1,8 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
-local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_local
+local shared_utils = require("scripts/mods/TourneyBalance/_api/shared_utils")
+local is_local = shared_utils.is_local
+local reduce_cooldown_on_owner = shared_utils.reduce_cooldown_on_owner
 
 --[[
 	$BEGIN_TB
@@ -13,6 +15,7 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 		**Fiery Faith**
 		- Healing and temporary health gained beyond max health is stored as Overhealth for the whole team (up to 100).
 		- Damage taken by Zealot or his allies is absorbed by Overhealth first. The remaining amount is shown as a buff icon for all players.
+		- Damage absorbed by Overhealth still charges the hit player's career ability at full effectiveness, as if the health had been lost.
 
 		**Ironheart**
 		- Fixed invincibility not proccing on client.
@@ -106,6 +109,7 @@ local OVERHEALTH_PASSIVE_BUFF = "victor_zealot_passive_increased_damage" -- Fier
 local OVERHEALTH_ICON_BUFF = "tb_victor_zealot_overhealth_icon"
 local OVERHEALTH_NETWORK_ID = "tb_zealot_overhealth"
 local NUMB_TO_PAIN_BUFF = "markus_knight_ability_invulnerability_buff"
+local OVERHEALTH_ULT_REGEN_MODIFIER = 1 -- absorbed damage charges the ult like the health had been lost (Numb to Pain stays at 20%, 03_es_knight.lua)
 
 local overhealth_pool = 0 -- server only
 local overhealth_display = 0 -- every peer, math.ceil of the pool
@@ -113,7 +117,7 @@ local overhealth_display = 0 -- every peer, math.ceil of the pool
 mod_api.insert_talent_buff_template("witch_hunter", OVERHEALTH_ICON_BUFF, {
     icon = "victor_zealot_max_stamina_on_damage_taken",
 })
-mod_api.insert_text("career_passive_desc_wh_1a", "Gains 5% power for every 25 health missing. Max Stacks 6. Saltzpyre generates up to 100 Overhealth. Damage taken by the team is absorbed by Overhealth first.")
+mod_api.insert_text("career_passive_desc_wh_1a", "Gains 5% power for every 25 health missing. Max Stacks 6. Saltzpyre generates up to 100 Overhealth. Damage taken by the team is absorbed by Overhealth first, still charging career skills as if the health had been lost.")
 
 local function set_overhealth_pool(amount)
     overhealth_pool = math.clamp(amount, 0, OVERHEALTH_MAX)
@@ -165,6 +169,43 @@ mod:add_player_add_heal_wrapper(function (func, self, healer_unit, heal_amount, 
     return func(self, healer_unit, heal_amount, heal_source_name, heal_type)
 end)
 
+-- Hit trading: each career's passive has its own "<career>_ability_cooldown_on_damage_taken" buff with its own
+-- bonus, so look it up from the hit hero's career. Cached per career; bonus is read live so balance edits apply.
+local CDR_ON_DAMAGE_TAKEN_FUNC = "reduce_activated_ability_cooldown_on_damage_taken"
+local cdr_buff_by_career = {} -- career_name -> buff template name, or false if the career has none
+
+local function get_cdr_on_damage_taken_bonus(unit)
+    local career_extension = ScriptUnit.has_extension(unit, "career_system")
+    local career_name = career_extension and career_extension:career_name()
+
+    if not career_name then
+        return nil
+    end
+
+    local buff_name = cdr_buff_by_career[career_name]
+
+    if buff_name == nil then
+        buff_name = false
+
+        local career_settings = CareerSettings[career_name]
+        local passive_buffs = career_settings and career_settings.passive_ability and career_settings.passive_ability.buffs
+
+        for _, passive_buff_name in ipairs(passive_buffs or {}) do
+            local template = BuffTemplates[passive_buff_name]
+            local sub_buff = template and template.buffs and template.buffs[1]
+
+            if sub_buff and sub_buff.buff_func == CDR_ON_DAMAGE_TAKEN_FUNC then
+                buff_name = passive_buff_name
+                break
+            end
+        end
+
+        cdr_buff_by_career[career_name] = buff_name
+    end
+
+    return buff_name and BuffTemplates[buff_name].buffs[1].bonus
+end
+
 -- Absorb: applied after all other damage reductions. Registered through the dispatcher in TourneyBalance.lua.
 -- apply_buffs_to_damage only runs with a non-zero pool on the server, so clients always fall through.
 mod:add_apply_buffs_to_damage_wrapper(function (func, current_damage, attacked_unit, attacker_unit, damage_source, ...)
@@ -197,6 +238,15 @@ mod:add_apply_buffs_to_damage_wrapper(function (func, current_damage, attacked_u
     local absorbed = math.min(overhealth_pool, damage)
 
     set_overhealth_pool(overhealth_pool - absorbed)
+
+    -- Absorbed damage still charges the hit hero's ult, at their own career's on-damage-taken rate
+    if damage_source ~= "temporary_health_degen" then
+        local cdr_bonus = get_cdr_on_damage_taken_bonus(attacked_unit)
+
+        if cdr_bonus then
+            reduce_cooldown_on_owner(attacked_unit, cdr_bonus * absorbed * OVERHEALTH_ULT_REGEN_MODIFIER)
+        end
+    end
 
     return damage - absorbed
 end)

@@ -22,7 +22,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Attack speed increased to 15% (from 10%).
 
 		**Impatience**
-		- Trophy Hunter stacks last 10 seconds (from 2).
+		- Trophy Hunter stacks last 5 seconds (from 2).
 
 		**High Tally**
 		- Increases Trophy Hunter's maximum stacks to 5 (from 4).
@@ -94,7 +94,7 @@ mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_passive_at
 	duration = 2,
 	refresh_durations = true,
 })
-mod_api.insert_text("career_passive_desc_dr_2a_3", "Hitting an enemy grants a stack of Trophy Hunter, increasing damage by 10% and attack speed by 5%. Lasts 2 seconds, stacks up to 3 times.")
+mod_api.insert_text("career_passive_desc_dr_2a_3", "Hitting an enemy grants a stack of Trophy Hunter, increasing weapon damage by 10% and attack speed by 5%. Lasts 2 seconds, stacks up to 3 times.")
 
 -- Buffs making up one Trophy Hunter stack for this Slayer's talents (Impatience, High Tally, Adrenaline Surge)
 local function tb_slayer_trophy_hunter_buff_names(owner_unit)
@@ -236,7 +236,7 @@ mod_api.insert_text("bardin_slayer_damage_taken_capped_desc_2", "Damage taken fr
 -- Medium push
 ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.damage_profile = "medium_push" -- light_push
 ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.radius = 3 -- 1.5
-ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.max_damage_radius = 6 -- 1.5
+ExplosionTemplates.bardin_slayer_push_on_dodge.explosion.max_damage_radius = 3 -- 1.5
 -- Also increases healing received and converts damage taken into a bleed
 mod_api.insert_talent_buff_template("dwarf_ranger", "tb_bardin_slayer_barge_healing_received", {
 	stat_buff = "healing_received",
@@ -252,10 +252,10 @@ mod_api.update_talent("dr_slayer", 5, 3, {
 })
 mod_api.insert_text("bardin_slayer_push_on_dodge_desc", "Effective dodges push nearby enemies. Increases healing received by 50%. Converts 50% of damage taken into a non-lethal bleed lasting 10 seconds.")
 
--- Barge bleed: pooled DoT buff like Warrior Priest Shield-of-Faith
--- new hits add to it and refresh duration
+-- Barge bleed: pooled DoT buff like Warrior Priest Shield-of-Faith, new hits add to it and refresh duration
 local TB_BARGE_BLEED_SOURCE = "life_tap"
-local TB_BARGE_BLEED_TYPE = "knockdown_bleed"
+-- wounded_dot does not interrupt interaction
+local TB_BARGE_BLEED_TYPE = "wounded_dot"
 local TB_BARGE_BLEED_DURATION = 10
 local TB_BARGE_BLEED_RATIO = 0.5 -- share of each hit moved into the bleed
 
@@ -327,8 +327,7 @@ end)
 --[[
 	Dawi Drop
 ]]
--- With Dawi Drop selected, starting a Leap grants max Trophy Hunter stacks
--- description_values holds the vanilla power bonus, so % has to be escaped
+-- Grant max Trophy Hunter stacks
 mod_api.insert_text("bardin_slayer_activated_ability_leap_damage_desc", "Increases power by %g%% while airborne during Leap. Starting a Leap grants maximum Trophy Hunter stacks.")
 mod:hook_safe(CareerAbilityDRSlayer, "_do_leap", function (self)
 	local do_leap = self._status_extension.do_leap
@@ -371,9 +370,7 @@ end)
 --[[
 	No Escape
 ]]
--- While the No Escape Leap buff is up, melee and ranged weapon actions don't apply their movement slowdown.
--- Every player weapon slows through these three action buffs. Carried objects (sacks, statues, torches) use
--- them too, so only the weapon slots are affected
+-- No melee slowdown
 local TB_NO_ESCAPE_MOVEMENT_PENALTY_BUFFS = {
 	"planted_decrease_movement",
 	"planted_fast_decrease_movement",

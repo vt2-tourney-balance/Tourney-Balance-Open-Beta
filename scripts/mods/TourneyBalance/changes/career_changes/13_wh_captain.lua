@@ -10,7 +10,7 @@ local is_local = shared_utils.is_local
 		## Witch Hunter Captain
 		### Talents
 		**Unending Hunt**
-		- Animosity's crit chance granted to allies reduced to 15% (from 25%) with this talent.
+		- Animosity's crit chance granted to allies reduced to 15% (from 25%) with this talent. Saltzpyre keeps 25%.
 
 		**Riposte**
 		- Fix description: crits also applpy to ranged attacks.
@@ -21,47 +21,14 @@ local is_local = shared_utils.is_local
 
 		**I Shall Judge You All**
 		- Apply Witch Hunt and mark all enemies within Animosity's range.
-		- Headshotting Witch-Hunted enemies extends the duration by 1s.
+		- Headshotting Witch-Hunted enemies extends the duration by 2s.
 
 		**Fervency**
-		- Increased duration to 10s (from 6s).
-		- Added ult makes first hits 20 guaranteed melee crits.
+		- Increased duration to 12s (from 6s).
+		- Added ult makes first 12 hits guaranteed melee crits.
 	$END_TB
 ]]
 
---[[
-	Unending Hunt
-]]
--- Team crit chance reduced to 15% only when the caster has Unending Hunt (6-3); other ults keep 25%.
--- The ult always adds the same template to allies, so it gets two sub-buffs gated on the caster's
--- talent. params.attacker_unit is the caster on every peer (synced through rpc_add_buff).
-local function caster_has_unending_hunt(params)
-	local caster_unit = params and params.attacker_unit
-	local talent_extension = caster_unit and ScriptUnit.has_extension(caster_unit, "talent_system")
-
-	return talent_extension and talent_extension:has_talent("victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit") or false
-end
-
-do
-	local crit_buff_template = TalentBuffTemplates.witch_hunter.victor_witchhunter_activated_ability_crit_buff
-	local sub_buffs = crit_buff_template.buffs
-	local vanilla_sub_buff = sub_buffs[1]
-
-	vanilla_sub_buff.apply_condition = function (unit, template, params)
-		return not caster_has_unending_hunt(params)
-	end
-
-	-- Distinct name so num_buff_type/max_stacks don't collide with the vanilla sub-buff
-	local unending_hunt_sub_buff = table.clone(vanilla_sub_buff)
-	unending_hunt_sub_buff.name = "tb_unending_hunt_crit_buff"
-	unending_hunt_sub_buff.bonus = 0.15 -- 0.25
-	unending_hunt_sub_buff.apply_condition = function (unit, template, params)
-		return caster_has_unending_hunt(params)
-	end
-
-	sub_buffs[2] = unending_hunt_sub_buff
-	BuffTemplates.victor_witchhunter_activated_ability_crit_buff = crit_buff_template
-end
 
 --[[
 
@@ -87,43 +54,6 @@ mod_api.update_talent("wh_captain", 4, 1, {
 	description_values = {},
 })
 mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage. Victor deals additional 25.0% direct damage to enemies affected by Witch Hunt (excluding Lords and Bosses).")
-
---[[
-	Fervency
-]]
--- Extend durationto 10s
-mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_guaranteed_crit_self_buff", {
-	duration = 10, -- 6
-})
-
--- Additionall 20 stacks of guaranteed melee crit hits on ult use
-mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_crit_stacks", { -- 20 stacks of melee crits buff
-	icon = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff",
-	stat_buff = "critical_strike_chance_melee",
-	bonus = 1,
-	max_stacks = 10,
-})
-mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_provider", { -- provides the 20 stacks on ult
-	buff_func = "add_buff_reff_buff_stack",
-	buff_to_add = "tb_fervency_crit_stacks",
-	amount_to_add = 10,
-	event = "on_ability_activated",
-})
-mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_consumer", { -- consumes 1 stack per enemy hit
-	buff_func = "remove_buff_stack",
-	event = "on_melee_hit",
-	max_stacks = 1,
-	remove_buff_stack_data = {
-		{ buff_to_remove = "tb_fervency_crit_stacks", num_stacks = 1 },
-	},
-})
-mod_api.update_talent("wh_captain", 6, 2, {
-	buffs = {
-		"tb_fervency_stack_provider",
-		"tb_fervency_stack_consumer"
-	},
-})
-mod_api.insert_text("victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc", "Animosity grants Victor guaranteed melee critical strikes for 10 seconds and the next 20 melee hits. No longer affects teammates and ranged attacks.")
 
 
 --[[
@@ -156,7 +86,7 @@ mod_api.insert_proc_function("tb_isjya_refresh_animosity_on_headshot", function 
 		local remaining = math.max(0, aura_buff.start_time + aura_buff.duration - t)
 
 		aura_buff.start_time = t
-		aura_buff.duration = remaining + 1
+		aura_buff.duration = remaining + 2 -- duration extension
 	end
 end)
 
@@ -170,7 +100,7 @@ mod_api.update_talent("wh_captain", 6, 1, {
 		"tb_isjya_refresh_animosity_on_headshot",
 	},
 })
-mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Animosity grants an aura applying Witch Hunt and marking all enemies. Headshotting Witch-Hunted enemies extends the aura duration by 1s.")
+mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Animosity grants an aura applying Witch Hunt and marking all enemies. Headshotting Witch-Hunted enemies extends the aura duration by 2 seconds.")
 
 --[[ Ping Specials within ult radius on WHC ISJYA ULT ]]
 local PING_DURATION = 15
@@ -441,4 +371,82 @@ mod:add_ingame_hud_update_function(function (self)
 	end
 end)
 
+--[[
+	Fervency
+]]
+-- Extend durationto 10s
+mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_guaranteed_crit_self_buff", {
+	duration = 12, -- 6
+})
+
+-- Additionall 20 stacks of guaranteed melee crit hits on ult use
+mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_crit_stacks", { -- 20 stacks of melee crits buff
+	icon = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff",
+	stat_buff = "critical_strike_chance_melee",
+	bonus = 1,
+	max_stacks = 12,
+})
+mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_provider", { -- provides the 20 stacks on ult
+	buff_func = "add_buff_reff_buff_stack",
+	buff_to_add = "tb_fervency_crit_stacks",
+	amount_to_add = 12,
+	event = "on_ability_activated",
+})
+mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_consumer", { -- consumes 1 stack per enemy hit
+	buff_func = "remove_buff_stack",
+	event = "on_melee_hit",
+	max_stacks = 1,
+	remove_buff_stack_data = {
+		{ buff_to_remove = "tb_fervency_crit_stacks", num_stacks = 1 },
+	},
+})
+mod_api.update_talent("wh_captain", 6, 2, {
+	buffs = {
+		"tb_fervency_stack_provider",
+		"tb_fervency_stack_consumer"
+	},
+})
+mod_api.insert_text("victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc", "Animosity grants Victor guaranteed melee critical strikes for 10 seconds and the next 10 melee hits. No longer affects teammates and ranged attacks.")
+
+--[[
+	Unending Hunt
+]]
+-- Teammates' crit chance reduced to 15% only when the caster has Unending Hunt (6-3); the caster keeps 25%
+local function is_unending_hunt_ally(unit, params)
+	local caster_unit = params and params.attacker_unit
+
+	if not caster_unit or caster_unit == unit then
+		return false
+	end
+
+	local talent_extension = ScriptUnit.has_extension(caster_unit, "talent_system")
+
+	return talent_extension and talent_extension:has_talent("victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit") or false
+end
+
+do
+	local crit_buff_template = TalentBuffTemplates.witch_hunter.victor_witchhunter_activated_ability_crit_buff
+	local sub_buffs = crit_buff_template.buffs
+	local vanilla_sub_buff = sub_buffs[1]
+
+	vanilla_sub_buff.apply_condition = function (unit, template, params)
+		return not is_unending_hunt_ally(unit, params)
+	end
+
+	-- Distinct name so num_buff_type/max_stacks don't collide with the vanilla sub-buff
+	local unending_hunt_sub_buff = table.clone(vanilla_sub_buff)
+	unending_hunt_sub_buff.name = "tb_unending_hunt_crit_buff"
+	unending_hunt_sub_buff.bonus = 0.15 -- 0.25
+	unending_hunt_sub_buff.apply_condition = function (unit, template, params)
+		return is_unending_hunt_ally(unit, params)
+	end
+
+	sub_buffs[2] = unending_hunt_sub_buff
+	BuffTemplates.victor_witchhunter_activated_ability_crit_buff = crit_buff_template
+end
+mod_api.update_talent("wh_captain", 6, 3, {
+	description = "victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit_desc",
+	description_values = {},
+})
+mod_api.insert_text("victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit_desc", "Hitting at least 10 enemies with Animosity refunds 40.0% of its cooldown. Animosity's critical strike chance bonus for allies is reduced to 15.0% (from 25.0%).")
 

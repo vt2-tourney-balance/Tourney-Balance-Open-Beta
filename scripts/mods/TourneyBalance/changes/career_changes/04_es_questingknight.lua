@@ -71,8 +71,8 @@ mod_api.insert_text("career_passive_desc_es_4d", "Immune to knockback from range
 	Quests (Adventure only - Weave, Versus and Chaos Wastes keep their own vanilla quest pools)
 ]]
 local QUEST_HEALTH_GOAL = 3000
-local QUEST_HEADSHOT_GOAL = 1000
-local QUEST_TEAM_ULTIMATES_GOAL = 50
+local QUEST_HEADSHOT_GOAL = 600
+local QUEST_TEAM_ULTIMATES_GOAL = 30
 
 local function flat_amount(amount)
 	local amounts = {}
@@ -152,7 +152,7 @@ end)
 -- The quest HUD shows Localize(<challenge template name>)
 mod_api.insert_text("find_grimoire", "Find a Grimoire or gain " .. QUEST_HEALTH_GOAL .. " health")
 mod_api.insert_text("find_tome", "Find a Tome or land " .. QUEST_HEADSHOT_GOAL .. " headshots")
-mod_api.insert_text("tb_team_use_ultimates", "Kill a Monster or use " .. QUEST_TEAM_ULTIMATES_GOAL .. " Career")
+mod_api.insert_text("tb_team_use_ultimates", "Kill a Monster or use " .. QUEST_TEAM_ULTIMATES_GOAL .. " career abilities")
 
 -- Cooldown regeneration reward: 20% base, 30% with Virtue of the Grail (improved rewards)
 BuffTemplates.markus_questing_knight_passive_cooldown_reduction.buffs[1].multiplier = 0.2 -- 0.1
