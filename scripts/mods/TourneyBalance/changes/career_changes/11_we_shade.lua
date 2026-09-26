@@ -25,7 +25,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Exploit Weakness**
 		- Poison, Bleed, and Burn each individually increase damage dealt by 20%. Stacks additive, up to 60% against a target suffering from all three.
-		- All attacks apply bleed (WHC Flense, 1 stack max). Weapons keep their own poison, bleed or burn alongside it.
+		- All attacks apply bleed (WHC Flense, 3s + 3 stacks). Weapons keep their own poison, bleed or burn alongside it.
 
 		**Bloodfetcher**
 		- Changed ammo refund to 5% (from 1 ammo).
@@ -195,9 +195,9 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_increased_damag
 mod_api.insert_buff_template("tb_kerillian_shade_exploit_weakness_bleed_dot", {
 	apply_buff_func = "start_dot_damage",
 	damage_profile = "bleed",
-	duration = 1,
+	duration = 3,
 	hit_zone = "neck",
-	max_stacks = 1,
+	max_stacks = 3,
 	refresh_durations = true,
 	time_between_dot_damages = 0.75,
 	update_func = "apply_dot_damage",
@@ -248,7 +248,7 @@ mod_api.update_talent("we_shade", 2, 2, {
 		"tb_kerillian_shade_exploit_weakness_dots",
 	},
 })
-mod_api.insert_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy_desc", "Increases damage by 20.0% for each type of negative status effect (poison, bleed, burn) afflicting the enemy. All attacks apply bleed.")
+mod_api.insert_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy_desc", "Increases damage by 20.0% for each type of status effect (poison, bleed, burn) afflicting the enemy. All attacks apply bleed.")
 
 --[[
 	Bloodfletcher
