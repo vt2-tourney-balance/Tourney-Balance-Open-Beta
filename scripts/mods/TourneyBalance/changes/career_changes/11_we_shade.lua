@@ -25,7 +25,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Exploit Weakness**
 		- Poison, Bleed, and Burn each individually increase damage dealt by 20%. Stacks additive, up to 60% against a target suffering from all three.
-		- All attacks apply bleed (WHC Flense, 1 stack max) and poison (Hagbane, 1 stack max). Weapons keep their own poison, bleed or burn alongside these.
+		- All attacks apply bleed (WHC Flense, 1 stack max). Weapons keep their own poison, bleed or burn alongside it.
 
 		**Bloodfetcher**
 		- Changed ammo refund to 5% (from 1 ammo).
@@ -191,9 +191,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_shade_increased_damag
 		"kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy",
 	},
 })
--- Every hit applies this talent's own copies of the Flense bleed (weapon_bleed_dot_whc) and the Hagbane poison
--- (arrow_poison_dot), alongside the weapon's own dot. The talent is server-buffered in vanilla, and clients relay
--- their hits to the server (buff_on_attack), so the proc sees every hit exactly once there
+-- Every hit applies Flense bleed (weapon_bleed_dot_whc)
 mod_api.insert_buff_template("tb_kerillian_shade_exploit_weakness_bleed_dot", {
 	apply_buff_func = "start_dot_damage",
 	damage_profile = "bleed",
@@ -206,19 +204,6 @@ mod_api.insert_buff_template("tb_kerillian_shade_exploit_weakness_bleed_dot", {
 	update_start_delay = 0.75,
 	perks = {
 		"bleeding",
-	},
-})
-mod_api.insert_buff_template("tb_kerillian_shade_exploit_weakness_poison_dot", {
-	apply_buff_func = "start_dot_damage",
-	damage_profile = "poison_direct",
-	duration = 1,
-	max_stacks = 1,
-	refresh_durations = true,
-	time_between_dot_damages = 0.6,
-	update_func = "apply_dot_damage",
-	update_start_delay = 0.6,
-	perks = {
-		"poisoned",
 	},
 })
 local tb_exploit_weakness_dot_params = {}
@@ -253,7 +238,6 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_shade_exploit_weak
 	event = "on_hit",
 	dots_to_add = {
 		"tb_kerillian_shade_exploit_weakness_bleed_dot",
-		"tb_kerillian_shade_exploit_weakness_poison_dot",
 	},
 })
 mod_api.update_talent("we_shade", 2, 2, {
@@ -264,7 +248,7 @@ mod_api.update_talent("we_shade", 2, 2, {
 		"tb_kerillian_shade_exploit_weakness_dots",
 	},
 })
-mod_api.insert_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy_desc", "Increases damage by 20.0% for each type of negative status effect (poison, bleed, burn) afflicting the enemy. All attacks apply bleed and poison.")
+mod_api.insert_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy_desc", "Increases damage by 20.0% for each type of negative status effect (poison, bleed, burn) afflicting the enemy. All attacks apply bleed.")
 
 --[[
 	Bloodfletcher
