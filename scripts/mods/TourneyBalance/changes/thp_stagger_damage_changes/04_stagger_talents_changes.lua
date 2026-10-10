@@ -26,7 +26,7 @@ local stagger_types = require("scripts/utils/stagger_types")
 		- Melee hits apply 1 stagger count for 2s, up to 2 stacks.
 		- Stagger counts from Mainstay only benefit players with Mainstay.
 		- Stagger count can not be applied by pushes or shield bash splash hits.
-		- Stagger count can not be applied to bosses/lords.
+		- Stagger count can only be applied to elites (not bosses/lords).
 
 		**Enhanced Power**
 		- Increased power to 10% (from 7.5%).
@@ -118,7 +118,7 @@ mod_api.insert_buff_template("tb_linesman_unbalance", {
 	perks = { buff_perks.linesman_stagger_damage }
 })
 -- Mainstay stagger marks
--- Only visible to mainstay players, excludes bosses/lords.
+-- Only visible to mainstay players, only applied to elites (excludes bosses/lords).
 mod_api.insert_buff_template("tb_mainstay_stagger_mark_buff", {
 	refresh_durations = true,
 	name = "mainstay_stagger_mark_buff",
@@ -157,7 +157,7 @@ mainstay_stagger_talent_text = "\n\nDeal 40% more melee damage to staggered enem
 mod_api.insert_text("tb_finesse_unbalance_desc",
 "Melee headshots inflict 40% bonus damage. Does not stack with damage bonus from stagger effects." .. base_stagger_talent_text)
 mod_api.insert_text("tb_linesman_unbalance_desc",
-"Melee hits apply 1 count for 2 seconds only accounted by Mainstay. Excludes Lords and Bosses." .. mainstay_stagger_talent_text)
+"Melee hits on elites apply 1 count for 2 seconds only accounted by Mainstay." .. mainstay_stagger_talent_text)
 mod_api.insert_text("tb_power_level_unbalance_desc",
 "Increases total Power Level by 10%. This is calculated before other buffs are applied." .. base_stagger_talent_text)
 mod_api.insert_text("tb_tank_unbalance_desc",

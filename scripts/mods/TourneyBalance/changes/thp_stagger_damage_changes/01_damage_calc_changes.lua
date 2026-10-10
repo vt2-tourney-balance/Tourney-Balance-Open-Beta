@@ -101,10 +101,10 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 		if is_direct_hit and is_center_hit and is_melee_hit and buff_extension and buff_extension:has_buff_perk("linesman_stagger_damage") then
 			local target_buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
 			local mainstay_target_breed = Unit.get_data(target_unit, "breed")
-			-- Mainstay stagger counts are not applied to bosses/lords
-			local is_boss_or_lord = mainstay_target_breed and (mainstay_target_breed.boss or mainstay_target_breed.lord_damage_reduction)
+			-- Mainstay stagger counts are only applied to elites (and training dummies).
+			local is_elite = mainstay_target_breed and mainstay_target_breed.elite
 
-			if target_buff_extension and not is_boss_or_lord then
+			if target_buff_extension and (is_elite or Unit.get_data(target_unit, "is_dummy")) then
 				target_buff_extension:add_buff("tb_mainstay_stagger_mark_buff")
 			end
 		end

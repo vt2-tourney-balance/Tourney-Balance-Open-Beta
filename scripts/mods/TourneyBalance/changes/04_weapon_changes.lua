@@ -48,7 +48,7 @@ mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_soulste
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/crossbows")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_pistol")
 --
---mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_throwing_axes")
+mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_throwing_axes")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_trollhammer")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/es_manbow")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/we_hagbane")
