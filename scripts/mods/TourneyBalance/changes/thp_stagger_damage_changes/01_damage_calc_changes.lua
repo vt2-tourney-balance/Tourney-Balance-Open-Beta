@@ -1,5 +1,4 @@
 local mod = get_mod("TourneyBalance")
-local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 local is_within_attack_target_cap = require("scripts/mods/TourneyBalance/_api/shared_utils").is_within_attack_target_cap
 
 -- Fixes the cannons crashing the game in "Return of the Reik"
@@ -107,25 +106,6 @@ mod:hook_origin(DamageUtils, "server_apply_hit", function (t, attacker_unit, tar
 
 			if target_buff_extension and not is_boss_or_lord then
 				target_buff_extension:add_buff("tb_mainstay_stagger_mark_buff")
-
-				--[[
-					Foot Knight: Have At Thee! / Inspiring Blow - Proc from Mainstay stagger count
-				]]
-				if mainstay_target_breed and mainstay_target_breed.elite then
-					local attacker_talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
-
-					if attacker_talent_extension then
-						if attacker_talent_extension:has_talent("markus_knight_power_level_on_stagger_elite", "empire_soldier", true) then
-							mod_api.add_buff(attacker_unit, "markus_knight_power_level_on_stagger_elite_buff")
-						end
-
-						if attacker_talent_extension:has_talent("markus_knight_cooldown_on_stagger_elite", "empire_soldier", true) then
-							-- Self only, matching the regular on_stagger proc (career_changes/03_es_knight.lua);
-							-- separate/weaker buff than that one since Mainstay procs far more often.
-							mod_api.add_buff(attacker_unit, "tb_markus_knight_cooldown_buff_mainstay")
-						end
-					end
-				end
 			end
 		end
 	elseif shield_breaking_hit then
@@ -466,10 +446,9 @@ local function do_damage_calculation(attacker_unit, damage_source, original_powe
 	return damage, heavy_armor_damage
 end
 
--- Shade's Murderous Prowess and Ruthless Precision caps: the first 2 enemies an attack hits, 1 per hand on dual
--- weapons (shared_utils.is_within_attack_target_cap)
+-- Shade's Murderous Prowess cap: the first 2 enemies an attack hits, 1 per hand on dual weapons
+-- (shared_utils.is_within_attack_target_cap)
 local MURDEROUS_PROWESS_MAX_TARGETS = 2
-local RUTHLESS_PRECISION_MAX_TARGETS = 2
 
 mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target_unit, attacker_unit, hit_zone_name, original_power_level, boost_curve, boost_damage_multiplier, is_critical_strike, damage_profile, target_index, backstab_multiplier, damage_source)
 	local difficulty_settings = Managers.state.difficulty:get_difficulty_settings()
@@ -521,15 +500,6 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 		has_power_boost = buff_extension:has_buff_perk("potion_armor_penetration")
 		has_crit_head_shot_killing_blow_perk = buff_extension:has_buff_perk("crit_headshot_killing_blow")
 		has_crit_backstab_killing_blow_perk = buff_extension:has_buff_perk("crit_backstab_killing_blow")
-
-		local is_melee = damage_profile and (damage_profile.charge_value == "light_attack" or damage_profile.charge_value == "heavy_attack")
-
-		-- Shade's Ruthless Precision: melee headshots on the first RUTHLESS_PRECISION_MAX_TARGETS enemies an attack hits
-		-- count as backstabs (_check_backstab doesn't know the hit zone). Sound and on_backstab procs: 11_we_shade.lua
-		if breed and (not backstab_multiplier or backstab_multiplier <= 1) and is_melee and buff_extension:has_buff_perk("tb_headshot_counts_as_backstab") and DamageUtils.get_breed_damage_multiplier_type(breed, hit_zone_name) == "headshot"
-			and is_within_attack_target_cap(target_index, RUTHLESS_PRECISION_MAX_TARGETS, damage_source, damage_profile) then
-			backstab_multiplier = buff_extension:apply_buffs_to_value(1, "backstab_multiplier")
-		end
 
 		-- Shade's Murderous Prowess (the only source of this perk): the charged crit backstab instakill only applies to the
 		-- first MURDEROUS_PROWESS_MAX_TARGETS enemies an attack hits
