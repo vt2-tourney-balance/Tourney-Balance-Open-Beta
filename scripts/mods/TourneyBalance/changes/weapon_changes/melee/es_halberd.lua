@@ -141,9 +141,8 @@ NewDamageProfileTemplates.tb_halberd_heavy_slash = {
 	},
 	targets = {
 		{
-			boost_curve_coefficient_headshot = 1,
-			headshot_boost = 0.825,
-			headshot_boost_boss = 0.25,
+			boost_curve_coefficient_headshot = 1.75,
+			headshot_boost_boss = 0.154,
 			boost_curve_type = "linesman_curve",
 			attack_template = "heavy_slashing_linesman",
 			power_distribution = {
@@ -169,9 +168,8 @@ NewDamageProfileTemplates.tb_halberd_heavy_slash = {
 		},
 		{
 			boost_curve_type = "linesman_curve",
-			boost_curve_coefficient_headshot = 1,
-			headshot_boost = 0.825,
-			headshot_boost_boss = 0.25,
+			boost_curve_coefficient_headshot = 1.75,
+			headshot_boost_boss = 0.154,
 			attack_template = "heavy_slashing_linesman",
 			power_distribution = {
 				attack = 0.35,
@@ -180,8 +178,8 @@ NewDamageProfileTemplates.tb_halberd_heavy_slash = {
 		},
 		{
 			boost_curve_type = "linesman_curve",
-			headshot_boost = 0.825,
-			headshot_boost_boss = 0.25,
+			boost_curve_coefficient_headshot = 1.75,
+			headshot_boost_boss = 0.154,
 			attack_template = "slashing_linesman",
 			power_distribution = {
 				attack = 0.25,
@@ -190,8 +188,8 @@ NewDamageProfileTemplates.tb_halberd_heavy_slash = {
 		},
 		{
 			boost_curve_type = "linesman_curve",
-			headshot_boost = 0.825,
-			headshot_boost_boss = 0.25,
+			boost_curve_coefficient_headshot = 1.75,
+			headshot_boost_boss = 0.154,
 			attack_template = "slashing_linesman",
 			power_distribution = {
 				attack = 0.15,
@@ -252,9 +250,8 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = {
 	},
 	targets = {
 		{
-			boost_curve_coefficient_headshot = 2,
-			headshot_boost = 1.0,
-			headshot_boost_boss = 0.25,
+			boost_curve_coefficient_headshot = 2.8,
+			headshot_boost_boss = 0.175,
 			boost_curve_type = "ninja_curve",
 			boost_curve_coefficient = 0.75,
 			attack_template = "heavy_stab_smiter",
