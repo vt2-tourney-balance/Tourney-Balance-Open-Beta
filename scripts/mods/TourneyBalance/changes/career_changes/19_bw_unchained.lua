@@ -1,7 +1,6 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 local reduce_cooldown_percent_on_owner = require("scripts/mods/TourneyBalance/_api/shared_utils").reduce_cooldown_percent_on_owner
-local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 
 --[[
 	$BEGIN_TB
@@ -29,11 +28,8 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Reduced damage reduction against burning enemies to 10% (from 30%).
 		
 		**Abandon (reworked)**
-		- Overcharge explosion is near instant (0.1s), deals no damage to Sienna and keeps her overcharge. She then enters Aqshy's Blaze for 2.5 seconds.
-		- Converts 5% of maximum health into 10% ult cooldown 4 times per second (lethal; only full ticks of health actually lost grant cooldown, so none while invulnerable, e.g. inside Warrior Priest's bubble). Replaces the passive's lethal drain.
-		- Weapons can be swapped during the explosion.
-		- Can't attack with the ranged weapon for the duration.
-		- Using Living Bomb immediately ends Aqshy's Blaze.
+		- Overcharge explosion is now instant and always deals a fixed 50% of maximum health as damage to Sienna (lethal), then fully resets her ult cooldown.
+		- No more staff lockout or health drain over time. Replaces the passive's lethal drain.
 
 		**Natural Talent**
 		- Increased overcharge reduction to 20% (from 10%).
@@ -56,13 +52,13 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 	Abandon (passive, vanilla talent effect)
 ]]
 -- Vanilla Abandon as part of the passive: at high overcharge, drains 5% max health per 0.25s into 10% ult cooldown
--- (lethal). Overcharging explodes as in vanilla. Replaced by the reworked Abandon talent (Aqshy's Blaze state).
-local AQSHYS_BLAZE_TALENT = "sienna_unchained_health_to_ult" -- row 5 col 2, vanilla Abandon's slot
+-- (lethal). Overcharging explodes as in vanilla. Replaced by the reworked Abandon talent (instant explosion).
+local ABANDON_TALENT = "sienna_unchained_health_to_ult" -- row 5 col 2, vanilla Abandon's slot
 
-local function tb_has_aqshys_blaze(unit)
+local function tb_has_abandon(unit)
 	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
 
-	return talent_extension and talent_extension:has_talent(AQSHYS_BLAZE_TALENT) or false
+	return talent_extension and talent_extension:has_talent(ABANDON_TALENT) or false
 end
 
 local ABANDON_TICK_INTERVAL = 0.25
@@ -70,7 +66,7 @@ local ABANDON_MAX_HEALTH_COST = 0.05 -- of max health, per tick
 local ABANDON_COOLDOWN = 0.1 -- of ult, per tick
 
 -- Vanilla activate_buff_stacks_based_on_overcharge_chunks (owner side), but the drain stack is synced to the server,
--- where health is. Aqshy's Blaze taken: no lethal drain, drop a stack that was already up
+-- where health is. Abandon taken: no lethal drain, drop a stack that was already up
 mod_api.insert_buff_function("tb_abandon_activate_stacks", function (unit, buff, params)
 	local owner_player = Managers.player:owner(unit)
 
@@ -83,7 +79,7 @@ mod_api.insert_buff_function("tb_abandon_activate_stacks", function (unit, buff,
 	local buff_to_add = template.buff_to_add
 	local num_chunks = 0
 
-	if not tb_has_aqshys_blaze(unit) then
+	if not tb_has_abandon(unit) then
 		local overcharge = ScriptUnit.extension(unit, "overcharge_system"):current_overcharge_status()
 
 		num_chunks = math.min(math.floor(overcharge / template.chunk_size), template.max_stacks)
@@ -154,128 +150,37 @@ mod_api.insert_career_passives("bw_3", {
 mod_api.insert_text("career_passive_desc_bw_3a", "50% damage taken transferred to Overcharge. When overcharging, Sienna drains 5% health for 10% cooldown reduction every 0.25 seconds.")
 
 --[[
-	Abandon: Aqshy's Blaze state
+	Abandon: instant explosion
 ]]
-local AQSHYS_BLAZE_BUFF = "tb_sienna_unchained_unchained_state"
-local AQSHYS_BLAZE_DURATION = 2.5
-local AQSHYS_BLAZE_TICKS_PER_SECOND = 4
-local AQSHYS_BLAZE_MAX_HEALTH_COST = 0.05 -- of max health, per tick
-local AQSHYS_BLAZE_COOLDOWN = 0.1 -- of ult, per tick
--- life_tap: no damage reduction or Blood Magic. wounded_dot: doesn't interrupt
-local AQSHYS_BLAZE_DAMAGE_SOURCE = "life_tap"
-local AQSHYS_BLAZE_DAMAGE_TYPE = "wounded_dot"
+local ABANDON_SELF_DAMAGE = 0.5 -- of max health, fixed (lethal)
 
--- Health on the server, cooldown on the owner
-mod_api.insert_buff_function("tb_aqshys_blaze_health_to_cooldown_tick", function (unit, buff, params)
-	if not Managers.state.network.is_server or not HEALTH_ALIVE[unit] then
-		return
-	end
-
-	local status_extension = ScriptUnit.has_extension(unit, "status_system")
-
-	if status_extension and status_extension:is_knocked_down() then
-		return
-	end
-
-	local health_extension = ScriptUnit.has_extension(unit, "health_system")
-
-	if not health_extension then
-		return
-	end
-
-	local cost = health_extension:get_max_health() * AQSHYS_BLAZE_MAX_HEALTH_COST
-	local cooldown = AQSHYS_BLAZE_COOLDOWN
-
-	-- Lethal, only full ticks of health actually lost give cooldown (none while invulnerable, e.g. Warrior Priest's bubble)
-	local health_before = health_extension:current_health()
-
-	DamageUtils.add_damage_network(unit, unit, cost, "full", AQSHYS_BLAZE_DAMAGE_TYPE, nil, Vector3(0, 0, 0), AQSHYS_BLAZE_DAMAGE_SOURCE, nil, unit, nil, nil, nil, nil, nil, nil, nil, nil, 1)
-
-	-- Damage and health are networkified (quarter steps)
-	if health_before - health_extension:current_health() >= DamageUtils.networkify_damage(cost) then
-		reduce_cooldown_percent_on_owner(unit, cooldown)
-	end
-end)
-
--- Ends on own ult (remove_on_proc)
-mod_api.insert_proc_function("tb_aqshys_blaze_end_on_own_ability", function (owner_unit, buff, params)
-	return params[1] == owner_unit
-end)
-
--- no_overcharge_explosion: further overcharge vents
-mod_api.insert_talent_buff_template("bright_wizard", AQSHYS_BLAZE_BUFF, {
-	icon = "sienna_unchained_passive",
-	duration = AQSHYS_BLAZE_DURATION,
-	debuff = true,
-	max_stacks = 1,
-	update_frequency = 1 / AQSHYS_BLAZE_TICKS_PER_SECOND,
-	update_func = "tb_aqshys_blaze_health_to_cooldown_tick",
-	event = "on_ability_activated",
-	buff_func = "tb_aqshys_blaze_end_on_own_ability",
-	remove_on_proc = true,
-	perks = {
-		buff_perks.no_overcharge_explosion,
-	},
-})
-mod_api.insert_text(AQSHYS_BLAZE_BUFF, "Aqshy's Blaze")
--- Takes over vanilla Abandon's talent slot; its effect lives in the state buff above and the explode hook below
+-- Takes over vanilla Abandon's talent slot; its effect lives in the explode hook below
 mod_api.update_talent("bw_unchained", 5, 2, {
 	description_values = {},
 	buffs = {},
 })
-mod_api.insert_text(AQSHYS_BLAZE_TALENT, "Abandon")
-mod_api.insert_text("sienna_unchained_health_to_ult_desc", "When overcharging, Sienna explodes immediately and can continue combat without her staff until overcharging ends. Overcharging ends after 2.5 seconds.")
+mod_api.insert_text(ABANDON_TALENT, "Abandon")
+mod_api.insert_text("sienna_unchained_health_to_ult_desc", "When overcharging, Sienna explodes immediately. She loses 50% of her health, but resets her ultimate.")
 
--- Overcharge explosion with Aqshy's Blaze: vanilla state, shortened, then enters Aqshy's Blaze instead of damaging her.
+-- Overcharge explosion with Abandon: instant, fixed self damage (vanilla life_tap damage), then ult back.
 -- Without the talent the explosion is vanilla.
-local AQSHYS_BLAZE_EXPLOSION_TIME = 0.1 -- 3
-
-local function tb_keep_overcharge() end
-
 mod:hook_safe(PlayerCharacterStateOverchargeExploding, "on_enter", function (self, unit, input, dt, context, t)
 	local career_extension = ScriptUnit.has_extension(unit, "career_system")
 
-	self.tb_aqshys_blaze = career_extension and career_extension:career_name() == "bw_unchained" and tb_has_aqshys_blaze(unit)
+	self.tb_abandon = career_extension and career_extension:career_name() == "bw_unchained" and tb_has_abandon(unit)
 
-	if self.tb_aqshys_blaze then
-		self.explosion_time = t + AQSHYS_BLAZE_EXPLOSION_TIME
-	end
-end)
-
--- Weapon swapping (other weapon actions are blocked in start_action below)
-mod:hook(PlayerCharacterStateOverchargeExploding, "update", function (func, self, unit, input, dt, context, t)
-	func(self, unit, input, dt, context, t)
-
-	if self.tb_aqshys_blaze and not self.csm.state_next then
-		CharacterStateHelper.update_weapon_actions(t, unit, self.input_extension, self.inventory_extension, self.health_extension)
+	if self.tb_abandon then
+		self.explosion_time = t
+		self.percent_health_lost = ABANDON_SELF_DAMAGE
 	end
 end)
 
 mod:hook(PlayerCharacterStateOverchargeExploding, "explode", function (func, self)
-	if not self.tb_aqshys_blaze then
-		return func(self)
-	end
-
-	-- inside_inn skips the self damage, a no-op reset keeps overcharge
-	local unit = self.unit
-	local overcharge_extension = ScriptUnit.extension(unit, "overcharge_system")
-	local inside_inn = self.inside_inn
-
-	self.inside_inn = true
-	overcharge_extension.reset = tb_keep_overcharge
-
 	func(self)
 
-	self.inside_inn = inside_inn
-	overcharge_extension.reset = nil
-	overcharge_extension.is_exploding = false
-
-	local buff_system = Managers.state.entity:system("buff_system")
-
-	buff_system:add_buff_synced(unit, AQSHYS_BLAZE_BUFF, BuffSyncType.LocalAndServer)
-
-	-- Just below max, like a vent
-	overcharge_extension:remove_charge(1)
+	if self.tb_abandon then
+		reduce_cooldown_percent_on_owner(self.unit, 1)
+	end
 end)
 
 -- No friendly fire from Unchained's overcharge explosion or Living Bomb.
@@ -305,33 +210,6 @@ mod:add_create_explosion_wrapper(function (func, world, attacker_unit, impact_po
 	end
 
 	return func(world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, ...)
-end)
-
--- Only wielding is allowed while overcharge is exploding, and on the ranged weapon during Aqshy's Blaze
-local function tb_aqshys_blaze_weapon_locked(unit)
-	local status_extension = ScriptUnit.has_extension(unit, "status_system")
-
-	if status_extension and status_extension:is_overcharge_exploding() then
-		return true
-	end
-
-	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
-
-	if not buff_extension or not buff_extension:has_buff_type(AQSHYS_BLAZE_BUFF) then
-		return false
-	end
-
-	local inventory_extension = ScriptUnit.has_extension(unit, "inventory_system")
-
-	return inventory_extension and inventory_extension:get_wielded_slot_name() == "slot_ranged"
-end
-
-mod:hook(WeaponUnitExtension, "start_action", function (func, self, action_name, ...)
-	if action_name and action_name ~= "action_wield" and tb_aqshys_blaze_weapon_locked(self.owner_unit) then
-		return
-	end
-
-	return func(self, action_name, ...)
 end)
 
 --[[
