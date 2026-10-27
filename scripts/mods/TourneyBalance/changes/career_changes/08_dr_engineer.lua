@@ -10,10 +10,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Dodge count increased to 3 (from 1).
 		- The Crank Gun now always starts at full rotation speed. Previously this required Linked Compression Chamber.
 		- Shots fired while aiming with right click are now pinpoint accurate and increased damage fall off range to 30-50 (from 10-20).
-
-		### Passives
-		**Build Pressure**
-		- Stacks now expire one at a time, 12s apart, instead of all at once. Pumping again resets the timers.
+		- Increased range where bullets dissappear to 100 (from 30)
 
 		### Talents
 		**Ingenious Ordnance**
@@ -24,6 +21,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Bombadier**
 		- Bardin can carry 6 bombs (from 3) and starts the mission with 6 random bombs (frag or fire).
+
+		**Full Head of Steam**
+		- Build Pressure stacks now expire one at a time, 12s apart, instead of all at once. Pumping again resets the timers.
 
 		**Superior Gaskets**
 		- Increased the time until a stack is lost to 3s (from 1.5s).
@@ -145,7 +145,9 @@ end
 NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT] = make_aimed_damage_profile("engineer_ability_shot")
 NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE] = make_aimed_damage_profile("engineer_ability_shot_armor_pierce")
 
-local AIMED_SUB_ACTIONS = { "aimed_fire", "aimed_base_fire", "aimed_armor_pierce_fire" }
+-- Hitscan range of a shot; the crank gun has none set and falls back to ActionRangedBase's 30m, which made aimed shots vanish.
+local TB_ENGINEER_AIMED_RANGE = 100
+local AIMED_SUB_ACTIONS ={ "aimed_fire", "aimed_base_fire", "aimed_armor_pierce_fire" }
 
 for _, weapon_name in ipairs({ "bardin_engineer_career_skill_weapon", "bardin_engineer_career_skill_weapon_special" }) do
 	local actions = Weapons[weapon_name].actions
@@ -154,11 +156,13 @@ for _, weapon_name in ipairs({ "bardin_engineer_career_skill_weapon", "bardin_en
 	local aimed_base_fire = table.shallow_copy(action_one.base_fire)
 	aimed_base_fire.damage_profile = TB_ENGINEER_AIMED_SHOT
 	aimed_base_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
+	aimed_base_fire.range = TB_ENGINEER_AIMED_RANGE
 	action_one.aimed_base_fire = aimed_base_fire
 
 	local aimed_armor_pierce_fire = table.shallow_copy(action_one.armor_pierce_fire)
 	aimed_armor_pierce_fire.damage_profile = TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE
 	aimed_armor_pierce_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
+	aimed_armor_pierce_fire.range = TB_ENGINEER_AIMED_RANGE
 	action_one.aimed_armor_pierce_fire = aimed_armor_pierce_fire
 
 	local aimed_fire = table.shallow_copy(action_one.fire)
@@ -190,23 +194,23 @@ end
 
 --[[
 
-	Passive
+	Talents
 
 ]]
 --[[
-	Build Pressure
+	Full Head of Steam
 ]]
--- All stacks share one timer (refresh_durations), so they used to expire together. Whenever the stacks are refreshed
--- each gets its own end time instead, 12s apart, so the newest stack expires first and the oldest lasts longest.
--- Superior Gaskets handles its own durations (no duration here), so this never runs for it.
+-- Stacks only lost 1 at a time
+local TB_FULL_HEAD_OF_STEAM_TALENT = "bardin_engineer_power_on_max_pump"
 local TB_BUILD_PRESSURE_BUFF = "bardin_engineer_pump_buff"
 local TB_BUILD_PRESSURE_STACK_DURATION = 12
 
-mod_api.insert_buff_function("tb_build_pressure_stagger_stacks", function (unit, buff, params, world)
+mod_api.insert_buff_function("tb_full_head_of_steam_stagger_stacks", function (unit, buff, params, world)
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
 	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
 	local stacks = buff_extension and buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF)
 
-	if not stacks then
+	if not stacks or not talent_extension or not talent_extension:has_talent(TB_FULL_HEAD_OF_STEAM_TALENT) then
 		return
 	end
 
@@ -223,14 +227,13 @@ mod_api.insert_buff_function("tb_build_pressure_stagger_stacks", function (unit,
 	end
 end)
 mod_api.update_talent_buff_template("dwarf_ranger", TB_BUILD_PRESSURE_BUFF, {
-	reapply_buff_func = "tb_build_pressure_stagger_stacks",
+	reapply_buff_func = "tb_full_head_of_steam_stagger_stacks",
 })
+mod_api.update_talent("dr_engineer", 4, 1, {
+	description_values = {},
+})
+mod_api.insert_text("bardin_engineer_power_on_max_pump_desc_b", "While at 5 stacks of Pressure, Bardin gains 15% Attack Speed. Build Pressure stacks now expire one at a time.")
 
---[[
-
-	Talents
-
-]]
 --[[
 	Linked Compression Chamber
 ]]
