@@ -20,7 +20,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Additionally non-explosive ranged attacks deal no friendly fire.
 
 		**Bombadier**
-		- Bardin can carry 6 bombs (from 3) and starts the mission with 6 random bombs (frag or fire).
+		- Bardin can carry 4 bombs (from 3) and starts the mission with 6 random bombs (frag or fire).
 
 		**Full Head of Steam**
 		- Build Pressure stacks now expire one at a time, 12s apart, instead of all at once. Pumping again resets the timers.
@@ -29,10 +29,10 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Increased the time until a stack is lost to 3s (from 1.5s).
 
 		**Ablative Armor**
-		- A damage reduction stack is no longer lost immediately, but 5s after taking the hit that triggers losing it.
+		- A damage reduction stack is no longer lost immediately, but 2s after taking the hit that triggers losing it.
 
 		**Combined Arms**
-		- The Ranged Power buff also makes non-explosive ranged attacks consume no ammo for its duration (10s).
+		- The Ranged Power buff also refills the ammo used by non-explosive ranged attacks into the reserve for its duration (10s).
 
 		**Piston Power**
 		- Losing a stamina shield reduces the cooldown by 1s per shield.
@@ -332,7 +332,7 @@ mod_api.insert_text("bardin_engineer_ranged_pierce_desc_2", "Ranged attacks pene
 -- Same flow as vanilla's PassiveAbilityEngineer._add_5_2_bombs (server only, once per mission via the party status,
 -- topped up every time in the keep), but with a bigger bomb capacity and random bombs.
 local TB_BOMBADIER_TALENT = "bardin_engineer_upgraded_grenades"
-local TB_BOMBADIER_BOMBS = 6 -- 3
+local TB_BOMBADIER_BOMBS = 4 -- 3
 local TB_BOMBADIER_ITEMS = { "grenade_frag_01", "grenade_fire_01" }
 local TB_BOMBADIER_GIVEN_FLAG = "_engineer_upgraded_grenades_added"
 -- The equipped bomb doesn't count towards the additional slots.
@@ -388,7 +388,7 @@ CareerConstants.dr_engineer.talent_4_3_stack_duration = 3 -- 1.5
 -- Vanilla removes a stack straight away on damage taken and restarts the 5s regain timer. Now the loss is queued on the
 -- buff and applied after the delay, which is when the regain timer restarts. The buff only exists on the server, which
 -- also owns the server controlled stacks, so a short update tick works through the queue and the regain timer.
-local TB_ABLATIVE_ARMOR_LOSS_DELAY = 5
+local TB_ABLATIVE_ARMOR_LOSS_DELAY = 2
 local TB_ABLATIVE_ARMOR_REGAIN_INTERVAL = 5 -- vanilla update_frequency
 local TB_ABLATIVE_ARMOR_TICK = 0.25
 
@@ -443,8 +443,9 @@ mod_api.insert_text("bardin_engineer_stacking_damage_reduction_desc", "Bardin ga
 --[[
 	Combined Arms
 ]]
--- Non-explosive means the shot isn't an explosive projectile (impact_data.aoe), e.g. the Trollhammer and the Drakefire
--- Pistols' explosive shots keep using ammo. Bombs aren't ammo based.
+-- Shots still empty the clip, but whatever they used is put straight back into the reserve. Non-explosive means the
+-- shot isn't an explosive projectile (impact_data.aoe), e.g. the Trollhammer and the Drakefire Pistols' explosive
+-- shots don't get the refund. Bombs aren't ammo based.
 local TB_COMBINED_ARMS_BUFF = "bardin_engineer_melee_power_range_power_buff"
 
 local function tb_is_explosive_action(weapon_unit)
@@ -455,20 +456,30 @@ local function tb_is_explosive_action(weapon_unit)
 	return impact_data and impact_data.aoe ~= nil
 end
 
-mod:hook(GenericAmmoUserExtension, "use_ammo", function (func, self, ammo_used, ...)
+mod:hook(GenericAmmoUserExtension, "use_ammo", function (func, self, ...)
+	local shots_fired_before = self._shots_fired
+
+	func(self, ...)
+
 	local buff_extension = self.owner_buff_extension
+	local ammo_used = self._shots_fired - shots_fired_before
 
-	if self.slot_name == "slot_ranged" and buff_extension and buff_extension:has_buff_type(TB_COMBINED_ARMS_BUFF) and not tb_is_explosive_action(self.unit) then
-		ammo_used = 0
+	if ammo_used > 0 and self.slot_name == "slot_ranged" and buff_extension and buff_extension:has_buff_type(TB_COMBINED_ARMS_BUFF) and not tb_is_explosive_action(self.unit) then
+		-- Same as add_ammo_to_reserve, without its "gained ammo from no ammo" proc and rpc.
+		if self._ammo_immediately_available then
+			self._current_ammo = math.min(self._max_ammo, self._current_ammo + ammo_used)
+		else
+			self._available_ammo = math.min(self._max_ammo - self:ammo_count(), self._available_ammo + ammo_used)
+		end
+
+		self:_update_anim_ammo()
 	end
-
-	return func(self, ammo_used, ...)
 end)
 
 mod_api.update_talent("dr_engineer", 5, 2, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power for 10 seconds, during which non-explosive ranged attacks consume no ammo.")
+mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power and non-explosive Ranged Attacks replenish ammo for 10 seconds.")
 
 --[[
 	Piston Power
