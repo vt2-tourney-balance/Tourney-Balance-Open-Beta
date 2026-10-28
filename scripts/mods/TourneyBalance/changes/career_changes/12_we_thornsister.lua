@@ -6,11 +6,11 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		---
 		## Sister of the Thorn
 		### Career Ability
-		- Increased ultimate cooldown to 70s (from 40s).
+		- Increased ultimate cooldown to 60s (from 40s).
 
 		### Passives
 		**A Cluster of Radiants**
-		- Increased passive ultimate cooldown to 70s (from 60s).
+		- Increased passive ultimate cooldown to 80s (from 60s).
 
 		**A Sustenance of Leechlings**
 		- Decreased temp health siphon from team to 10% (from 100%).
@@ -31,7 +31,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Radiant Inheritance**
 		- Can be activated with Thornwake (regular ult).
-		- Recasting refreshes the and extends the duration to 20s.
+		- Increased duration to 15s (from 10s). Recasting refreshes the duration.
 		- Allies now also see a depleting-icon timer for the buff (previously a static icon).
 
 		**Repel**
@@ -51,7 +51,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Ultimate
 
 ]]
-mod_api.update_career_ability_cooldown("we_thornsister", 70) -- 40
+mod_api.update_career_ability_cooldown("we_thornsister", 60) -- 40
 
 
 --[[
@@ -60,8 +60,19 @@ mod_api.update_career_ability_cooldown("we_thornsister", 70) -- 40
 --[[
 	A Cluster of Radiants
 ]]
-PassiveAbilitySettings.we_thornsister.passive_ability_classes[1].init_data.cooldown = 70 -- 60
-mod_api.insert_text("career_passive_desc_we_thornsister", "Kerillian is granted Radiance (a free use of her career skill) every 70 seconds.")
+PassiveAbilitySettings.we_thornsister.passive_ability_classes[1].init_data.cooldown = 80 -- 60
+mod_api.insert_text("career_passive_desc_we_thornsister", "Kerillian is granted Radiance (a free use of her career skill) every 80 seconds.")
+
+-- Start with every Radiance charge ready (2 with Incandescence) instead of on cooldown.
+mod:hook_safe(PassiveAbilityThornsister, "extensions_ready", function (self)
+	local career_extension = self._career_extension
+
+	if career_extension then
+		local _, max_uses = career_extension:get_extra_ability_uses()
+
+		career_extension:modify_extra_ability_uses(max_uses)
+	end
+end)
 
 --[[
 	A Sustenance of Leechlings
@@ -179,9 +190,6 @@ mod_api.insert_text("kerillian_thorn_sister_faster_passive_desc", "Reduce the co
 --[[
 	Radiant Inheritance
 ]]
--- longer duration for radiant inheritance
-local radiant_thorn_stack_count = {}
-
 -- Give allies a depleting-icon timer matching Kerillian's own
 local radiant_thorn_ally_timer_ids = setmetatable({}, { __mode = "k" })
 mod_api.insert_talent_buff_template("wood_elf", "tb_radiant_inheritance_ally_timer", {
@@ -203,14 +211,6 @@ local function tb_radiant_thorn_refresh_ally_timer(ally_unit, remaining_duration
 	end
 end
 local function tb_radiant_thorn_duration_modifier(unit, sub_buff_template, duration, buff_extension, params)
-	local is_active = buff_extension:has_buff_type("kerillian_thorn_sister_team_buff_aura")
-	local current_count = radiant_thorn_stack_count[unit] or 0
-	local new_count = math.min(is_active and current_count + 1 or 1, 2)
-
-	radiant_thorn_stack_count[unit] = new_count
-
-	local final_duration = duration * new_count
-
 	-- Push the freshly (re)cast duration to every ally currently in range
 	if Managers.state.network.is_server then
 		local side = Managers.state.side.side_by_unit[unit]
@@ -225,13 +225,13 @@ local function tb_radiant_thorn_duration_modifier(unit, sub_buff_template, durat
 				local ally_unit = player_and_bot_units[i]
 
 				if ally_unit ~= unit and HEALTH_ALIVE[ally_unit] and Vector3.distance_squared(caster_position, POSITION_LOOKUP[ally_unit]) < range_squared then
-					tb_radiant_thorn_refresh_ally_timer(ally_unit, final_duration)
+					tb_radiant_thorn_refresh_ally_timer(ally_unit, duration)
 				end
 			end
 		end
 	end
 
-	return final_duration
+	return duration
 end
 -- Piggybacks on the same per-tick range check the real aura buff already uses
 local tb_radiant_thorn_vanilla_activate_buff_on_distance = BuffFunctionTemplates.functions.activate_buff_on_distance
@@ -272,8 +272,8 @@ mod_api.insert_buff_function("tb_radiant_thorn_activate_buff_on_distance", funct
 	end
 end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buff_aura", {
-	duration = 10,
-	max_stacks = 2,
+	duration = 15, -- 10
+	max_stacks = 1,
 	refresh_durations = true,
 	duration_modifier_func = tb_radiant_thorn_duration_modifier,
 	update_func = "tb_radiant_thorn_activate_buff_on_distance",
@@ -282,7 +282,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buf
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_team_buff", {
 	event = "on_ability_cooldown_started",
 })
-mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 10 seconds. Duration can stack 2 times.")
+mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 15 seconds.")
 
 --[[
 	Repel

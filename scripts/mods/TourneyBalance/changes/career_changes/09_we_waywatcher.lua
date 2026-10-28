@@ -13,7 +13,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 
 		### Passives
 		**Amaranthe**
-		- Additionally regen 2 ammo every tick.
+		- Additionally regen 3% max ammo rounded up every tick.
 		- Heath regen no longer replaces temp health.
 
 		### Talents
@@ -203,7 +203,7 @@ end
 	Spirit Arrows
 	Rejuvenating Locus
 ]]
-mod_api.insert_text("career_passive_desc_we_3a_2", "Kerillian regenerates 3 health when below 50.0% health and 2 ammo every 10 seconds. This does not replace temp health.")
+mod_api.insert_text("career_passive_desc_we_3a_2", "Kerillian regenerates 3 health when below 50.0% health and 3% of max ammo every 10 seconds. This does not replace temp health.")
 mod_api.insert_text("kerillian_waywatcher_improved_regen_desc_2", "Increases Kerillian's health regenerated from Amaranthe by 50%%. Health regeneration caps at 75%%.")
 mod_api.insert_text("kerillian_waywatcher_passive_cooldown_restore_desc", "Amaranthe reduces the cooldown of Trueflight Volley by 10.0%%. No longer restores health.")
 mod_api.insert_buff_function("update_kerillian_waywatcher_regen", function (unit, buff, params)
@@ -237,7 +237,7 @@ mod_api.insert_buff_function("update_kerillian_waywatcher_regen", function (unit
 			local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
 
 			if ammo_extension then
-				local ammo_amount = 2
+				local ammo_amount = math.ceil(ammo_extension:max_ammo() * 0.03)
 				ammo_extension:add_ammo_to_reserve(ammo_amount)
 			end
 		end

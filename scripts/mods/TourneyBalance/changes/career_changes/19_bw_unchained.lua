@@ -160,7 +160,7 @@ mod_api.update_talent("bw_unchained", 5, 2, {
 	buffs = {},
 })
 mod_api.insert_text(ABANDON_TALENT, "Abandon")
-mod_api.insert_text("sienna_unchained_health_to_ult_desc", "When overcharging, Sienna explodes immediately. She loses 50% of her health, but resets her ultimate.")
+mod_api.insert_text("sienna_unchained_health_to_ult_desc", "When overcharging, Sienna explodes immediately, losing 50% of her health and resetting her ultimate.")
 
 -- Overcharge explosion with Abandon: instant, fixed self damage (vanilla life_tap damage), then ult back.
 -- Without the talent the explosion is vanilla.
