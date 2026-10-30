@@ -21,6 +21,8 @@ mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/17_bw_adept") -- 
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/18_bw_scholar") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/19_bw_unchained") -- ok
 mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/20_bw_necromancer") -- ok
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/20_bw_necromancer_charge")
+mod:dofile("scripts/mods/TourneyBalance/changes/career_changes/20_bw_necromancer_desummon")
 
 --[[
 	Timed Block Long

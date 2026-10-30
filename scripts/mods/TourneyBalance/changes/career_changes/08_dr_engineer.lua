@@ -12,21 +12,23 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Shots fired while aiming with right click are now pinpoint accurate and increased damage fall off range to 30-50 (from 10-20).
 		- Increased range where bullets dissappear to 100 (from 30)
 
+		### Passives
+		**Build Pressure**
+		- Stacks now expire one at a time, 12s apart, instead of all at once. Pumping again resets the timers.
+
 		### Talents
 		**Ingenious Ordnance**
 		- Reduced the bomb cooldown to 60s (from 80s).
+		- If Bardin's inventory is full, the bomb is dropped on the ground.
 
 		**Armour Piercing Slugs**
 		- Additionally non-explosive ranged attacks deal no friendly fire.
 
 		**Bombadier**
-		- Bardin can carry 4 bombs (from 3) and starts the mission with 6 random bombs (frag or fire).
-
-		**Full Head of Steam**
-		- Build Pressure stacks now expire one at a time, 12s apart, instead of all at once. Pumping again resets the timers.
+		- Bardin can carry 4 bombs (from 3) and starts the mission with 4 random bombs (frag or fire).
 
 		**Superior Gaskets**
-		- Increased the time until a stack is lost to 3s (from 1.5s).
+		- Increased the time until a stack is lost to 6s (from 1.5s).
 
 		**Ablative Armor**
 		- A damage reduction stack is no longer lost immediately, but 2s after taking the hit that triggers losing it.
@@ -35,11 +37,19 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- The Ranged Power buff also refills the ammo used by non-explosive ranged attacks into the reserve for its duration (10s).
 
 		**Piston Power**
-		- Losing a stamina shield reduces the cooldown by 1s per shield.
+		- The heavy attack also has infinite cleave.
+		- Losing a stamina shield from blocking an attack reduces the cooldown by 1s per shield.
+
+		**Gromril Plated Shots**
+		- The armor piercing shots now deal the same damage as a vanilla Handgun shot. This changes the following numbers.
+		- Base attack power is 100% close up and 80% at range (from 48% and 36%), impact power 50% (from 30% close up and 25% at range).
+		- Close up damage multiplier against armoured 1.2x, resistant 1.5x, berserkers 0.75x and super armour 0.5x (from 1x, 1x, 0.5x and 0.4x).
+		- At range, berserkers take 0.75x (from 0.5x) and super armour 0.25x (from 0.4x).
+		- Cleave distribution is 0.3 (from 0.25), and headshots and critical hits use the Handgun's numbers too.
 
 		**Linked Compression Chamber**
 		- Still increases the Crank Gun's maximum fire rate by 30%.
-		- Reduces the Crank Gun's spin-up time before firing to 0.2s (from 0.5s).
+		- Reduces the Crank Gun's spin-up time before firing, and before the right click aim is ready, to 0.2s (from 0.5s).
 	$END_TB
 ]]
 
@@ -48,169 +58,25 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Ultimate
 
 ]]
--- Linked Compression Chamber's instant windup is baseline for every crank gun variant.
--- Mirrors the talent branch in ActionCareerDREngineerSpin / ActionCareerDREngineer; the talent's
--- 30% max_rps boost is applied before this runs, so talented players keep their higher cap.
-local function starting_windup()
-	if Managers.mechanism:current_mechanism_name() == "versus" then
-		return CareerConstants.dr_engineer.talent_6_2_starting_rps_vs
-	end
-
-	return CareerConstants.dr_engineer.talent_6_2_starting_rps
-end
-
--- The spin actions don't handle spread_template_override themselves (only ActionRangedBase does), so the right click aim
--- applies and resets it here, which makes the crosshair show the aimed spread while aiming.
-mod:hook_safe(ActionCareerDREngineerSpin, "client_owner_start_action", function (self, new_action, t)
-	self._current_windup = starting_windup()
-
-	local spread_template_override = new_action.spread_template_override
-
-	if spread_template_override then
-		local spread_extension = ScriptUnit.has_extension(self.weapon_unit, "spread_system")
-
-		if spread_extension then
-			spread_extension:override_spread_template(spread_template_override)
-		end
-	end
-end)
-
-mod:hook_safe(ActionCareerDREngineerSpin, "finish", function (self, reason)
-	if self.current_action.spread_template_override then
-		local spread_extension = ScriptUnit.has_extension(self.weapon_unit, "spread_system")
-
-		if spread_extension then
-			spread_extension:reset_spread_template()
-		end
-	end
-end)
-
-mod:hook_safe(ActionCareerDREngineer, "client_owner_start_action", function (self, new_action, t)
-	self._current_rps = math.max(self._current_rps, self._max_rps * starting_windup())
-end)
-
-Weapons.bardin_engineer_career_skill_weapon.dodge_count = 3 -- 1
-Weapons.bardin_engineer_career_skill_weapon_special.dodge_count = 3 -- 1
-
-local TB_ENGINEER_AIMED_SPREAD = "tb_engineer_aimed"
-
--- Only the left click spin sets the barrel rotation animation, so the right click aim never showed the full rotation speed.
-for _, weapon_name in ipairs({ "bardin_engineer_career_skill_weapon", "bardin_engineer_career_skill_weapon_special" }) do
-	local action_two = Weapons[weapon_name].actions.action_two
-
-	action_two.default.fp_speed_anim_variable = "barrel_spin_speed"
-	action_two.charged.fp_speed_anim_variable = "barrel_spin_speed"
-	action_two.default.spread_template_override = TB_ENGINEER_AIMED_SPREAD
-	action_two.charged.spread_template_override = TB_ENGINEER_AIMED_SPREAD
-end
-
---[[
-	Aimed fire (holding right click)
-]]
--- Shots fired out of the right click aim (action_two.charged -> action_one) use their own sub actions, so they get
--- their own spread and damage profile without touching the left click shots.
-local TB_ENGINEER_AIMED_SHOT ="tb_engineer_ability_shot_aimed"
-local TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE = "tb_engineer_ability_shot_armor_pierce_aimed"
--- Same falloff as the handgun (general_weapon_changes.lua).
-local aimed_dropoff_ranges = {
-	dropoff_end = 50,
-	dropoff_start = 30,
-}
-
-local pinpoint = { max_pitch = 0, max_yaw = 0 }
-SpreadTemplates[TB_ENGINEER_AIMED_SPREAD] = {
-	continuous = {
-		still = pinpoint,
-		moving = pinpoint,
-		crouch_still = pinpoint,
-		crouch_moving = pinpoint,
-		zoomed_still = pinpoint,
-		zoomed_moving = pinpoint,
-		zoomed_crouch_still = pinpoint,
-		zoomed_crouch_moving = pinpoint,
-	},
-	immediate = {
-		being_hit = { immediate_pitch = 0, immediate_yaw = 0 },
-		shooting = { immediate_pitch = 0, immediate_yaw = 0 },
-	},
-}
-
-local function make_aimed_damage_profile(base_profile_name)
-	local profile = table.clone(DamageProfileTemplates[base_profile_name])
-
-	profile.default_target.range_modifier_settings = aimed_dropoff_ranges
-
-	return profile
-end
-NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT] = make_aimed_damage_profile("engineer_ability_shot")
-NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE] = make_aimed_damage_profile("engineer_ability_shot_armor_pierce")
-
--- Hitscan range of a shot; the crank gun has none set and falls back to ActionRangedBase's 30m, which made aimed shots vanish.
-local TB_ENGINEER_AIMED_RANGE = 100
-local AIMED_SUB_ACTIONS ={ "aimed_fire", "aimed_base_fire", "aimed_armor_pierce_fire" }
-
-for _, weapon_name in ipairs({ "bardin_engineer_career_skill_weapon", "bardin_engineer_career_skill_weapon_special" }) do
-	local actions = Weapons[weapon_name].actions
-	local action_one = actions.action_one
-
-	local aimed_base_fire = table.shallow_copy(action_one.base_fire)
-	aimed_base_fire.damage_profile = TB_ENGINEER_AIMED_SHOT
-	aimed_base_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
-	aimed_base_fire.range = TB_ENGINEER_AIMED_RANGE
-	action_one.aimed_base_fire = aimed_base_fire
-
-	local aimed_armor_pierce_fire = table.shallow_copy(action_one.armor_pierce_fire)
-	aimed_armor_pierce_fire.damage_profile = TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE
-	aimed_armor_pierce_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
-	aimed_armor_pierce_fire.range = TB_ENGINEER_AIMED_RANGE
-	action_one.aimed_armor_pierce_fire = aimed_armor_pierce_fire
-
-	local aimed_fire = table.shallow_copy(action_one.fire)
-	aimed_fire.conditional_actions = {
-		{
-			sub_action = "aimed_armor_pierce_fire",
-			condition = action_one.fire.conditional_actions[1].condition,
-		},
-	}
-	aimed_fire.default_action = { sub_action = "aimed_base_fire" }
-	action_one.aimed_fire = aimed_fire
-
-	for _, chain_action in ipairs(actions.action_two.charged.allowed_chain_actions) do
-		if chain_action.action == "action_one" and chain_action.sub_action == "fire" then
-			chain_action.sub_action = "aimed_fire"
-		end
-	end
-end
-
--- Sub action names are synced by index; the base game only fills this lookup from the vanilla weapon templates.
-for _, sub_action_name in ipairs(AIMED_SUB_ACTIONS) do
-	if not rawget(NetworkLookup.sub_actions, sub_action_name) then
-		local index = #NetworkLookup.sub_actions + 1
-
-		NetworkLookup.sub_actions[index] = sub_action_name
-		NetworkLookup.sub_actions[sub_action_name] = index
-	end
-end
+-- See weapon_changes/career_ability/dr_engineer_crank_gun.lua
 
 --[[
 
-	Talents
+	Passive
 
 ]]
 --[[
-	Full Head of Steam
+	Build Pressure
 ]]
--- Stacks only lost 1 at a time
-local TB_FULL_HEAD_OF_STEAM_TALENT = "bardin_engineer_power_on_max_pump"
+-- All stacks share one timer
 local TB_BUILD_PRESSURE_BUFF = "bardin_engineer_pump_buff"
 local TB_BUILD_PRESSURE_STACK_DURATION = 12
 
-mod_api.insert_buff_function("tb_full_head_of_steam_stagger_stacks", function (unit, buff, params, world)
-	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+mod_api.insert_buff_function("tb_build_pressure_stagger_stacks", function (unit, buff, params, world)
 	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
 	local stacks = buff_extension and buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF)
 
-	if not stacks or not talent_extension or not talent_extension:has_talent(TB_FULL_HEAD_OF_STEAM_TALENT) then
+	if not stacks then
 		return
 	end
 
@@ -227,51 +93,55 @@ mod_api.insert_buff_function("tb_full_head_of_steam_stagger_stacks", function (u
 	end
 end)
 mod_api.update_talent_buff_template("dwarf_ranger", TB_BUILD_PRESSURE_BUFF, {
-	reapply_buff_func = "tb_full_head_of_steam_stagger_stacks",
+	reapply_buff_func = "tb_build_pressure_stagger_stacks",
 })
-mod_api.update_talent("dr_engineer", 4, 1, {
-	description_values = {},
-})
-mod_api.insert_text("bardin_engineer_power_on_max_pump_desc_b", "While at 5 stacks of Pressure, Bardin gains 15% Attack Speed. Build Pressure stacks now expire one at a time.")
 
 --[[
-	Linked Compression Chamber
+
+	Talents
+
 ]]
--- Reduce the 0.5s spin-up to 0.1s, so the spin action chains into fire sooner.
-local TB_LINKED_COMPRESSION_SPIN_UP = 0.2 -- 0.5
-local reduced_spin_up_chain_actions = setmetatable({}, { __mode = "k" })
-
-mod:hook(WeaponUnitExtension, "is_chain_action_available", function (func, self, next_chain_action, t, time_offset)
-	local current_action_settings = self.current_action_settings
-
-	if current_action_settings and current_action_settings.kind == "career_dr_four_spin" and next_chain_action.sub_action == "fire" then
-		local lookup_data = current_action_settings.lookup_data
-		local talent_extension = self._talent_extension
-
-		if lookup_data and lookup_data.sub_action_name == "spin" and talent_extension and talent_extension:has_talent("bardin_engineer_reduced_ability_fire_slowdown") then
-			local reduced_chain_action = reduced_spin_up_chain_actions[next_chain_action]
-
-			if not reduced_chain_action then
-				reduced_chain_action = table.shallow_copy(next_chain_action)
-				reduced_chain_action.start_time = math.min(next_chain_action.start_time or TB_LINKED_COMPRESSION_SPIN_UP, TB_LINKED_COMPRESSION_SPIN_UP)
-				reduced_spin_up_chain_actions[next_chain_action] = reduced_chain_action
-			end
-
-			next_chain_action = reduced_chain_action
-		end
-	end
-
-	return func(self, next_chain_action, t, time_offset)
-end)
-
-mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "Increases the Crank Gun's maximum fire rate by 30%% and reduces its spin-up time before firing to 0.2 seconds.")
-
 --[[
 	Ingenious Ordnance
 ]]
 local TB_INGENIOUS_ORDNANCE_COOLDOWN = 60 -- 80
 -- The cooldown buff's duration only drives the HUD icon; the grant timing itself is the update_frequency/delay.
+-- Full inventory drops the bomb on the ground instead (like GK)
+local TB_INGENIOUS_ORDNANCE_DROP_PICKUP = "engineer_grenade_t1"
+
+mod_api.insert_buff_function("tb_engineer_bomb_grant_or_drop", function (unit, buff, params)
+	local inventory_extension = ScriptUnit.extension(unit, "inventory_system")
+	local slot_name = "slot_grenade"
+
+	if not inventory_extension:get_slot_data(slot_name) or inventory_extension:can_store_additional_item(slot_name) then
+		return BuffFunctionTemplates.functions.bardin_engineer_bomb_grant(unit, buff, params)
+	end
+
+	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+
+	if buff_extension then
+		buff_extension:add_buff(buff.template.cooldown_buff)
+	end
+
+	-- Only the owner's copy of the buff drops it, the server's copy of a remote player's buff must not.
+	local player = Managers.player:owner(unit)
+
+	if not player or player.remote then
+		return
+	end
+
+	local pickup_name_id = NetworkLookup.pickup_names[TB_INGENIOUS_ORDNANCE_DROP_PICKUP]
+	local spawn_type_id = NetworkLookup.pickup_spawn_types.dropped
+	local position = POSITION_LOOKUP[unit] + Vector3.up()
+
+	if Managers.state.network.is_server then
+		Managers.state.entity:system("pickup_system"):rpc_spawn_pickup_with_physics(Network.peer_id(), pickup_name_id, position, Quaternion.identity(), spawn_type_id)
+	else
+		Managers.state.network.network_transmit:send_rpc_server("rpc_spawn_pickup_with_physics", pickup_name_id, position, Quaternion.identity(), spawn_type_id)
+	end
+end)
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_engineer_2_1", {
+	update_func = "tb_engineer_bomb_grant_or_drop",
 	update_frequency = TB_INGENIOUS_ORDNANCE_COOLDOWN,
 	update_start_delay = TB_INGENIOUS_ORDNANCE_COOLDOWN,
 })
@@ -281,7 +151,7 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_engineer_2_1_cooldow
 mod_api.update_talent("dr_engineer", 2, 1, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_improved_explosives_desc_2", "Bardin receives a bomb every 60 seconds if he has room for it. Explosions deal no friendly fire.")
+mod_api.insert_text("bardin_engineer_improved_explosives_desc_2", "Bardin receives a bomb every 60 seconds, which is dropped on the ground if his inventory is full. Explosions deal no friendly fire.")
 
 --[[
 	Armour Piercing Slugs
@@ -324,7 +194,7 @@ end)
 mod_api.update_talent("dr_engineer", 2, 2, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_ranged_pierce_desc_2", "Ranged attacks penetrate 1 additional enemy. Non-explosive ranged attacks deal no friendly fire.")
+mod_api.insert_text("bardin_engineer_ranged_pierce_desc_2", "Non-explosive ranged attacks pierce 1 additional enemy. Non-explosive ranged attacks deal no friendly fire.")
 
 --[[
 	Bombadier
@@ -373,21 +243,19 @@ end)
 mod_api.update_talent("dr_engineer", 2, 3, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin can carry 6 bombs and starts the mission with 6 random bombs. Bardin's bombs explode with additional fire.")
+mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin can carry 4 bombs and starts the mission with 4 random bombs. Bardin's bombs explode with additional fire.")
 
 --[[
 	Superior Gaskets
 ]]
 -- Read by ActionCareerDREngineer._handle_infinite_stacks every time the talent starts a stack's countdown while firing.
-CareerConstants.dr_engineer.talent_4_3_stack_duration = 3 -- 1.5
+CareerConstants.dr_engineer.talent_4_3_stack_duration = 6 -- 1.5
 
 
 --[[
 	Ablative Armor
 ]]
--- Vanilla removes a stack straight away on damage taken and restarts the 5s regain timer. Now the loss is queued on the
--- buff and applied after the delay, which is when the regain timer restarts. The buff only exists on the server, which
--- also owns the server controlled stacks, so a short update tick works through the queue and the regain timer.
+-- Loses DR stack after delay
 local TB_ABLATIVE_ARMOR_LOSS_DELAY = 2
 local TB_ABLATIVE_ARMOR_REGAIN_INTERVAL = 5 -- vanilla update_frequency
 local TB_ABLATIVE_ARMOR_TICK = 0.25
@@ -438,7 +306,7 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_engineer_stacking_da
 mod_api.update_talent("dr_engineer", 5, 1, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_stacking_damage_reduction_desc", "Bardin gains a stack of 5% damage reduction every 5 seconds, up to 5 stacks. Taking damage makes Bardin lose a stack 5 seconds later.")
+mod_api.insert_text("bardin_engineer_stacking_damage_reduction_desc", "Bardin gains a stack of 5% damage reduction every 5 seconds, up to 5 stacks. Taking damage makes Bardin lose a stack 2 seconds later.")
 
 --[[
 	Combined Arms
@@ -484,34 +352,40 @@ mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Powe
 --[[
 	Piston Power
 ]]
--- Hooks set_fatigue_points because add_fatigue_points is already replaced by 19_bw_unchained.lua, and every way of losing
--- shields ends up there. Only increases count, and only the owner's client runs it since the cooldown buff is local.
-local TB_PISTON_POWER_TALENT = "bardin_engineer_piston_powered"
+-- The heavy attack that triggers Piston Power has infinite cleave
+local TB_PISTON_POWER_READY_BUFF = "bardin_engineer_piston_powered_ready"
+
+mod:add_action_sweep_start_function(function (self, new_action, ...)
+	local damage_profile = self._damage_profile
+	local buff_extension = ScriptUnit.has_extension(self.owner_unit, "buff_system")
+
+	if damage_profile and damage_profile.charge_value == "heavy_attack" and buff_extension and buff_extension:has_buff_type(TB_PISTON_POWER_READY_BUFF) then
+		self._unlimited_cleave = true
+	end
+end)
+
+-- Every whole stamina shield lost from blocking an attack shortens the cooldown by 1 second
 local TB_PISTON_POWER_COOLDOWN_BUFF = "bardin_engineer_piston_powered_delay"
 local TB_PISTON_POWER_REDUCTION_PER_SHIELD = 1
 
-mod:hook(GenericStatusExtension, "set_fatigue_points", function (func, self, fatigue, ...)
+mod:hook(GenericStatusExtension, "set_fatigue_points", function (func, self, fatigue, fatigue_type, ...)
 	local fatigue_before = self.fatigue
 
-	func(self, fatigue, ...)
+	func(self, fatigue, fatigue_type, ...)
 
 	local max_fatigue_points = self.max_fatigue_points
 	local player = self.player
 
-	if fatigue <= fatigue_before or max_fatigue_points == 0 or not player or not player.local_player then
-		return
-	end
-
-	local fatigue_per_shield = PlayerUnitStatusSettings.MAX_FATIGUE / max_fatigue_points
-	local shields_lost = math.ceil(fatigue / fatigue_per_shield) - math.ceil(fatigue_before / fatigue_per_shield)
-
-	if shields_lost <= 0 then
+	if fatigue <= fatigue_before or max_fatigue_points == 0 or not player or not player.local_player or not string.find(fatigue_type, "blocked", 1, true) then
 		return
 	end
 
 	local talent_extension = ScriptUnit.has_extension(self.unit, "talent_system")
 
-	if talent_extension and talent_extension:has_talent(TB_PISTON_POWER_TALENT) then
+	local fatigue_per_shield = PlayerUnitStatusSettings.MAX_FATIGUE / max_fatigue_points
+	local shields_lost = math.ceil(fatigue / fatigue_per_shield) - math.ceil(fatigue_before / fatigue_per_shield)
+
+	if shields_lost > 0 and talent_extension and talent_extension:has_talent("bardin_engineer_piston_powered") then
 		local cooldown_buff = self.buff_extension:get_non_stacking_buff(TB_PISTON_POWER_COOLDOWN_BUFF)
 
 		if cooldown_buff then
@@ -524,4 +398,48 @@ end)
 mod_api.update_talent("dr_engineer", 5, 3, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_piston_powered_desc_b", "Heavy melee attacks restore all stamina and cause a powerful stagger, once every 15 seconds. Losing a stamina shield reduces this cooldown by 1 second per shield.")
+mod_api.insert_text("bardin_engineer_piston_powered_desc_b", "Every 15 seconds Bardin's next Charged Attack gains massive stagger and cleave, and restores all stamina. Each stamina shield lost from blocking reduces cooldown by 1 second.")
+
+--[[
+	Linked Compression Chamber
+]]
+-- Reduce the 0.5s spin-up to 0.2s, so the spin actions chain onwards sooner: left click spin into fire, and the right
+-- click aim into its charged state.
+local TB_LINKED_COMPRESSION_SPIN_UP = 0.2 -- 0.5
+local reduced_spin_up_chain_actions = setmetatable({}, { __mode = "k" })
+
+local function tb_is_spin_up_chain(lookup_data, next_chain_action)
+	if not lookup_data then
+		return false
+	end
+
+	local action_name = lookup_data.action_name
+	local sub_action_name = lookup_data.sub_action_name
+
+	return action_name == "action_one" and sub_action_name == "spin" and next_chain_action.sub_action == "fire"
+		or action_name == "action_two" and sub_action_name == "default" and next_chain_action.sub_action == "charged"
+end
+
+mod:hook(WeaponUnitExtension, "is_chain_action_available", function (func, self, next_chain_action, t, time_offset)
+	local current_action_settings = self.current_action_settings
+
+	if current_action_settings and current_action_settings.kind == "career_dr_four_spin" then
+		local talent_extension = self._talent_extension
+
+		if talent_extension and tb_is_spin_up_chain(current_action_settings.lookup_data, next_chain_action) and talent_extension:has_talent("bardin_engineer_reduced_ability_fire_slowdown") then
+			local reduced_chain_action = reduced_spin_up_chain_actions[next_chain_action]
+
+			if not reduced_chain_action then
+				reduced_chain_action = table.shallow_copy(next_chain_action)
+				reduced_chain_action.start_time = math.min(next_chain_action.start_time or TB_LINKED_COMPRESSION_SPIN_UP, TB_LINKED_COMPRESSION_SPIN_UP)
+				reduced_spin_up_chain_actions[next_chain_action] = reduced_chain_action
+			end
+
+			next_chain_action = reduced_chain_action
+		end
+	end
+
+	return func(self, next_chain_action, t, time_offset)
+end)
+
+mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "Increases the Crank Gun's maximum fire rate by 30%% and reduces its spin-up time.")

@@ -454,7 +454,8 @@ local function tb_heroism_heavy_finish(self)
 	end
 end
 
-mod:hook_safe(ActionSweep, "client_owner_start_action", tb_heroism_heavy_start)
+-- Registered through the dispatcher in TourneyBalance.lua (Piston Power also needs this function)
+mod:add_action_sweep_start_function(tb_heroism_heavy_start)
 mod:hook_safe(ActionSweep, "finish", tb_heroism_heavy_finish)
 mod:hook_safe(ActionShieldSlam, "client_owner_start_action", tb_heroism_heavy_start)
 mod:hook_safe(ActionShieldSlam, "finish", tb_heroism_heavy_finish)

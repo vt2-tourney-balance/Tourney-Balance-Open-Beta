@@ -435,6 +435,16 @@ local localization = {
 	debugging = {
 		en = "Debugging",
 	},
+	skeleton_transparency_title = {
+		en = "Skeleton Transparency",
+	},
+	skeleton_transparency_description = {
+		-- %% because mod localization strings go through string.format
+		en = "How visible the Necromancer's skeletons are, for you only. 100%% is fully visible, 0%% is invisible. Applies to every Necromancer's skeletons.",
+	},
+	skeleton_transparency_unit = {
+		en = "%%",
+	},
 	stagger_state_visualizer_title = {
 		en = "Stagger State Visualizer",
 	},

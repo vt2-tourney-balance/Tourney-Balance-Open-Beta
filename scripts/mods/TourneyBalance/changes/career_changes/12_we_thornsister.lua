@@ -31,7 +31,6 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Radiant Inheritance**
 		- Can be activated with Thornwake (regular ult).
-		- Increased duration to 15s (from 10s). Recasting refreshes the duration.
 		- Allies now also see a depleting-icon timer for the buff (previously a static icon).
 
 		**Repel**
@@ -272,7 +271,7 @@ mod_api.insert_buff_function("tb_radiant_thorn_activate_buff_on_distance", funct
 	end
 end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buff_aura", {
-	duration = 15, -- 10
+	duration = 10, -- 10
 	max_stacks = 1,
 	refresh_durations = true,
 	duration_modifier_func = tb_radiant_thorn_duration_modifier,
@@ -282,7 +281,7 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buf
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_team_buff", {
 	event = "on_ability_cooldown_started",
 })
-mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 15 seconds.")
+mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 10 seconds.")
 
 --[[
 	Repel

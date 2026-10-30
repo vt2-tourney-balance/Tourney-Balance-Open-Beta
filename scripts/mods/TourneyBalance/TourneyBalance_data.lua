@@ -93,6 +93,16 @@ return {
 						tooltip = "disable_bots_description",
 					},
 					{
+						type = "numeric",
+						setting_id = "skeleton_transparency",
+						default_value = 65,
+						range = {0, 100},
+						decimals_number = 0,
+						unit_text = "skeleton_transparency_unit",
+						title = "skeleton_transparency_title",
+						tooltip = "skeleton_transparency_description",
+					},
+					{
 						setting_id = "pause",
 						type = "keybind",
 						keybind_trigger = "pressed",

@@ -224,6 +224,21 @@ mod:hook(ActionMeleeStart, "client_owner_post_update", function (func, self, dt,
     end
 end)
 
+--- ActionSweep.client_owner_start_action dispatcher
+-- Same hook-collision problem as IngameHud above: Heroism (04_es_questingknight.lua) and Piston Power (08_dr_engineer.lua)
+-- both need it. Register through mod:add_action_sweep_start_function(fn) instead of calling
+-- mod:hook/hook_safe(ActionSweep, "client_owner_start_action", ...) directly.
+-- fn(self, new_action, t, chain_action_data, power_level, action_init_data) runs after the original, in registration order.
+local _action_sweep_start_functions = {}
+function mod.add_action_sweep_start_function(self, func)
+    _action_sweep_start_functions[#_action_sweep_start_functions + 1] = func
+end
+mod:hook_safe(ActionSweep, "client_owner_start_action", function (self, ...)
+    for i = 1, #_action_sweep_start_functions do
+        _action_sweep_start_functions[i](self, ...)
+    end
+end)
+
 --- CareerExtension.update dispatcher
 -- Same hook-collision problem as IngameHud above: features needing a per-frame career tick (01_es_mercenary.lua,
 -- On Yer Feet, Mates!) register through mod:add_career_update_function(fn)
@@ -336,6 +351,9 @@ mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/mod_checker")
 
 -- Basic QOL Features
 mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/basic_qol")
+
+-- Skeleton Transparency (mod setting)
+mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/skeleton_transparency")
 
 -- Debugging Tools
 mod:dofile("scripts/mods/TourneyBalance/debugging/stagger_state_visualizer")
