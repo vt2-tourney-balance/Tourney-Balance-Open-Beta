@@ -10,7 +10,7 @@ local is_local = shared_utils.is_local
 		## Witch Hunter Captain
 		### Talents
 		**Riposte**
-		- Fix description: crits also applpy to ranged attacks.
+		- Fix description: crits also apply to ranged attacks.
 		- A melee headshot while Riposte is active grants one extra guaranteed melee crit on the next melee attack within 2 seconds (at most one extra crit per parry).
 
 		**Templar's Knowledge**

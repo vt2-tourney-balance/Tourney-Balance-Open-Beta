@@ -11,7 +11,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		### Passives
 		**Protective Presence**
-		- Aura radius increased to 10 (from 5).
+		- Aura radius increased to 15 (from 5).
 
 		**CDR on Damage Taken**
 		- Reduced ult cooldown gain on damage taken to 0.35 (from 0.5).
@@ -30,10 +30,10 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**That's Bloody Teamwork!**
 		- Grants 3.33% damage reduction per nearby ally (up to 3).
-		- Range increased to 10 (from 5).
+		- Range increased to 15 (from 5).
 
 		**Comrades in Arms**
-		- Range increased to 10 (from 5).
+		- Range increased to 15 (from 5).
 		- Closest player mode (green outline).
 		- Guard select team mate mode (green outline with number).
 		- If the selected team mate leaves the range, the closest ally is guarded instead (red outline with number) until they return.
@@ -92,7 +92,7 @@ end)
 ]]
 -- Increase aura range - Repeat for all lvl 20 talents, because game creates snapshot of original values at load time
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive", {
-	range = 10 -- 5
+	range = 15 -- 5
 })
 -- Nerf of aura damage reduction - Repeat for all lvl 20 talents, because game creates snapshot of original values at load time
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive_defence_aura", {
@@ -145,7 +145,7 @@ mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presen
 ]]
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_damage_taken_ally_proximity", {
 	buff_to_add = "markus_knight_damage_taken_ally_proximity_buff",
-	range = 10, -- 5
+	range = 15, -- 5
 	update_func = "activate_party_buff_stacks_on_ally_proximity", -- TODO: Check - Removed proc function, might break, replaced buff.range replaced w/ template.range
 	chunk_size = 1,
 	max_stacks = 3,
@@ -157,7 +157,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_damage_take
 mod_api.update_talent("es_knight", 4, 2, { -- update description
 	description_values = {},
 })
-mod_api.insert_text("markus_knight_damage_taken_ally_proximity_desc_2", "Reduces damage taken by 3.33% for each nearby.")
+mod_api.insert_text("markus_knight_damage_taken_ally_proximity_desc_2", "Increases damage reduction from Protective Presence by 3.33% for each ally nearby.")
 
 --[[
 	Comrades in Arms - Adjustment from Passive
@@ -481,7 +481,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard_defen
 	stat_buff = "damage_taken",
 	update_func = "tb_activate_buff_on_selected_or_closest",
 	remove_buff_func = "remove_aura_buff",
-	range = 10 -- 5
+	range = 15 -- 5
 })
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard", {
 	buff_to_add = "markus_knight_passive_power_increase_buff",
@@ -489,7 +489,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard", {
 	remove_buff_func = "remove_aura_buff",
 	icon = "markus_knight_passive_power_increase",
 	update_func = "tb_activate_buff_on_selected_or_closest",
-	range = 10 -- 5
+	range = 15 -- 5
 })
 
 --[[

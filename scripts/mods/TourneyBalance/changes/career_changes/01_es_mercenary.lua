@@ -30,7 +30,7 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 		**On Yer Feet, Mates!**
 		- Ultimate cooldown is instantly refunded when an ally is knocked down.
-		- Doubled revive range to 30 (from 15). Healing range unchanged.
+		- Doubled revive range to 20 (from 15). Healing range unchanged.
 		- Players can be revived while disabled.
 	$END_TB
 ]]
@@ -245,10 +245,10 @@ mod:add_career_update_function(function (self, unit, input, dt, context, t)
 		self:reduce_activated_ability_cooldown_percent(1)
 	end
 end)
--- Revive range doubled to 30 (from 15). Revives ignore disblaed status
+--[[
+-- Revive range doubled to 20 (from 15). Revives ignore disabled status
 local ON_YER_FEET_VANILLA_RADIUS = 15
-local ON_YER_FEET_REVIVE_RADIUS = 30
-
+local ON_YER_FEET_REVIVE_RADIUS = 15
 mod:hook_safe(CareerAbilityESMercenary, "_run_ability", function (self)
 	local owner_unit = self._owner_unit
 	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
@@ -294,6 +294,7 @@ mod:hook_safe(CareerAbilityESMercenary, "_run_ability", function (self)
 		end
 	end
 end)
-mod_api.insert_text("markus_mercenary_activated_ability_revive_desc", "Morale Boost also revives knocked down allies within 30 metres. Resets cooldown on Moral Boost when an ally is knocked down.")
+]]
+mod_api.insert_text("markus_mercenary_activated_ability_revive_desc", "Morale Boost also revives knocked down allies within 20 metres. Resets cooldown on Moral Boost when an ally is knocked down.")
 
 

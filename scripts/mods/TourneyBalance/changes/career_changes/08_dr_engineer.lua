@@ -151,7 +151,7 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_engineer_2_1_cooldow
 mod_api.update_talent("dr_engineer", 2, 1, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_improved_explosives_desc_2", "Bardin receives a bomb every 60 seconds, which is dropped on the ground if his inventory is full. Explosions deal no friendly fire.")
+mod_api.insert_text("bardin_engineer_improved_explosives_desc_2", "Craft an engineer bomb every 60 seconds. Explosives no longer damage allies.")
 
 --[[
 	Armour Piercing Slugs
@@ -194,7 +194,7 @@ end)
 mod_api.update_talent("dr_engineer", 2, 2, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_ranged_pierce_desc_2", "Non-explosive ranged attacks pierce 1 additional enemy. Non-explosive ranged attacks deal no friendly fire.")
+mod_api.insert_text("bardin_engineer_ranged_pierce_desc_2", "Non-explosive ranged attacks pierce 1 additional enemy and no longer damage allies.")
 
 --[[
 	Bombadier
@@ -243,7 +243,7 @@ end)
 mod_api.update_talent("dr_engineer", 2, 3, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin can carry 4 bombs and starts the mission with 4 random bombs. Bardin's bombs explode with additional fire.")
+mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bombs gain the effect of both regular Bombs and Incendiary Bombs. Bardin can carry 4 bombs and starts the mission with 4 random bombs.")
 
 --[[
 	Superior Gaskets
@@ -306,7 +306,7 @@ mod_api.update_talent_buff_template("dwarf_ranger", "bardin_engineer_stacking_da
 mod_api.update_talent("dr_engineer", 5, 1, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_stacking_damage_reduction_desc", "Bardin gains a stack of 5% damage reduction every 5 seconds, up to 5 stacks. Taking damage makes Bardin lose a stack 2 seconds later.")
+mod_api.insert_text("bardin_engineer_stacking_damage_reduction_desc", "Every 5 seconds Bardin gains a stack of Damage Reduction. Stacks up to 5 times. Each stack reduces damage taken by 5%. Taking damage removes a stack after 2 seconds.")
 
 --[[
 	Combined Arms
@@ -442,4 +442,4 @@ mod:hook(WeaponUnitExtension, "is_chain_action_available", function (func, self,
 	return func(self, next_chain_action, t, time_offset)
 end)
 
-mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "Increases the Crank Gun's maximum fire rate by 30%% and reduces its spin-up time.")
+mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "The Steam-Assisted Crank Gun (Mk II) gains 30%% firing speed and 0.3 seconds reduced spin-up time.")

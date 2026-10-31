@@ -393,11 +393,21 @@ end
 utility_actions.weapon_reload.default.condition_func = tb_has_any_skeletons
 utility_actions.weapon_reload.default.chain_condition_func = tb_has_any_skeletons
 
-mod:hook_safe(ActionCareerBWNecromancerCommandVent, "client_owner_start_action", function (self)
+-- With no skeleton to sacrifice on the field, a desummoned one is. Releasing either gives Reaping and Cursed Blood
+-- their stacks. The target is looked at first: the action sacrifices it, and it can be gone right after
+mod:hook(ActionCareerBWNecromancerCommandVent, "client_owner_start_action", function (func, self, ...)
 	local owner_unit = self._owner_unit
+	local releases_field_skeleton = not not HEALTH_ALIVE[self._command_ability:vent_command_target()]
+	local releases_desummoned = not releases_field_skeleton and tb_stash_count(owner_unit) > 0
 
-	if not HEALTH_ALIVE[self._command_ability:vent_command_target()] and tb_stash_count(owner_unit) > 0 then
+	func(self, ...)
+
+	if releases_desummoned then
 		tb_add_synced_buff(owner_unit, SACRIFICE_STASHED_BUFF)
+	end
+
+	if (releases_field_skeleton or releases_desummoned) and mod.on_necromancer_skeleton_released then
+		mod.on_necromancer_skeleton_released(owner_unit)
 	end
 end)
 
