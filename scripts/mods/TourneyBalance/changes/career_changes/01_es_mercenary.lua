@@ -30,7 +30,6 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 
 		**On Yer Feet, Mates!**
 		- Ultimate cooldown is instantly refunded when an ally is knocked down.
-		- Doubled revive range to 20 (from 15). Healing range unchanged.
 		- Players can be revived while disabled.
 	$END_TB
 ]]
@@ -246,7 +245,7 @@ mod:add_career_update_function(function (self, unit, input, dt, context, t)
 	end
 end)
 --[[
--- Revive range doubled to 20 (from 15). Revives ignore disabled status
+-- Revive range increased to 20 (from 15). Revives ignore disabled status
 local ON_YER_FEET_VANILLA_RADIUS = 15
 local ON_YER_FEET_REVIVE_RADIUS = 15
 mod:hook_safe(CareerAbilityESMercenary, "_run_ability", function (self)

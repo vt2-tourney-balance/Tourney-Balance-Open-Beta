@@ -1,5 +1,6 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
+local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 
 --[[
 	$BEGIN_TB
@@ -12,11 +13,10 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Shots fired while aiming with right click are now pinpoint accurate and increased damage fall off range to 30-50 (from 10-20).
 		- Increased range where bullets dissappear to 100 (from 30)
 
-		### Passives
-		**Build Pressure**
-		- Stacks now expire one at a time, 12s apart, instead of all at once. Pumping again resets the timers.
-
 		### Talents
+		**Full Head of Steam**
+		- Build Pressure stacks now expire one at a time.
+
 		**Ingenious Ordnance**
 		- Reduced the bomb cooldown to 60s (from 80s).
 		- If Bardin's inventory is full, the bomb is dropped on the ground.
@@ -26,30 +26,30 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Bombadier**
 		- Bardin can carry 4 bombs (from 3) and starts the mission with 4 random bombs (frag or fire).
+		- Overcharge no longer slows Bardin down.
 
 		**Superior Gaskets**
 		- Increased the time until a stack is lost to 6s (from 1.5s).
 
 		**Ablative Armor**
-		- A damage reduction stack is no longer lost immediately, but 2s after taking the hit that triggers losing it.
+		- A damage reduction stack is no longer lost immediately, but 2s after taking damage.
 
 		**Combined Arms**
-		- The Ranged Power buff also refills the ammo used by non-explosive ranged attacks into the reserve for its duration (10s).
+		- Every 5 melee strikes also grants a stack of free ammo (up to 10 stacks, no duration).
+		- Each stack makes a non-explosive ranged attack not consume ammo from the clip.
 
 		**Piston Power**
 		- The heavy attack also has infinite cleave.
 		- Losing a stamina shield from blocking an attack reduces the cooldown by 1s per shield.
 
-		**Gromril Plated Shots**
-		- The armor piercing shots now deal the same damage as a vanilla Handgun shot. This changes the following numbers.
-		- Base attack power is 100% close up and 80% at range (from 48% and 36%), impact power 50% (from 30% close up and 25% at range).
-		- Close up damage multiplier against armoured 1.2x, resistant 1.5x, berserkers 0.75x and super armour 0.5x (from 1x, 1x, 0.5x and 0.4x).
-		- At range, berserkers take 0.75x (from 0.5x) and super armour 0.25x (from 0.4x).
-		- Cleave distribution is 0.3 (from 0.25), and headshots and critical hits use the Handgun's numbers too.
-
 		**Linked Compression Chamber**
 		- Still increases the Crank Gun's maximum fire rate by 30%.
 		- Reduces the Crank Gun's spin-up time before firing, and before the right click aim is ready, to 0.2s (from 0.5s).
+		- Increases the ability bar by 50% (moved from Innovative Ammo Hoppers).
+
+		**Innovative Ammo Hoppers**
+		- No longer increases the ability bar by 50% (moved to Linked Compression Chamber).
+		- The 4s after killing a special now also make guns consume no ammo and Drakefire weapons generate no heat. Explosive shots (the Trollhammer torpedo) are excluded.
 	$END_TB
 ]]
 
@@ -62,19 +62,26 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 
-	Passive
+	Talents
 
 ]]
 --[[
-	Build Pressure
+	Full Head of Steam
 ]]
--- All stacks share one timer
+-- Each Build Pressure stack gets its own expiry, 12s after the one before it. Pumping again resets the timers.
+local TB_FULL_HEAD_OF_STEAM_TALENT = "bardin_engineer_power_on_max_pump"
 local TB_BUILD_PRESSURE_BUFF = "bardin_engineer_pump_buff"
 local TB_BUILD_PRESSURE_STACK_DURATION = 12
 
 mod_api.insert_buff_function("tb_build_pressure_stagger_stacks", function (unit, buff, params, world)
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
 	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
-	local stacks = buff_extension and buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF)
+
+	if not talent_extension or not buff_extension or not talent_extension:has_talent(TB_FULL_HEAD_OF_STEAM_TALENT) then
+		return
+	end
+
+	local stacks = buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF)
 
 	if not stacks then
 		return
@@ -96,11 +103,43 @@ mod_api.update_talent_buff_template("dwarf_ranger", TB_BUILD_PRESSURE_BUFF, {
 	reapply_buff_func = "tb_build_pressure_stagger_stacks",
 })
 
---[[
+-- The buff icon's ring runs over the duration of the stack that expires first, which grows with every stack that is
+-- staggered behind it. Keeping the ring within the 12s step makes it count down to the next stack being lost.
+local function tb_install_build_pressure_ui_hook()
+	mod:hook_safe(BuffUI, "_sync_buffs", function (self)
+		local widget = self._buff_name_to_widget[TB_BUILD_PRESSURE_BUFF]
+		local buff = widget and widget.content.buff
 
-	Talents
+		if not buff or not buff.duration or buff.duration == math.huge then
+			return
+		end
 
-]]
+		local remaining = buff.start_time + buff.duration - Managers.time:time("game")
+
+		if remaining > 0 then
+			local step_remaining = remaining % TB_BUILD_PRESSURE_STACK_DURATION
+
+			-- A full step left would read as 0 and show the ring as already finished.
+			if step_remaining == 0 then
+				step_remaining = TB_BUILD_PRESSURE_STACK_DURATION
+			end
+
+			widget.content.progress = 1 - step_remaining / TB_BUILD_PRESSURE_STACK_DURATION
+		end
+	end)
+end
+
+if BuffUI then
+	tb_install_build_pressure_ui_hook()
+else
+	mod:hook_require("scripts/ui/hud_ui/buff_ui", tb_install_build_pressure_ui_hook)
+end
+
+mod_api.update_talent("dr_engineer", 4, 1, {
+	description_values = {},
+})
+mod_api.insert_text("bardin_engineer_power_on_max_pump_desc_b", "While at 5 stacks of Pressure, Bardin gains 15% Attack Speed. Pressure stacks expire one at a time, 12 seconds apart, instead of all at once.")
+
 --[[
 	Ingenious Ordnance
 ]]
@@ -240,10 +279,17 @@ mod:hook_origin(PassiveAbilityEngineer, "_add_5_2_bombs", function (self)
 	end
 end)
 
+-- Overcharge (heat) no longer slows down the attack speed and movement, same perk the Ironbreaker talent uses.
+local TB_BOMBADIER_NO_SLOW_BUFF = "tb_engineer_bombadier_overcharge_no_slow"
+
+mod_api.insert_talent_buff_template("dwarf_ranger", TB_BOMBADIER_NO_SLOW_BUFF, {
+	perks = { buff_perks.overcharge_no_slow },
+})
 mod_api.update_talent("dr_engineer", 2, 3, {
 	description_values = {},
+	buffs = { "bardin_engineer_5_2", TB_BOMBADIER_NO_SLOW_BUFF },
 })
-mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bombs gain the effect of both regular Bombs and Incendiary Bombs. Bardin can carry 4 bombs and starts the mission with 4 random bombs.")
+mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin can carry 4 bombs and starts the mission with 4 random bombs. Bombs have both regular and incendiary effect. No overcharge slowdown.")
 
 --[[
 	Superior Gaskets
@@ -311,10 +357,22 @@ mod_api.insert_text("bardin_engineer_stacking_damage_reduction_desc", "Every 5 s
 --[[
 	Combined Arms
 ]]
--- Shots still empty the clip, but whatever they used is put straight back into the reserve. Non-explosive means the
--- shot isn't an explosive projectile (impact_data.aoe), e.g. the Trollhammer and the Drakefire Pistols' explosive
--- shots don't get the refund. Bombs aren't ammo based.
-local TB_COMBINED_ARMS_BUFF = "bardin_engineer_melee_power_range_power_buff"
+-- Every 5 melee strikes grants stack that makes one non-explosive shot cost no ammo.
+local TB_COMBINED_ARMS_AMMO_BUFF = "tb_engineer_combined_arms_free_ammo"
+local TB_COMBINED_ARMS_AMMO_MAX_STACKS = 10
+
+mod_api.insert_buff_template(TB_COMBINED_ARMS_AMMO_BUFF, {
+	icon = "bardin_engineer_melee_power_free_shot",
+	max_stacks = TB_COMBINED_ARMS_AMMO_MAX_STACKS,
+})
+mod_api.update_talent_buff_template("dwarf_ranger", "bardin_engineer_melee_power_range_power_buff_counter", {
+	max_stack_data = {
+		buffs_to_add = {
+			"bardin_engineer_melee_power_range_power_starter",
+			TB_COMBINED_ARMS_AMMO_BUFF,
+		},
+	},
+})
 
 local function tb_is_explosive_action(weapon_unit)
 	local weapon_extension = ScriptUnit.has_extension(weapon_unit, "weapon_system")
@@ -324,20 +382,33 @@ local function tb_is_explosive_action(weapon_unit)
 	return impact_data and impact_data.aoe ~= nil
 end
 
+-- Innovative Ammo Hoppers' buff after killing a special, which makes every non-explosive shot free too.
+local TB_HOPPERS_BUFF = "bardin_engineer_increased_ability_bar_buff"
+
 mod:hook(GenericAmmoUserExtension, "use_ammo", function (func, self, ...)
 	local shots_fired_before = self._shots_fired
 
 	func(self, ...)
 
 	local buff_extension = self.owner_buff_extension
-	local ammo_used = self._shots_fired - shots_fired_before
 
-	if ammo_used > 0 and self.slot_name == "slot_ranged" and buff_extension and buff_extension:has_buff_type(TB_COMBINED_ARMS_BUFF) and not tb_is_explosive_action(self.unit) then
-		-- Same as add_ammo_to_reserve, without its "gained ammo from no ammo" proc and rpc.
-		if self._ammo_immediately_available then
-			self._current_ammo = math.min(self._max_ammo, self._current_ammo + ammo_used)
-		else
-			self._available_ammo = math.min(self._max_ammo - self:ammo_count(), self._available_ammo + ammo_used)
+	if self._shots_fired > shots_fired_before and self.slot_name == "slot_ranged" and buff_extension and not tb_is_explosive_action(self.unit) then
+		local free_shot_stacks
+
+		-- The hoppers' free shots don't use up the Combined Arms stacks.
+		if not buff_extension:has_buff_type(TB_HOPPERS_BUFF) then
+			free_shot_stacks = buff_extension:get_stacking_buff(TB_COMBINED_ARMS_AMMO_BUFF)
+
+			if not free_shot_stacks or #free_shot_stacks == 0 then
+				return
+			end
+		end
+
+		-- The clip's ammo is its current ammo minus the shots fired, so undoing the shots leaves it untouched.
+		self._shots_fired = shots_fired_before
+
+		if free_shot_stacks then
+			buff_extension:remove_buff(free_shot_stacks[#free_shot_stacks].id)
 		end
 
 		self:_update_anim_ammo()
@@ -347,7 +418,7 @@ end)
 mod_api.update_talent("dr_engineer", 5, 2, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power and non-explosive Ranged Attacks replenish ammo for 10 seconds.")
+mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power for 10 seconds and grants a stack of free ammo. Each stack makes a non-explosive Ranged Attack not consume ammo from the clip. Stacks up to 10 times.")
 
 --[[
 	Piston Power
@@ -442,4 +513,39 @@ mod:hook(WeaponUnitExtension, "is_chain_action_available", function (func, self,
 	return func(self, next_chain_action, t, time_offset)
 end)
 
-mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "The Steam-Assisted Crank Gun (Mk II) gains 30%% firing speed and 0.3 seconds reduced spin-up time.")
+-- Moved here from Innovative Ammo Hoppers, same functions it used to increase the max cooldown of the ability.
+local TB_LINKED_COMPRESSION_ABILITY_BAR_BUFF = "tb_engineer_linked_compression_ability_bar"
+
+mod_api.insert_talent_buff_template("dwarf_ranger", TB_LINKED_COMPRESSION_ABILITY_BAR_BUFF, {
+	apply_buff_func = "add_modify_ability_max_cooldown",
+	remove_buff_func = "remove_modify_ability_max_cooldown",
+	multiplier = 0.5,
+})
+mod_api.update_talent("dr_engineer", 6, 2, {
+	buffs = { TB_LINKED_COMPRESSION_ABILITY_BAR_BUFF },
+})
+mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "The Steam-Assisted Crank Gun (Mk II) gains 30%% firing speed and 50%% increased ability bar. Spin-up time reduced to 0.2 seconds.")
+
+--[[
+	Innovative Ammo Hoppers
+]]
+-- The larger ability bar moved to Linked Compression Chamber.
+for _, templates in ipairs({ TalentBuffTemplates.dwarf_ranger, BuffTemplates }) do
+	local hoppers_buff = templates.bardin_engineer_increased_ability_bar.buffs[1]
+
+	hoppers_buff.apply_buff_func = nil
+	hoppers_buff.remove_buff_func = nil
+end
+
+-- Killing a special starts a 4s buff that already makes the Crank Gun free. Heat is stopped by the no_overcharge perk,
+-- ammo by the use_ammo hook above, which leaves explosive shots (the Trollhammer torpedo) alone.
+mod_api.update_talent_buff_template("dwarf_ranger", TB_HOPPERS_BUFF, {
+	perks = {
+		buff_perks.free_ability_engineer,
+		buff_perks.no_overcharge,
+	},
+})
+mod_api.update_talent("dr_engineer", 6, 3, {
+	description_values = {},
+})
+mod_api.insert_text("bardin_engineer_increased_ability_bar_desc", "Killing a special makes non-explosive ranged attacks consume no resources for 4 seconds.")

@@ -68,7 +68,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Killing a special with a guaranteed Critical Hit from this also raises a skeleton that decays after 20 seconds.
 
 		**Withering Touch**
-		- The burn lasts 20 seconds (from 4) and stacks up to 50 times (from 3).
+		- The burn lasts 30 seconds (from 4) and stacks up to 100 times (from 3).
 
 		**Spirit Leech**
 		- Killing an elite now raises a skeleton that decays after 20 seconds (instead of restoring 15% ultimate cooldown).

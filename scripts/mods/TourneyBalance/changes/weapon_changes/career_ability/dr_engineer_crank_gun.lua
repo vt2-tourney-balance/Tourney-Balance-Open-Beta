@@ -80,6 +80,7 @@ end
 --[[
 	Gromril Plated Shots
 ]]
+--[[
 -- Copied damage profile from Handgun (vanilla). Armor order is unarmored, armored, resistant, player, berserker, super armor.
 -- Has to run before the aimed armor piercing profile below is cloned from it.
 local armor_pierce_profile = DamageProfileTemplates.engineer_ability_shot_armor_pierce
@@ -101,6 +102,7 @@ armor_pierce_profile.default_target.power_distribution_near.attack = 1 -- 0.48
 armor_pierce_profile.default_target.power_distribution_near.impact = 0.5 -- 0.3
 armor_pierce_profile.default_target.power_distribution_far.attack = 0.8 -- 0.36
 armor_pierce_profile.default_target.power_distribution_far.impact = 0.5 -- 0.25
+]]
 
 --[[
 	Aimed fire (holding right click)
