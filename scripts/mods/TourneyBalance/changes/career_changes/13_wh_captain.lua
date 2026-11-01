@@ -11,12 +11,12 @@ local is_local = shared_utils.is_local
 		### Passives
 		**Riposte (renamed from Killing Shot)**
 		- Critical headshot instant kill now only applies to charged melee attacks.
-		- Parrying an attack grants a guaranteed melee crit on the next melee attack within 2 seconds (moved from the Riposte talent).
+		- Parrying grants a guaranteed melee crit on the next melee attack within 2 seconds (moved from the Riposte talent).
 
 		### Talents
 		**Killing Shot (renamed from Riposte)**
 		- Now grants the instant kill on all critical headshots, including ranged and light melee attacks (moved from the Killing Shot passive).
-		- Parrying an attack grants a guaranteed ranged crit on the next ranged attack within 2 seconds.
+		- Parrying grants a guaranteed ranged crit on the next ranged attack within 2 seconds.
 
 		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
@@ -85,7 +85,7 @@ mod_api.insert_career_passives("wh_3", {
 	"tb_victor_witchhunter_guaranteed_melee_crit_on_timed_block_add",
 })
 mod_api.insert_text("career_passive_name_wh_3c", "Riposte")
-mod_api.insert_text("career_passive_desc_wh_3c", "Parrying an attack grants a guaranteed melee critical strike on the next melee attack within 2 seconds. Charged melee critical headshots instantly slay man-sized enemies.")
+mod_api.insert_text("career_passive_desc_wh_3c", "Parrying grants a guaranteed melee critical strike on the next melee attack within 2 seconds. Charged melee critical headshots instantly slay man-sized enemies.")
 
 --[[
 
@@ -121,7 +121,7 @@ mod_api.update_talent("wh_captain", 2, 1, {
 	},
 })
 mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block", "Killing Shot")
-mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Critical headshots with any attack instantly slay man-sized enemies. Parrying an attack also grants a guaranteed ranged critical strike on the next ranged attack within 2 seconds.")
+mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Critical headshots with any attack instantly slay man-sized enemies. Parrying grants a guaranteed ranged critical strike on the next ranged attack within 2 seconds.")
 
 --[[
 	Templar's Knowledge
