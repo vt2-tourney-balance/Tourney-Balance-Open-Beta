@@ -11,7 +11,7 @@ local TB_ENGINEER_AIMED_SUB_ACTIONS = { "aimed_fire", "aimed_base_fire", "aimed_
 -- Hitscan range of a shot; the crank gun has none set and falls back to ActionRangedBase's 30m, which made aimed shots vanish.
 local TB_ENGINEER_AIMED_RANGE = 100
 -- Each aimed shot takes this many times the ability bar of the same shot from the hip.
-local TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER = 2
+local TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER = 3
 -- Vanilla handgun falloff
 local TB_ENGINEER_AIMED_DROPOFF_RANGES = {
 	dropoff_end = 50,
@@ -21,9 +21,6 @@ local TB_ENGINEER_AIMED_DROPOFF_RANGES = {
 --[[
 	Baseline
 ]]
-Weapons.bardin_engineer_career_skill_weapon.dodge_count = 3 -- 1
-Weapons.bardin_engineer_career_skill_weapon_special.dodge_count = 3 -- 1
-
 -- Linked Compression Chamber's instant windup is baseline for every crank gun variant.
 -- Mirrors the talent branch in ActionCareerDREngineerSpin / ActionCareerDREngineer; the talent's
 -- 30% max_rps boost is applied before this runs, so talented players keep their higher cap.

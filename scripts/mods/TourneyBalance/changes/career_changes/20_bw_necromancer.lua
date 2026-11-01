@@ -688,8 +688,7 @@ mod_api.insert_proc_function("tb_curse_of_the_undeath_queue_loss", function (own
 		buff.tb_pending_losses = pending_losses
 	end
 
-	-- Hits taken without a stack to lose don't queue anything
-	if stacks and #pending_losses < #stacks then
+	if stacks and #stacks > 0 and #pending_losses < 1 then -- #pending_losses < #stacks
 		pending_losses[#pending_losses + 1] = Managers.time:time("game") + CURSE_LOSS_DELAY
 	end
 end)
@@ -716,7 +715,7 @@ mod_api.update_talent("bw_necromancer", 5, 2, {
 	description = "sienna_necromancer_5_2_desc",
 	description_values = {},
 })
-mod_api.insert_text("sienna_necromancer_5_2_desc", "Casting Raisde Dead or releasing a skeleton grants 3 stacks of 80% damage reduction. Taking damage removes a stack after 5 seconds.")
+mod_api.insert_text("sienna_necromancer_5_2_desc", "Casting Raise Dead or releasing a skeleton grants 3 stacks of 80% damage reduction. Taking damage removes a stack after 5 seconds.")
 
 --[[
 	Lost Souls

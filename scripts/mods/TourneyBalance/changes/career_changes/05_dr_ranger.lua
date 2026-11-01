@@ -43,7 +43,7 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		**Ranger's Parting Gift**
 		- Free bomb buff can stack 3 times.
 		- Free bomb only applies to engineer bombs.
-		- Added pseudo-random 12% chance to drop engineer bombs with every Survivalist drop (bag size 100 with 12 winning tickets).
+		- Added pseudo-random 6% chance to drop engineer bombs with every Survivalist drop (bag size 100 with 6 winning tickets).
 	$END_TB
 ]]
 
@@ -86,8 +86,8 @@ mod_api.insert_proc_function("bardin_ranger_scavenge_proc", function (owner_unit
 			local raycast_down = true
 			local pickup_system = Managers.state.entity:system("pickup_system")
 
-			-- Ranger's Parting Gift: 12% chance for engineer bomb
-			if talent_extension:has_talent("bardin_ranger_ability_free_grenade") and random_utils.roll_virtual_bag(bomb_bag_state, 100, 12) then
+			-- Ranger's Parting Gift: 6% chance for engineer bomb
+			if talent_extension:has_talent("bardin_ranger_ability_free_grenade") and random_utils.roll_virtual_bag(bomb_bag_state, 100, 6) then
 				pickup_system:buff_spawn_pickup("engineer_grenade_t1", player_pos, raycast_down)
 			elseif talent_extension:has_talent("bardin_ranger_passive_spawn_potions_or_bombs") then
 				-- 6% chance for random potion
@@ -361,4 +361,4 @@ mod:hook(ActionChargedProjectileUtility, "fire_charged_projectile", function (fu
 	return result
 end)
 -- 12% engineer bomb drop on Survivalist drops: see bardin_ranger_scavenge_proc above
-mod_api.insert_text("bardin_ranger_ability_free_grenade_desc", "Activating Disengage causes the next engineer bomb Bardin throws to not be consumed. Max 3 stacks. Survivalist gains a 12% chance to drop an engineer bomb.")
+mod_api.insert_text("bardin_ranger_ability_free_grenade_desc", "Activating Disengage causes the next engineer bomb Bardin throws to not be consumed. Max 3 stacks. Survivalist gains a 6% chance to drop an engineer bomb.")

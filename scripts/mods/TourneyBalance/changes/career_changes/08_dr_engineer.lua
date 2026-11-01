@@ -12,7 +12,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- The Crank Gun now always starts at full rotation speed. Previously this required Linked Compression Chamber.
 		- Shots fired while aiming with right click are now pinpoint accurate and increased damage fall off range to 30-50 (from 10-20).
 		- Increased range where bullets dissappear to 100 (from 30)
-		- Aimed shots consume the ability bar twice as fast.
+		- Aimed shots consume the ability bar 3 times as fast.
 
 		### Talents
 		**Full Head of Steam**
@@ -46,7 +46,6 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		**Linked Compression Chamber**
 		- Still increases the Crank Gun's maximum fire rate by 30%.
 		- Reduces the Crank Gun's spin-up time before firing, and before the right click aim is ready, to 0.2s (from 0.5s).
-		- Increases the ability bar by 50% (moved from Innovative Ammo Hoppers).
 
 		**Innovative Ammo Hoppers**
 		- No longer increases the ability bar by 50% (moved to Linked Compression Chamber).
@@ -419,7 +418,7 @@ end)
 mod_api.update_talent("dr_engineer", 5, 2, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power for 10 seconds and grants a stack of free ammo. Each stack makes a non-explosive Ranged Attack not consume ammo from the clip. Stacks up to 10 times.")
+mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power for 10 seconds and grants a free non-explosive anged attack. Max 10 stacks.")
 
 --[[
 	Piston Power
@@ -514,18 +513,7 @@ mod:hook(WeaponUnitExtension, "is_chain_action_available", function (func, self,
 	return func(self, next_chain_action, t, time_offset)
 end)
 
--- Moved here from Innovative Ammo Hoppers, same functions it used to increase the max cooldown of the ability.
-local TB_LINKED_COMPRESSION_ABILITY_BAR_BUFF = "tb_engineer_linked_compression_ability_bar"
-
-mod_api.insert_talent_buff_template("dwarf_ranger", TB_LINKED_COMPRESSION_ABILITY_BAR_BUFF, {
-	apply_buff_func = "add_modify_ability_max_cooldown",
-	remove_buff_func = "remove_modify_ability_max_cooldown",
-	multiplier = 0.5,
-})
-mod_api.update_talent("dr_engineer", 6, 2, {
-	buffs = { TB_LINKED_COMPRESSION_ABILITY_BAR_BUFF },
-})
-mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "The Steam-Assisted Crank Gun (Mk II) gains 30%% firing speed and 50%% increased ability bar. Spin-up time reduced to 0.2 seconds.")
+mod_api.insert_text("bardin_engineer_reduced_ability_fire_slowdown_desc_2", "The Steam-Assisted Crank Gun (Mk II) gains 30%% firing speed and 60%% reduced spin-up time.")
 
 --[[
 	Innovative Ammo Hoppers

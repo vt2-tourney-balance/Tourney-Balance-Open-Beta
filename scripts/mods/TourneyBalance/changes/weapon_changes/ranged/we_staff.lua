@@ -3,8 +3,7 @@ local mod = get_mod("TourneyBalance")
 --[[
     Deepwood Staff
 ]]
---VortexTemplates.spirit_storm.time_of_life = { 5,5 }
---VortexTemplates.spirit_storm.reduce_duration_per_breed = { chaos_warrior = 0.5 }
+VortexTemplates.spirit_storm.time_of_life = { 5,5 }
 
 -- Lift overcharge. The bar is 40 and explodes on reaching it, so 12 per lift gives 3 lifts before the 4th explodes,
 -- or 4 lifts before the 5th with Thermal Equalizer (-20% overcharge: 9.6 per lift, 4 lifts = 38.4).
