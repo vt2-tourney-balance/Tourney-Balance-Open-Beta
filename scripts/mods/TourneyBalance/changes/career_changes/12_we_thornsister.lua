@@ -5,13 +5,8 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	$BEGIN_TB
 		---
 		## Sister of the Thorn
-		### Career Ability
-		- Increased ultimate cooldown to 60s (from 40s).
 
 		### Passives
-		**A Cluster of Radiants**
-		- Increased passive ultimate cooldown to 80s (from 60s).
-
 		**A Sustenance of Leechlings**
 		- Decreased temp health siphon from team to 10% (from 100%).
 
@@ -54,7 +49,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Ultimate
 
 ]]
-mod_api.update_career_ability_cooldown("we_thornsister", 60) -- 40
+--mod_api.update_career_ability_cooldown("we_thornsister", 60) -- 40
 
 
 --[[
@@ -63,8 +58,8 @@ mod_api.update_career_ability_cooldown("we_thornsister", 60) -- 40
 --[[
 	A Cluster of Radiants
 ]]
-PassiveAbilitySettings.we_thornsister.passive_ability_classes[1].init_data.cooldown = 80 -- 60
-mod_api.insert_text("career_passive_desc_we_thornsister", "Kerillian is granted Radiance (a free use of her career skill) every 80 seconds.")
+--PassiveAbilitySettings.we_thornsister.passive_ability_classes[1].init_data.cooldown = 80 -- 60
+--mod_api.insert_text("career_passive_desc_we_thornsister", "Kerillian is granted Radiance (a free use of her career skill) every 80 seconds.")
 
 -- Start with every Radiance charge ready (2 with Incandescence) instead of on cooldown.
 mod:hook_safe(PassiveAbilityThornsister, "extensions_ready", function (self)
