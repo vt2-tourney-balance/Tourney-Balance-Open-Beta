@@ -32,7 +32,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 			* Quick tap counts as one tick.
 		* `action_three` (hold) + `action_one` - Custom Charge
 			* Command all skeletons on field to charge 20m towards Sienna's look direction
-			* Generates 5 heat per charging skeleton.
+			* Generates 5 heat per charging skeleton (max 30). Can overheat Sienna (no safety net).
 			* Skeletons stop early, on wall collision or reaching the 50m auto-resummon distance.
 		* `action_three` (hold) + `action_two` - Resummon Skeletons
 			* Resummons all skeletons at Sienna's location with their current health.

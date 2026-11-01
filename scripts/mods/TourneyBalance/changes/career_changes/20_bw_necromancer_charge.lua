@@ -480,6 +480,7 @@ end)
 	sets the order up, through a short synced buff the owner's client adds.
 ]]
 local CHARGE_HEAT_PER_SKELETON = 5
+local CHARGE_MAX_HEAT_SKELETONS = 6
 local CHARGE_BUFF = "tb_necromancer_charge_forward"
 local CHARGE_SUB_ACTION = "charge_forward"
 
@@ -593,7 +594,13 @@ utility_actions.action_one[CHARGE_SUB_ACTION] = {
 	},
 	enter_function = function (attacker_unit, input_extension)
 		-- "charging" is one of the overcharge types that skips the per-shot ammo procs and their rpc
-		ScriptUnit.extension(attacker_unit, "overcharge_system"):add_charge(tb_count_chargers(attacker_unit) * CHARGE_HEAT_PER_SKELETON, nil, "charging")
+		local overcharge_extension = ScriptUnit.extension(attacker_unit, "overcharge_system")
+		local critical_overcharge_margin = overcharge_extension.critical_overcharge_margin
+
+		-- Remove the safety net for this heat: vanilla caps a gain that would reach max overcharge at max - 0.1 (no explosion)
+		overcharge_extension.critical_overcharge_margin = math.huge
+		overcharge_extension:add_charge(math.min(tb_count_chargers(attacker_unit), CHARGE_MAX_HEAT_SKELETONS) * CHARGE_HEAT_PER_SKELETON, nil, "charging")
+		overcharge_extension.critical_overcharge_margin = critical_overcharge_margin
 		Managers.state.entity:system("buff_system"):add_buff_synced(attacker_unit, CHARGE_BUFF, BuffSyncType.LocalAndServer)
 		input_extension:clear_input_buffer()
 

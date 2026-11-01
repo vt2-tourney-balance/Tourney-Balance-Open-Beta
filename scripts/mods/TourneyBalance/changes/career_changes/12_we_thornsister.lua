@@ -40,6 +40,10 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- When holding cast, pressing weapon special key toggles a flat-wall mode (Ironbark Thicket icon)
 		- A flat wall no longer blocks enemy movement, but enemies touching it are slowed by 50% for 10s.
 
+		**Tanglegrasp Thicket**
+		- Reduced drag amount of Berserkers to 0.1 (from 1). Same as Stormvermin
+		- Reduced stagger strength against berserker and armoured enemies to medium_stagger (from heavy_stagger)
+
 		**Blackvenom Thicket**
 		- Added 40% cooldown reduction.
 	$END_TB
@@ -629,6 +633,18 @@ mod:hook(AreaDamageTemplates.templates.we_thornsister_thorn_wall.client, "update
 		end
 	end
 end)
+
+
+--[[
+	Tanglegrasp Thicket
+]]
+-- Give Berserkers same drag as Armoured Enemies.
+local stagger_types = require("scripts/utils/stagger_types")
+local thorn_wall_push_data = DamageWaveTemplates.templates.thornsister_thorn_wall_push.ai_push_data
+thorn_wall_push_data.wave_drag_multiplier_table[5] = thorn_wall_push_data.wave_drag_multiplier_table[2]
+-- Maulers (armored for stagger)
+thorn_wall_push_data.stagger_impact[2] = stagger_types.medium
+thorn_wall_push_data.stagger_impact[5] = stagger_types.medium
 
 --[[
 	Blackvenom Thicket
