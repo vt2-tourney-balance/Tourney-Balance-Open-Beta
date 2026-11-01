@@ -12,6 +12,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- The Crank Gun now always starts at full rotation speed. Previously this required Linked Compression Chamber.
 		- Shots fired while aiming with right click are now pinpoint accurate and increased damage fall off range to 30-50 (from 10-20).
 		- Increased range where bullets dissappear to 100 (from 30)
+		- Aimed shots consume the ability bar twice as fast.
 
 		### Talents
 		**Full Head of Steam**

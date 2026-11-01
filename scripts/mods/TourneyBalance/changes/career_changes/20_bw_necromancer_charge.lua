@@ -14,38 +14,19 @@ local CHARGE_LEASH_MARGIN = 1 -- stop this far before the leash (max_commander_d
 local CHARGE_COMMAND_TIMEOUT = 3 -- a charge command that never got to run (stagger, ...) expires
 local CHARGE_START_TIMEOUT = 1.5
 local CHARGE_IMPACT_TIMEOUT = 2
-local KNOCKDOWN_DURATION = 2
 
 --[[
 	Charge behaviours
 ]]
 local armored_charge = BreedActions.pet_skeleton_armored.ability_charge
 
--- Unarmored Charge: the armored skeletons' charge as it was
+-- The custom charge starts from the vanilla armored charge, which itself stays as it is for the vanilla charge command
+-- (charge at the commanded enemy)
 local unarmored_charge = table.clone(armored_charge)
 
--- Armored Charge: knocks enemies down like the Foot Knight's Valiant Charge, which is an explosion stagger
-armored_charge.push_ai = {
-	stagger_distance = 1.5,
-	stagger_impact = {
-		stagger_types.explosion,
-		stagger_types.explosion,
-		stagger_types.explosion,
-		stagger_types.explosion,
-		stagger_types.explosion,
-	},
-	stagger_duration = {
-		KNOCKDOWN_DURATION,
-		KNOCKDOWN_DURATION,
-		KNOCKDOWN_DURATION,
-		KNOCKDOWN_DURATION,
-		KNOCKDOWN_DURATION,
-	},
-}
-
 -- Only the armored skeleton has the charge animations (and the callbacks the charge waits on: the start animation
--- finishing, the finish animation finishing). The others charge with their regular run animation, so for them those
--- steps are skipped (tb_plain_run): no start animation, straight into the run, and no finish animation either
+-- finishing, the finish animation finishing). All skeletons charge with their regular run animation, so those steps
+-- are skipped (tb_plain_run): no start animation, straight into the run, and no finish animation either
 local PLAIN_RUN_ANIM = "move_fwd"
 
 local function tb_plain_run_charge(charge)
@@ -69,7 +50,7 @@ end
 
 local plain_unarmored_charge = tb_plain_run_charge(unarmored_charge)
 
--- The Unarmored Charge pushes like the Thornsister's thorn wall push (damage_wave_templates.lua,
+-- The charge (the same for every skeleton type) pushes like the Thornsister's thorn wall push (damage_wave_templates.lua,
 -- thornsister_thorn_wall_push): enemies hit are staggered along the way of the charge and then dragged with it, for as
 -- long as they stay in front of the skeleton. These are that template's tables, by enemy armor category
 plain_unarmored_charge.hit_ai_radius = 1.5 -- ai_query_distance
@@ -124,41 +105,18 @@ plain_unarmored_charge.tb_drag = {
 		0,
 	},
 }
--- Shield skeletons charge like armored ones (same data, knockdown included), minus the animations
-local plain_shield_charge = tb_plain_run_charge(armored_charge)
 
+-- Every skeleton type charges the same way
 BreedActions.pet_skeleton.ability_charge = plain_unarmored_charge
 BreedActions.pet_skeleton_dual_wield.ability_charge = plain_unarmored_charge
-BreedActions.pet_skeleton_with_shield.ability_charge = plain_shield_charge
+BreedActions.pet_skeleton_with_shield.ability_charge = plain_unarmored_charge
 
 local SKELETON_CHARGES = {
 	pet_skeleton = plain_unarmored_charge,
 	pet_skeleton_dual_wield = plain_unarmored_charge,
-	pet_skeleton_armored = armored_charge,
-	pet_skeleton_with_shield = plain_shield_charge,
+	pet_skeleton_armored = plain_unarmored_charge,
+	pet_skeleton_with_shield = plain_unarmored_charge,
 }
-
--- The 6_3 charge command (charge at the commanded enemy) used to be armored only. Shield skeletons only charge on the
--- directional command
-mod:hook_origin(CareerAbilityBWNecromancerCommand, "rpc_necromancer_command_charge", function (self, channel_id, target_unit_id)
-	local peer_id = CHANNEL_TO_PEER_ID[channel_id]
-
-	if peer_id ~= self._player.peer_id then
-		return
-	end
-
-	local target_unit = self._unit_storage:unit(target_unit_id)
-	local units = self._commander_extension:get_controlled_units()
-
-	for controlled_unit in pairs(units) do
-		local blackboard = BLACKBOARDS[controlled_unit]
-		local breed_name = blackboard.breed.name
-
-		if SKELETON_CHARGES[breed_name] and breed_name ~= "pet_skeleton_with_shield" then
-			blackboard.charge_target = target_unit
-		end
-	end
-end)
 
 --[[
 	Directional charge: charge_target is the necromancer (a marker, never an enemy), tb_charge_direction the way to go
@@ -451,34 +409,16 @@ local function tb_hit_ai(self, unit, hit_unit, action, blackboard, t)
 	AiUtils.damage_target(hit_unit, unit, action, action.damage)
 end
 
+-- Only the directional charge is custom. The vanilla charge command (charge at the commanded enemy, armored skeletons
+-- only) runs the node's own vanilla data
 mod:hook_origin(BTChargeAttackAction, "enter", function (self, unit, blackboard, t)
-	local breed_name = blackboard.breed.name
-	local breed_charge = SKELETON_CHARGES[breed_name]
-
-	if not breed_charge then
-		return original_enter(self, unit, blackboard, t)
-	end
-
 	local charge_target = blackboard.charge_target
 
-	if charge_target and charge_target == blackboard.commander_unit and blackboard.tb_charge_direction then
+	if SKELETON_CHARGES[blackboard.breed.name] and charge_target and charge_target == blackboard.commander_unit and blackboard.tb_charge_direction then
 		return tb_enter_directional(self, unit, blackboard, t)
 	end
 
-	-- the node's own data is the armored charge
-	local tree_node = self._tree_node
-	local node_action_data = tree_node.action_data
-
-	tree_node.action_data = breed_charge
-
-	original_enter(self, unit, blackboard, t)
-
-	tree_node.action_data = node_action_data
-
-	if breed_charge.tb_plain_run then
-		-- no start animation to wait for
-		original_start_finished(self, unit, blackboard)
-	end
+	return original_enter(self, unit, blackboard, t)
 end)
 mod:hook_origin(BTChargeAttackAction, "_start_impact", function (self, unit, blackboard, ...)
 	original_start_impact(self, unit, blackboard, ...)

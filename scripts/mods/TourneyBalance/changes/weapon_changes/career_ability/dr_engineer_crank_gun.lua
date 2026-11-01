@@ -10,6 +10,8 @@ local TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE = "tb_engineer_ability_shot_armor_pier
 local TB_ENGINEER_AIMED_SUB_ACTIONS = { "aimed_fire", "aimed_base_fire", "aimed_armor_pierce_fire" }
 -- Hitscan range of a shot; the crank gun has none set and falls back to ActionRangedBase's 30m, which made aimed shots vanish.
 local TB_ENGINEER_AIMED_RANGE = 100
+-- Each aimed shot takes this many times the ability bar of the same shot from the hip.
+local TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER = 2
 -- Vanilla handgun falloff
 local TB_ENGINEER_AIMED_DROPOFF_RANGES = {
 	dropoff_end = 50,
@@ -80,7 +82,6 @@ end
 --[[
 	Gromril Plated Shots
 ]]
---[[
 -- Copied damage profile from Handgun (vanilla). Armor order is unarmored, armored, resistant, player, berserker, super armor.
 -- Has to run before the aimed armor piercing profile below is cloned from it.
 local armor_pierce_profile = DamageProfileTemplates.engineer_ability_shot_armor_pierce
@@ -102,7 +103,6 @@ armor_pierce_profile.default_target.power_distribution_near.attack = 1 -- 0.48
 armor_pierce_profile.default_target.power_distribution_near.impact = 0.5 -- 0.3
 armor_pierce_profile.default_target.power_distribution_far.attack = 0.8 -- 0.36
 armor_pierce_profile.default_target.power_distribution_far.impact = 0.5 -- 0.25
-]]
 
 --[[
 	Aimed fire (holding right click)
@@ -145,12 +145,14 @@ for _, weapon_name in ipairs(CRANK_GUN_WEAPONS) do
 	aimed_base_fire.damage_profile = TB_ENGINEER_AIMED_SHOT
 	aimed_base_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
 	aimed_base_fire.range = TB_ENGINEER_AIMED_RANGE
+	aimed_base_fire.ammo_usage = aimed_base_fire.ammo_usage * TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER
 	action_one.aimed_base_fire = aimed_base_fire
 
 	local aimed_armor_pierce_fire = table.shallow_copy(action_one.armor_pierce_fire)
 	aimed_armor_pierce_fire.damage_profile = TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE
 	aimed_armor_pierce_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
 	aimed_armor_pierce_fire.range = TB_ENGINEER_AIMED_RANGE
+	aimed_armor_pierce_fire.ammo_usage = aimed_armor_pierce_fire.ammo_usage * TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER
 	action_one.aimed_armor_pierce_fire = aimed_armor_pierce_fire
 
 	local aimed_fire = table.shallow_copy(action_one.fire)

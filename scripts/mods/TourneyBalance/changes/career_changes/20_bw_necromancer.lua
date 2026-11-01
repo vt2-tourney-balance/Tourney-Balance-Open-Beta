@@ -17,12 +17,9 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 			* Increased Armored/Shield Skeleton max health to 250 (from 84.4 on cataclysm 3) for all difficulties.
 		* **Skeleton Resummon Distance**
 			* Increased distance for automatic resummoning of skeletons by Necromancer to 50m (from 28m).
-		* **Regular/Bladed Skeletons Unarmored Charge (CUSTOM CHARGE)**
-			* Added custom charge to all Regular and Bladed Skeletons.
-			* Regular/Bladed Skeletons charge for 20m and push enemies away (like SotT pushwall).
-		* **Armored/Shielded Skeletons Armored Charge (CUSTOM CHARGE)**
-			* Added custom charge to all Armored and Shielded Skeletons.
-			* Skeletons charge for 20m and now knocks enemies away (like FK charge).
+		* **Skeleton Custom Charge (CUSTOM CHARGE)**
+			* Added custom charge to all Regular, Bladed, Armored and Shielded Skeletons.
+			* Skeletons charge for 20m and drag enemies away (like SotT pushwall).
 
 		### Skeleton Controller Skull
 		* Existing commands:
@@ -57,14 +54,15 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Stacks are now gained per ranged hit dealt (from per spell cast), including each damage tick of the Soulstealer's Soul Rip.
 
 		**Reaping**
-		- Changed to: Releasing a skeleton gives 3 stacks. Critical attacks use up a stack to have 25% power and unlimited cleave.
+		- Changed to: Releasing a skeleton gives 1 stack (max 3) of Reaping.
+		- Reaping: Critical hits have 25% power and unlimited cleave.
 
 		**Cursed Blood**
-		- Releasing a skeleton gives 3 stacks. Bursts use up a stack.
-		- No longer requires the enemy to be afflicted by the Malediction of Nagash.
+		- Changed to: Releasing a skeleton gives 1 stack (max 3) of Cursed Blood.
+		- Cursed Blood: Critical attacks against enemies afflicted by the Malediction of Nagash burst for 25% of the attack.
 
 		**Soul Harvest**
-		- Harvesting 8 souls now causes the next 3 attacks to be guaranteed Critical Hits (from the next attack). Max 8 stacks.
+		- Harvesting 8 souls now causes the next 2 attacks to be a guaranteed Critical Hit. Max 8 stacks.
 		- Killing a special with a guaranteed Critical Hit from this also raises a skeleton that decays after 20 seconds.
 
 		**Withering Touch**
@@ -209,8 +207,9 @@ end)
 	the client that releases and the server both have them: Reaping spends them on the client, Cursed Blood on the
 	server. 20_bw_necromancer_desummon.lua calls on_necromancer_skeleton_released when a skeleton is sacrificed.
 ]]
-local RELEASE_STACKS = 3
-local RELEASE_MAX_STACKS = 4 -- three releases' worth
+local RELEASE_STACKS = 1
+local RELEASE_MAX_STACKS = 3
+local CURSE_RELEASE_STACKS = 3
 local REAPING_STACK_BUFF = "tb_necromancer_reaping_stack"
 local CURSED_BLOOD_STACK_BUFF = "tb_necromancer_cursed_blood_stack"
 local CURSE_COUNTER_BUFF = "sienna_necromancer_5_2_counter"
@@ -258,7 +257,7 @@ mod.on_necromancer_skeleton_released = function (owner_unit)
 	if talent_extension:has_talent("sienna_necromancer_5_2") then
 		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 
-		for _ = 1, RELEASE_STACKS do
+		for _ = 1, CURSE_RELEASE_STACKS do
 			buff_extension:add_buff(CURSE_COUNTER_BUFF)
 		end
 	end
@@ -416,7 +415,7 @@ mod_api.update_talent("bw_necromancer", 2, 3, {
 	description = "sienna_necromancer_2_3_desc",
 	description_values = {},
 })
-mod_api.insert_text("sienna_necromancer_2_3_desc", "Releasing a skeleton grant the next 3 critical attacks 25% power and unlimited cleave.")
+mod_api.insert_text("sienna_necromancer_2_3_desc", "Releasing a skeleton grant the next critical attack 25% power and unlimited cleave. Max 3 stacks.")
 
 --[[
 	Cursed Blood
@@ -460,9 +459,10 @@ mod_api.insert_proc_function("necromancer_crit_burst", function (owner_unit, buf
 		return
 	end
 
-	-- Any enemy, not only the ones afflicted by the Malediction of Nagash (balefire)
+	-- Only enemies afflicted by the Malediction of Nagash (balefire), and not on the frame it was applied
 	local hit_unit = params [param_order.attacked_unit]
-	if not Managers.state.side:is_enemy(owner_unit, hit_unit) then
+	local is_burning, applied_this_frame = Managers.state.status_effect:has_status(hit_unit, StatusEffectNames.burning_balefire)
+	if not is_burning or applied_this_frame then
 		return
 	end
 
@@ -529,7 +529,7 @@ end)
 mod_api.update_talent_buff_template("bright_wizard", "sienna_necromancer_4_1_cursed_blood", {
 	propagation_multiplier = 0.25 -- 0.10
 })
-mod_api.insert_text("sienna_necromancer_4_1_desc", "Releasing a skeleton cause the next 3 critical attacks against enemies to burst, damaging nearby enemies for 25% of the attack.")
+mod_api.insert_text("sienna_necromancer_4_1_desc", "Releasing a skeleton cause the next critical attack against enemies afflicted by the Malediction of Nagash to burst, damaging nearby enemies for 25% of the attack.  Max 3 stacks.")
 
 --[[
 	Raising a skeleton that decays (Soul Harvest, Spirit Leech)
@@ -555,8 +555,8 @@ end
 --[[
 	Soul Harvest
 ]]
-local SOUL_HARVEST_CRITS = 3
-local SOUL_HARVEST_MAX_CRITS = 8
+local SOUL_HARVEST_CRITS = 2 -- 3
+local SOUL_HARVEST_MAX_CRITS = 8 -- 8
 local SOUL_HARVEST_EXECUTE_BUFF = "sienna_necromancer_4_2_execute"
 local SOUL_HARVEST_ARMED_BUFF = "tb_necromancer_soul_harvest_armed"
 
@@ -632,7 +632,7 @@ mod_api.update_talent("bw_necromancer", 4, 2, {
 	description = "sienna_necromancer_4_2_desc",
 	description_values = {},
 })
-mod_api.insert_text("sienna_necromancer_4_2_desc", "The Malediction of Nagash rips the soul from targets that die. Harvesting 8 souls grants 3 guaranteed critical strikes, which on special kill raise a skeleton that decays after 20 seconds.")
+mod_api.insert_text("sienna_necromancer_4_2_desc", "The Malediction of Nagash rips the soul from targets that die. Harvesting 8 souls grants 2 guaranteed critical strikes, which on special kill raise a skeleton that decays after 20 seconds. Max 8 stacks.")
 
 --[[
 	Withering Touch
