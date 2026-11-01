@@ -507,6 +507,11 @@ mod:hook_origin(DamageUtils, "calculate_damage", function (damage_output, target
 
 		local is_melee = damage_profile and (damage_profile.charge_value == "light_attack" or damage_profile.charge_value == "heavy_attack")
 
+		-- Captain's Riposte passive: without the Killing Shot talent (the vanilla perk), the crit headshot instakill only applies to charged attacks
+		if not has_crit_head_shot_killing_blow_perk and damage_profile and damage_profile.charge_value == "heavy_attack" then
+			has_crit_head_shot_killing_blow_perk = buff_extension:has_buff_perk("tb_charged_crit_headshot_killing_blow")
+		end
+
 		-- Shade's Ruthless Precision: melee headshots on the first RUTHLESS_PRECISION_MAX_TARGETS enemies an attack hits
 		-- count as backstabs (_check_backstab doesn't know the hit zone). Sound and on_backstab procs: 11_we_shade.lua
 		if breed and (not backstab_multiplier or backstab_multiplier <= 1) and is_melee and buff_extension:has_buff_perk("tb_headshot_counts_as_backstab") and DamageUtils.get_breed_damage_multiplier_type(breed, hit_zone_name) == "headshot"
