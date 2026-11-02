@@ -331,7 +331,7 @@ Weapons.dual_wield_daggers_template_1.max_fatigue_points = 6 -- official: 4
 		* action_one.light_attack_bopp: Removed targets[1].armor_modifier (was <table>)
 		* action_one.light_attack_bopp: Removed targets[1].boost_curve_coefficient_headshot (was 2)
 		* action_one.light_attack_bopp: Removed targets[3] (was <table>)
-		* action_one.light_attack_left: Changed damage_profile to tb_1h_sword_light_1_2 (from light_slashing_linesman)
+		* action_one.light_attack_left: Changed damage_profile to tb_mace_and_sword_light_4 (from light_slashing_linesman)
 		* action_one.light_attack_left: Changed targets[1].boost_curve_type to ninja_curve (from linesman_curve)
 		* action_one.light_attack_left: Changed targets[2].boost_curve_type to ninja_curve (from linesman_curve)
 		* action_one.light_attack_left: Increased default_target.power_distribution.attack to 0.125 (from 0.075, +67%)
@@ -369,7 +369,7 @@ Weapons.dual_wield_daggers_template_1.max_fatigue_points = 6 -- official: 4
 		* action_one.light_attack_right: Increased targets[1].power_distribution.attack to 0.225 (from 0.175, +29%)
 		* action_one.light_attack_right: Reduced armor_modifier.attack[5] to 0.75 (from 1, -25%)
 		* action_one.light_attack_right: Reduced critical_strike.attack_armor_power_modifer[5] to 0.75 (from 1, -25%)
-		* action_one.light_attack_right_diagonal: Changed damage_profile to tb_1h_sword_light_1_2 (from light_slashing_linesman)
+		* action_one.light_attack_right_diagonal: Changed damage_profile to tb_mace_and_sword_light_3 (from light_slashing_linesman)
 		* action_one.light_attack_right_diagonal: Changed targets[1].boost_curve_type to ninja_curve (from linesman_curve)
 		* action_one.light_attack_right_diagonal: Changed targets[2].boost_curve_type to ninja_curve (from linesman_curve)
 		* action_one.light_attack_right_diagonal: Increased default_target.power_distribution.attack to 0.125 (from 0.075, +67%)
@@ -388,7 +388,7 @@ Weapons.dual_wield_hammer_sword_template.actions.action_one.heavy_attack_2.damag
 Weapons.dual_wield_hammer_sword_template.actions.action_one.heavy_attack_2.damage_profile_right = "mace_sword_heavy" -- official: "medium_slashing_axe_linesman_1h"
 Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_bopp.damage_profile_left = "mace_sword_bopp" -- official: "light_slashing_axe_linesman"
 Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_bopp.damage_profile_right = "mace_sword_bopp" -- official: "light_blunt_tank_spiked"
-Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_left.damage_profile = "tb_1h_sword_light_1_2" -- official: "light_slashing_linesman"
+Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_left.damage_profile = "tb_mace_and_sword_light_4" -- official: "light_slashing_linesman"
 Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_left_diagonal.damage_profile = "tb_1h_hammer_light_1_2" -- official: "light_blunt_tank_diag"
 Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_left_diagonal.hit_mass_count = { -- official: none
 	beastmen_bestigor = 0.5,
@@ -425,7 +425,7 @@ Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_right.h
 	skaven_storm_vermin_commander = 0.5,
 	skaven_storm_vermin_with_shield = 0.5,
 }
-Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_right_diagonal.damage_profile = "tb_1h_sword_light_1_2" -- official: "light_slashing_linesman"
+Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_right_diagonal.damage_profile = "tb_mace_and_sword_light_3" -- official: "light_slashing_linesman"
 
 -- mace_sword_bopp: replaces the existing block
 -- used by Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_bopp.damage_profile_left
@@ -677,15 +677,80 @@ NewDamageProfileTemplates.tb_1h_hammer_light_1_2 = { -- official: light_blunt_ta
 	},
 }
 
--- tb_1h_sword_light_1_2: replaces the existing block
--- used by Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_left.damage_profile
+-- tb_mace_and_sword_light_3: replaces the existing block
 -- used by Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_right_diagonal.damage_profile
--- used by Weapons.one_handed_swords_template_1.actions.action_one.light_attack_left.damage_profile
--- used by Weapons.one_handed_swords_template_1.actions.action_one.light_attack_right.damage_profile
--- used by Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_bopp.damage_profile
--- used by Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_left.damage_profile
--- ...and 1 more
-NewDamageProfileTemplates.tb_1h_sword_light_1_2 = { -- official: light_slashing_linesman (comments compare against it; also replaces light_slashing_linesman_elf, light_slashing_linesman_finesse)
+NewDamageProfileTemplates.tb_mace_and_sword_light_3 = { -- official: light_slashing_linesman
+	armor_modifier = {
+		attack = {
+			1,
+			0,
+			2,
+			1,
+			1,
+		},
+		impact = {
+			1,
+			0.3,
+			0.5,
+			1,
+			1,
+		},
+	},
+	charge_value = "light_attack",
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1,
+			0.5,
+			2.5,
+			1,
+			1,
+		},
+		impact_armor_power_modifer = {
+			1,
+			0.5,
+			0.5,
+			1,
+			1,
+		},
+	},
+	cleave_distribution = {
+		attack = 0.35,
+		impact = 0.2,
+	},
+	default_target = {
+		attack_template = "light_slashing_linesman",
+		boost_curve_type = "linesman_curve",
+		power_distribution = {
+			attack = 0.125, -- official: 0.075
+			impact = 0.05,
+		},
+	},
+	targets = {
+		{
+			attack_template = "light_slashing_linesman_hs",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2, -- official: 1.5
+			boost_curve_coefficient = 2,
+			power_distribution = {
+				attack = 0.2, -- official: 0.175
+				impact = 0.1,
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2, -- official: 1.5
+			power_distribution = {
+				attack = 0.15, -- official: 0.125
+				impact = 0.075,
+			},
+		},
+	},
+}
+
+-- tb_mace_and_sword_light_4: replaces the existing block
+-- used by Weapons.dual_wield_hammer_sword_template.actions.action_one.light_attack_left.damage_profile
+NewDamageProfileTemplates.tb_mace_and_sword_light_4 = { -- official: light_slashing_linesman
 	armor_modifier = {
 		attack = {
 			1,
@@ -814,6 +879,8 @@ DamageProfileTemplates.light_blunt_smiter_dual.armor_modifier.attack[6] = 0.82 -
 		* action_one.heavy_attack: Changed targets[1].boost_curve_type to linesman_curve (from ninja_curve)
 		* action_one.heavy_attack: Changed targets[2].attack_template to heavy_slashing_linesman (from light_slashing_linesman)
 		* action_one.heavy_attack: Increased armor_modifier.impact[2] to 0.5 (from 0.25, +100%)
+		* action_one.heavy_attack: Increased cleave_distribution.attack to 0.45 (from 0.25, +80%)
+		* action_one.heavy_attack: Increased cleave_distribution.impact to 0.4 (from 0.2, +100%)
 		* action_one.heavy_attack: Increased critical_strike.attack_armor_power_modifer[1] to 1.08 (from 1, +8%)
 		* action_one.heavy_attack: Increased targets[1].power_distribution.attack to 0.3 (from 0.15, +100%)
 		* action_one.heavy_attack: Increased targets[1].power_distribution.impact to 0.275 (from 0.125, +120%)
@@ -822,7 +889,6 @@ DamageProfileTemplates.light_blunt_smiter_dual.armor_modifier.attack[6] = 0.82 -
 		* action_one.heavy_attack: Reduced armor_modifier.attack[1] to 0.93 (from 1, -7%)
 		* action_one.heavy_attack: Reduced armor_modifier.attack[2] to 0.19 (from 0.25, -24%)
 		* action_one.heavy_attack: Reduced armor_modifier.attack[5] to 0.5 (from 1, -50%)
-		* action_one.heavy_attack: Reduced cleave_distribution.attack to 0.225 (from 0.25, -10%)
 		* action_one.heavy_attack: Reduced critical_strike.attack_armor_power_modifer[2] to 0.13 (from 0.5, -74%)
 		* action_one.heavy_attack: Reduced critical_strike.attack_armor_power_modifer[5] to 0.6 (from 1, -40%)
 		* action_one.heavy_attack: Reduced critical_strike.impact_armor_power_modifer[2] to 0.5 (from 0.75, -33%)
@@ -841,6 +907,8 @@ DamageProfileTemplates.light_blunt_smiter_dual.armor_modifier.attack[6] = 0.82 -
 		* action_one.heavy_attack_2: Changed targets[2].attack_template to heavy_slashing_linesman (from light_slashing_linesman)
 		* action_one.heavy_attack_2: Increased armor_modifier.attack[1] to 1.35 (from 1, +35%)
 		* action_one.heavy_attack_2: Increased armor_modifier.impact[2] to 0.5 (from 0.25, +100%)
+		* action_one.heavy_attack_2: Increased cleave_distribution.attack to 0.45 (from 0.25, +80%)
+		* action_one.heavy_attack_2: Increased cleave_distribution.impact to 0.4 (from 0.2, +100%)
 		* action_one.heavy_attack_2: Increased critical_strike.attack_armor_power_modifer[1] to 1.03 (from 1, +3%)
 		* action_one.heavy_attack_2: Increased targets[1].power_distribution.attack to 0.3 (from 0.15, +100%)
 		* action_one.heavy_attack_2: Increased targets[1].power_distribution.impact to 0.275 (from 0.125, +120%)
@@ -848,7 +916,6 @@ DamageProfileTemplates.light_blunt_smiter_dual.armor_modifier.attack[6] = 0.82 -
 		* action_one.heavy_attack_2: Increased targets[2].power_distribution.impact to 0.15 (from 0.075, +100%)
 		* action_one.heavy_attack_2: Reduced armor_modifier.attack[2] to 0.19 (from 0.25, -24%)
 		* action_one.heavy_attack_2: Reduced armor_modifier.attack[5] to 0.6 (from 1, -40%)
-		* action_one.heavy_attack_2: Reduced cleave_distribution.attack to 0.225 (from 0.25, -10%)
 		* action_one.heavy_attack_2: Reduced critical_strike.attack_armor_power_modifer[2] to 0.1 (from 0.5, -80%)
 		* action_one.heavy_attack_2: Reduced critical_strike.attack_armor_power_modifer[5] to 0.45 (from 1, -55%)
 		* action_one.heavy_attack_2: Reduced critical_strike.impact_armor_power_modifer[2] to 0.5 (from 0.75, -33%)
@@ -979,8 +1046,8 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_1 = { -- official: light_slashing
 		},
 	},
 	cleave_distribution = {
-		attack = 0.225, -- official: 0.25
-		impact = 0.2,
+		attack = 0.45, -- official: 0.25
+		impact = 0.4, -- official: 0.2
 	},
 	default_target = {
 		attack_template = "light_slashing_linesman",
@@ -1070,8 +1137,8 @@ NewDamageProfileTemplates.tb_dual_swords_heavy_2 = { -- official: light_slashing
 		},
 	},
 	cleave_distribution = {
-		attack = 0.225, -- official: 0.25
-		impact = 0.2,
+		attack = 0.45, -- official: 0.25
+		impact = 0.4, -- official: 0.2
 	},
 	default_target = {
 		attack_template = "light_slashing_linesman",
@@ -4971,22 +5038,7 @@ NewDamageProfileTemplates.tb_bretsword_shield_light_shield_bash = { -- official:
 		* action_one.heavy_attack_right: Reduced targets[3].power_distribution.attack to 0.1 (from 0.15, -33%)
 		* action_one.light_attack_last: Added shield_break: true
 		* action_one.light_attack_last: Increased range_mod to 1.4 (from 1.2, +17%)
-		* action_one.light_attack_left: Changed damage_profile to tb_1h_sword_light_1_2 (from light_slashing_linesman_finesse)
-		* action_one.light_attack_left: Changed targets[1].boost_curve_type to ninja_curve (from linesman_curve)
-		* action_one.light_attack_left: Changed targets[2].boost_curve_type to ninja_curve (from linesman_curve)
-		* action_one.light_attack_left: Increased default_target.power_distribution.attack to 0.125 (from 0.075, +67%)
-		* action_one.light_attack_left: Increased targets[1].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_left: Increased targets[1].power_distribution.attack to 0.2 (from 0.175, +14%)
-		* action_one.light_attack_left: Increased targets[2].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_left: Increased targets[2].power_distribution.attack to 0.15 (from 0.125, +20%)
-		* action_one.light_attack_right: Changed damage_profile to tb_1h_sword_light_1_2 (from light_slashing_linesman_finesse)
-		* action_one.light_attack_right: Changed targets[1].boost_curve_type to ninja_curve (from linesman_curve)
-		* action_one.light_attack_right: Changed targets[2].boost_curve_type to ninja_curve (from linesman_curve)
-		* action_one.light_attack_right: Increased default_target.power_distribution.attack to 0.125 (from 0.075, +67%)
-		* action_one.light_attack_right: Increased targets[1].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_right: Increased targets[1].power_distribution.attack to 0.2 (from 0.175, +14%)
-		* action_one.light_attack_right: Increased targets[2].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_right: Increased targets[2].power_distribution.attack to 0.15 (from 0.125, +20%)
+		* action_one.light_attack_last: Reduced targets[1].armor_modifier.attack[2] to 0.233 (from 0.65, -64%)
 
 	$END_TB
 ]]
@@ -4994,8 +5046,6 @@ NewDamageProfileTemplates.tb_bretsword_shield_light_shield_bash = { -- official:
 Weapons.one_handed_swords_template_1.actions.action_one.heavy_attack_left.range_mod = 1.4 -- official: 1.25
 Weapons.one_handed_swords_template_1.actions.action_one.heavy_attack_right.range_mod = 1.4 -- official: 1.25
 Weapons.one_handed_swords_template_1.actions.action_one.light_attack_last.range_mod = 1.4 -- official: 1.2
-Weapons.one_handed_swords_template_1.actions.action_one.light_attack_left.damage_profile = "tb_1h_sword_light_1_2" -- official: "light_slashing_linesman_finesse"
-Weapons.one_handed_swords_template_1.actions.action_one.light_attack_right.damage_profile = "tb_1h_sword_light_1_2" -- official: "light_slashing_linesman_finesse"
 Weapons.one_handed_swords_template_1.dodge_count = 4 -- official: 6
 
 -- medium_slashing_tank_1h_finesse (official profile, changed in place)
@@ -5026,8 +5076,7 @@ DamageProfileTemplates.medium_slashing_tank_1h_finesse.targets[3].power_distribu
 
 -- sword_1h_light_smiter_vertical (official profile, changed in place)
 DamageProfileTemplates.sword_1h_light_smiter_vertical.shield_break = true -- official: none
-
--- uses tb_1h_sword_light_1_2 (exported under dual_wield_hammer_sword_template)
+DamageProfileTemplates.sword_1h_light_smiter_vertical.targets[1].armor_modifier.attack[2] = 0.233 -- official: 0.65
 
 -- ======== staff_scythe ========
 
@@ -6043,6 +6092,8 @@ Weapons.two_handed_cog_hammers_template_1.actions.action_one.push.allowed_chain_
 	$BEGIN_TB
 		## two_handed_halberds_template_1
 
+		* action_one.heavy_attack_left: Added critical_strike.attack_armor_power_modifer[6]: 0.05
+		* action_one.heavy_attack_left: Added targets[1].armor_modifier.attack[6]: 0.13
 		* action_one.heavy_attack_left: Added targets[1].headshot_boost_boss: 0.154
 		* action_one.heavy_attack_left: Added targets[2].headshot_boost_boss: 0.154
 		* action_one.heavy_attack_left: Added targets[3].boost_curve_coefficient_headshot: 1.75
@@ -6051,30 +6102,35 @@ Weapons.two_handed_cog_hammers_template_1.actions.action_one.push.allowed_chain_
 		* action_one.heavy_attack_left: Added targets[4].headshot_boost_boss: 0.154
 		* action_one.heavy_attack_left: Changed damage_profile to tb_halberd_heavy_slash (from heavy_slashing_linesman_polearm)
 		* action_one.heavy_attack_left: Increased targets[1].armor_modifier.attack[1] to 1.15 (from 1, +15%)
-		* action_one.heavy_attack_left: Increased targets[1].boost_curve_coefficient_headshot to 1.75 (from 1, +75%)
 		* action_one.heavy_attack_left: Increased targets[1].power_distribution.attack to 0.45 (from 0.325, +38%)
 		* action_one.heavy_attack_left: Increased targets[2].boost_curve_coefficient_headshot to 1.75 (from 1, +75%)
 		* action_one.heavy_attack_left: Increased targets[2].power_distribution.attack to 0.35 (from 0.25, +40%)
 		* action_one.heavy_attack_left: Increased targets[3].power_distribution.attack to 0.25 (from 0.15, +67%)
 		* action_one.heavy_attack_left: Increased targets[4].power_distribution.attack to 0.15 (from 0.125, +20%)
+		* action_one.heavy_attack_left: Reduced critical_strike.attack_armor_power_modifer[2] to 0.145 (from 0.5, -71%)
+		* action_one.heavy_attack_left: Reduced targets[1].armor_modifier.attack[2] to 0.169 (from 0.5, -66%)
+		* action_one.heavy_attack_stab: Added critical_strike.attack_armor_power_modifer[6]: 0.01
+		* action_one.heavy_attack_stab: Added targets[1].armor_modifier.attack[6]: 0.15
 		* action_one.heavy_attack_stab: Added targets[1].headshot_boost_boss: 0.175
 		* action_one.heavy_attack_stab: Changed damage_profile to tb_halberd_heavy_stab (from heavy_slashing_smiter_stab_polearm)
 		* action_one.heavy_attack_stab: Increased critical_strike.attack_armor_power_modifer[2] to 0.56 (from 0.5, +12%)
 		* action_one.heavy_attack_stab: Increased targets[1].armor_modifier.attack[2] to 0.56 (from 0.45, +24%)
-		* action_one.heavy_attack_stab: Increased targets[1].boost_curve_coefficient_headshot to 2.8 (from 2, +40%)
+		* action_one.light_attack_down: Added critical_strike.attack_armor_power_modifer[6]: 1.045
 		* action_one.light_attack_down: Added default_target.boost_curve_coefficient: 1
 		* action_one.light_attack_down: Added default_target.boost_curve_coefficient_headshot: 1.5
 		* action_one.light_attack_down: Added melee_boost_override: 2.5
-		* action_one.light_attack_down: Changed damage_profile to tb_halberd_light_chop (from medium_slashing_smiter_2h)
+		* action_one.light_attack_down: Changed damage_profile to tb_halberd_push_attack (from medium_slashing_smiter_2h)
 		* action_one.light_attack_down: Changed default_target.attack_template to stab_smiter (from slashing_smiter)
 		* action_one.light_attack_down: Changed default_target.boost_curve_type to ninja_curve (from smiter_curve)
 		* action_one.light_attack_down: Increased armor_modifier.attack[1] to 1.25 (from 1, +25%)
-		* action_one.light_attack_down: Increased armor_modifier.attack[2] to 1.25 (from 0.8, +56%)
+		* action_one.light_attack_down: Increased armor_modifier.attack[2] to 0.9 (from 0.8, +12%)
 		* action_one.light_attack_down: Increased armor_modifier.attack[3] to 2.5 (from 1.75, +43%)
 		* action_one.light_attack_down: Increased armor_modifier.impact[2] to 0.8 (from 0.6, +33%)
-		* action_one.light_attack_down: Increased critical_strike.attack_armor_power_modifer[2] to 1.25 (from 0.8, +56%)
+		* action_one.light_attack_down: Increased critical_strike.attack_armor_power_modifer[2] to 1.07 (from 0.8, +34%)
 		* action_one.light_attack_down: Removed default_target.armor_modifier (was <table>)
 		* action_one.light_attack_down: Removed targets[2] (was <table>)
+		* action_one.light_attack_last: Added armor_modifier.attack[6]: 0.03
+		* action_one.light_attack_last: Added critical_strike.attack_armor_power_modifer[6]: 0.01
 		* action_one.light_attack_last: Added default_target.boost_curve_coefficient: 1
 		* action_one.light_attack_last: Added default_target.boost_curve_coefficient_headshot: 1.5
 		* action_one.light_attack_last: Added melee_boost_override: 2.5
@@ -6082,20 +6138,26 @@ Weapons.two_handed_cog_hammers_template_1.actions.action_one.push.allowed_chain_
 		* action_one.light_attack_last: Changed default_target.attack_template to stab_smiter (from slashing_smiter)
 		* action_one.light_attack_last: Changed default_target.boost_curve_type to ninja_curve (from smiter_curve)
 		* action_one.light_attack_last: Increased armor_modifier.attack[1] to 1.25 (from 1, +25%)
-		* action_one.light_attack_last: Increased armor_modifier.attack[2] to 1.25 (from 0.8, +56%)
+		* action_one.light_attack_last: Increased armor_modifier.attack[2] to 0.9 (from 0.8, +12%)
 		* action_one.light_attack_last: Increased armor_modifier.attack[3] to 2.5 (from 1.75, +43%)
 		* action_one.light_attack_last: Increased armor_modifier.impact[2] to 0.8 (from 0.6, +33%)
-		* action_one.light_attack_last: Increased critical_strike.attack_armor_power_modifer[2] to 1.25 (from 0.8, +56%)
+		* action_one.light_attack_last: Increased critical_strike.attack_armor_power_modifer[2] to 1.07 (from 0.8, +34%)
 		* action_one.light_attack_last: Removed default_target.armor_modifier (was <table>)
 		* action_one.light_attack_last: Removed targets[2] (was <table>)
+		* action_one.light_attack_left: Added critical_strike.attack_armor_power_modifer[6]: 0.01
+		* action_one.light_attack_left: Added targets[1].armor_modifier.attack[6]: 0.05
 		* action_one.light_attack_left: Changed damage_profile to tb_halberd_light_slash (from medium_slashing_axe_linesman)
 		* action_one.light_attack_left: Increased cleave_distribution.attack to 0.4 (from 0.275, +45%)
 		* action_one.light_attack_left: Increased targets[1].armor_modifier.attack[1] to 1.25 (from 1, +25%)
 		* action_one.light_attack_left: Increased targets[2].power_distribution.attack to 0.225 (from 0.15, +50%)
 		* action_one.light_attack_left: Increased targets[3].power_distribution.attack to 0.15 (from 0.1, +50%)
+		* action_one.light_attack_left: Reduced critical_strike.attack_armor_power_modifer[2] to 0 (from 0.5, -100%)
+		* action_one.light_attack_left: Reduced targets[1].armor_modifier.attack[2] to 0.08 (from 0.3, -73%)
+		* action_one.light_attack_stab: Added armor_modifier.attack[6]: 0.1
+		* action_one.light_attack_stab: Added critical_strike.attack_armor_power_modifer[6]: 0.01
 		* action_one.light_attack_stab: Changed damage_profile to tb_halberd_light_stab (from medium_slashing_smiter_stab)
-		* action_one.light_attack_stab: Increased armor_modifier.attack[2] to 0.7 (from 0.25, +180%)
-		* action_one.light_attack_stab: Increased critical_strike.attack_armor_power_modifer[2] to 0.8 (from 0.4, +100%)
+		* action_one.light_attack_stab: Increased armor_modifier.attack[2] to 0.53 (from 0.25, +112%)
+		* action_one.light_attack_stab: Increased critical_strike.attack_armor_power_modifer[2] to 0.58 (from 0.4, +45%)
 		* action_one.light_attack_stab: Increased default_target.power_distribution.attack to 0.25 (from 0.2, +25%)
 
 	$END_TB
@@ -6103,7 +6165,7 @@ Weapons.two_handed_cog_hammers_template_1.actions.action_one.push.allowed_chain_
 
 Weapons.two_handed_halberds_template_1.actions.action_one.heavy_attack_left.damage_profile = "tb_halberd_heavy_slash" -- official: "heavy_slashing_linesman_polearm"
 Weapons.two_handed_halberds_template_1.actions.action_one.heavy_attack_stab.damage_profile = "tb_halberd_heavy_stab" -- official: "heavy_slashing_smiter_stab_polearm"
-Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_down.damage_profile = "tb_halberd_light_chop" -- official: "medium_slashing_smiter_2h"
+Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_down.damage_profile = "tb_halberd_push_attack" -- official: "medium_slashing_smiter_2h"
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_last.damage_profile = "tb_halberd_light_chop" -- official: "medium_slashing_smiter_2h"
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_left.damage_profile = "tb_halberd_light_slash" -- official: "medium_slashing_axe_linesman"
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_stab.damage_profile = "tb_halberd_light_stab" -- official: "medium_slashing_smiter_stab"
@@ -6113,7 +6175,23 @@ Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_stab.dama
 NewDamageProfileTemplates.tb_halberd_heavy_slash = { -- official: heavy_slashing_linesman_polearm
 	armor_modifier = "armor_modifier_linesman_H",
 	charge_value = "heavy_attack",
-	critical_strike = "critical_strike_linesman_H",
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1,
+			0.145, -- official: 0.5
+			2.5,
+			1,
+			1,
+			0.05, -- official: none
+		},
+		impact_armor_power_modifer = {
+			1,
+			0.5,
+			0.5,
+			1,
+			1,
+		},
+	},
 	cleave_distribution = "cleave_distribution_linesman_executioner_H",
 	default_target = {
 		attack_template = "light_slashing_linesman",
@@ -6128,15 +6206,16 @@ NewDamageProfileTemplates.tb_halberd_heavy_slash = { -- official: heavy_slashing
 		{
 			attack_template = "heavy_slashing_linesman",
 			boost_curve_type = "linesman_curve",
-			boost_curve_coefficient_headshot = 1.75, -- official: 1
+			boost_curve_coefficient_headshot = 1,
 			headshot_boost_boss = 0.154, -- official: none
 			armor_modifier = {
 				attack = {
 					1.15, -- official: 1
-					0.5,
+					0.169, -- official: 0.5
 					1.5,
 					1,
 					0.75,
+					0.13, -- official: none
 				},
 				impact = {
 					0.9,
@@ -6211,6 +6290,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 			2.5,
 			1,
 			1,
+			0.01, -- official: none
 		},
 		impact_armor_power_modifer = {
 			1,
@@ -6239,7 +6319,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 		{
 			attack_template = "heavy_stab_smiter",
 			boost_curve_type = "ninja_curve",
-			boost_curve_coefficient_headshot = 2.8, -- official: 2
+			boost_curve_coefficient_headshot = 2,
 			boost_curve_coefficient = 0.75,
 			headshot_boost_boss = 0.175, -- official: none
 			armor_modifier = {
@@ -6249,6 +6329,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 					2,
 					1,
 					0.75,
+					0.15, -- official: none
 				},
 				impact = {
 					1,
@@ -6267,16 +6348,16 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 }
 
 -- tb_halberd_light_chop: replaces the existing block
--- used by Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_down.damage_profile
 -- used by Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_last.damage_profile
 NewDamageProfileTemplates.tb_halberd_light_chop = { -- official: medium_slashing_smiter_2h
 	armor_modifier = {
 		attack = {
 			1.25, -- official: 1
-			1.25, -- official: 0.8
+			0.9, -- official: 0.8
 			2.5, -- official: 1.75
 			1,
 			0.75,
+			0.03, -- official: none
 		},
 		impact = {
 			1,
@@ -6290,10 +6371,11 @@ NewDamageProfileTemplates.tb_halberd_light_chop = { -- official: medium_slashing
 	critical_strike = {
 		attack_armor_power_modifer = {
 			1.25,
-			1.25, -- official: 0.8
+			1.07, -- official: 0.8
 			2.5,
 			1,
 			1,
+			0.01, -- official: none
 		},
 		impact_armor_power_modifer = {
 			1,
@@ -6327,7 +6409,23 @@ NewDamageProfileTemplates.tb_halberd_light_chop = { -- official: medium_slashing
 NewDamageProfileTemplates.tb_halberd_light_slash = { -- official: medium_slashing_axe_linesman
 	armor_modifier = "armor_modifier_axe_linesman_M",
 	charge_value = "light_attack",
-	critical_strike = "critical_strike_axe_linesman_M",
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1,
+			0, -- official: 0.5
+			1.5,
+			1,
+			1,
+			0.01, -- official: none
+		},
+		impact_armor_power_modifer = {
+			1,
+			1,
+			1,
+			1,
+			1,
+		},
+	},
 	cleave_distribution = {
 		attack = 0.4, -- official: 0.275
 		impact = 0.25,
@@ -6341,10 +6439,11 @@ NewDamageProfileTemplates.tb_halberd_light_slash = { -- official: medium_slashin
 			armor_modifier = {
 				attack = {
 					1.25, -- official: 1
-					0.3,
+					0.08, -- official: 0.3
 					1.5,
 					1,
 					0.75,
+					0.05, -- official: none
 				},
 				impact = {
 					0.9,
@@ -6384,10 +6483,11 @@ NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing
 	armor_modifier = {
 		attack = {
 			1,
-			0.7, -- official: 0.25
+			0.53, -- official: 0.25
 			2.25,
 			1,
 			0.75,
+			0.1, -- official: none
 		},
 		impact = {
 			1,
@@ -6401,10 +6501,11 @@ NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing
 	critical_strike = {
 		attack_armor_power_modifer = {
 			1,
-			0.8, -- official: 0.4
+			0.58, -- official: 0.4
 			2.5,
 			1,
 			1,
+			0.01, -- official: none
 		},
 		impact_armor_power_modifer = {
 			1,
@@ -6428,6 +6529,65 @@ NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing
 			attack = 0.25, -- official: 0.2
 			impact = 0.125,
 		},
+	},
+}
+
+-- tb_halberd_push_attack: replaces the existing block
+-- used by Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_down.damage_profile
+NewDamageProfileTemplates.tb_halberd_push_attack = { -- official: medium_slashing_smiter_2h
+	armor_modifier = {
+		attack = {
+			1.25, -- official: 1
+			0.9, -- official: 0.8
+			2.5, -- official: 1.75
+			1,
+			0.75,
+		},
+		impact = {
+			1,
+			0.8, -- official: 0.6
+			1,
+			1,
+			0.75,
+		},
+	},
+	charge_value = "light_attack",
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1.25,
+			1.07, -- official: 0.8
+			2.5,
+			1,
+			1,
+			1.045, -- official: none
+		},
+		impact_armor_power_modifer = {
+			1,
+			1,
+			1,
+			1,
+			1,
+		},
+	},
+	cleave_distribution = {
+		attack = 0.075,
+		impact = 0.075,
+	},
+	melee_boost_override = 2.5, -- official: none
+	shield_break = true,
+	default_target = {
+		attack_template = "stab_smiter", -- official: "slashing_smiter"
+		boost_curve_type = "ninja_curve", -- official: "smiter_curve"
+		boost_curve_coefficient_headshot = 1.5, -- official: none
+		boost_curve_coefficient = 1, -- official: none
+		power_distribution = {
+			attack = 0.325,
+			impact = 0.2,
+		},
+		-- removed: armor_modifier (official: <table>)
+	},
+	targets = {
+		-- removed: [2] (official: <table>)
 	},
 }
 
@@ -6886,6 +7046,7 @@ NewDamageProfileTemplates.tb_2h_hammer_heavy = { -- official: heavy_blunt_tank (
 		## two_handed_heavy_spears_template
 
 		* action_one.heavy_attack_left: Changed damage_profile to tusk_spear_heavy_1 (from heavy_slashing_smiter_stab_polearm)
+		* action_one.heavy_attack_left: Increased additional_critical_strike_chance to 0.05 (from 0)
 		* action_one.heavy_attack_left: Increased armor_modifier.attack[1] to 1.208 (from 1, +21%)
 		* action_one.heavy_attack_left: Increased armor_modifier.attack[2] to 1.007 (from 0.3, +236%)
 		* action_one.heavy_attack_left: Increased armor_modifier.impact[2] to 0.65 (from 0.5, +30%)
@@ -6893,17 +7054,21 @@ NewDamageProfileTemplates.tb_2h_hammer_heavy = { -- official: heavy_blunt_tank (
 		* action_one.heavy_attack_left: Increased critical_strike.attack_armor_power_modifer[2] to 0.947 (from 0.5, +89%)
 		* action_one.heavy_attack_left: Removed melee_boost_override (was 2.5)
 		* action_one.heavy_attack_left: Removed targets[1].armor_modifier (was <table>)
+		* action_one.heavy_attack_tank: Increased additional_critical_strike_chance to 0.15 (from 0)
 		* action_one.light_attack_left: Changed charge_value to light_attack (from heavy_attack)
 		* action_one.light_attack_left: Changed damage_profile to tusk_spear_light_1 (from medium_spear_smiter_stab)
+		* action_one.light_attack_left: Increased additional_critical_strike_chance to 0.05 (from 0)
 		* action_one.light_attack_left: Increased armor_modifier.attack[2] to 0.35 (from 0.25, +40%)
 		* action_one.light_attack_left: Increased critical_strike.attack_armor_power_modifer[2] to 0.47 (from 0.4, +17%)
 		* action_one.light_attack_left: Removed melee_boost_override (was 2.5)
 		* action_one.light_attack_right: Added armor_modifier.attack[6]: 0.74
 		* action_one.light_attack_right: Added critical_strike.attack_armor_power_modifer[6]: 0.6
 		* action_one.light_attack_right: Changed damage_profile to tusk_spear_light_3 (from medium_slashing_linesman_spear)
+		* action_one.light_attack_right: Increased additional_critical_strike_chance to 0.15 (from 0)
 		* action_one.light_attack_right: Increased armor_modifier.attack[5] to 1.16 (from 1, +16%)
 		* action_one.light_attack_stab_1: Changed charge_value to light_attack (from heavy_attack)
 		* action_one.light_attack_stab_1: Changed damage_profile to tusk_spear_light_2 (from medium_spear_smiter_stab)
+		* action_one.light_attack_stab_1: Increased additional_critical_strike_chance to 0.1 (from 0)
 		* action_one.light_attack_stab_1: Increased armor_modifier.attack[1] to 1.335 (from 1, +34%)
 		* action_one.light_attack_stab_1: Increased armor_modifier.attack[2] to 0.45 (from 0.25, +80%)
 		* action_one.light_attack_stab_1: Increased armor_modifier.attack[3] to 2.75 (from 2.25, +22%)
@@ -6916,6 +7081,7 @@ NewDamageProfileTemplates.tb_2h_hammer_heavy = { -- official: heavy_blunt_tank (
 		* action_one.light_attack_stab_2: Added critical_strike.attack_armor_power_modifer[6]: 1.2
 		* action_one.light_attack_stab_2: Changed charge_value to light_attack (from heavy_attack)
 		* action_one.light_attack_stab_2: Changed damage_profile to tusk_spear_light_4 (from medium_spear_smiter_stab)
+		* action_one.light_attack_stab_2: Increased additional_critical_strike_chance to 0.2 (from 0)
 		* action_one.light_attack_stab_2: Increased armor_modifier.attack[1] to 2 (from 1, +100%)
 		* action_one.light_attack_stab_2: Increased armor_modifier.attack[2] to 0.9 (from 0.25, +260%)
 		* action_one.light_attack_stab_2: Increased armor_modifier.attack[5] to 1.65 (from 0.75, +120%)
@@ -6928,10 +7094,16 @@ NewDamageProfileTemplates.tb_2h_hammer_heavy = { -- official: heavy_blunt_tank (
 	$END_TB
 ]]
 
+Weapons.two_handed_heavy_spears_template.actions.action_one.heavy_attack_left.additional_critical_strike_chance = 0.05 -- official: 0
 Weapons.two_handed_heavy_spears_template.actions.action_one.heavy_attack_left.damage_profile = "tusk_spear_heavy_1" -- official: "heavy_slashing_smiter_stab_polearm"
+Weapons.two_handed_heavy_spears_template.actions.action_one.heavy_attack_tank.additional_critical_strike_chance = 0.15 -- official: 0
+Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_left.additional_critical_strike_chance = 0.05 -- official: 0
 Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_left.damage_profile = "tusk_spear_light_1" -- official: "medium_spear_smiter_stab"
+Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_right.additional_critical_strike_chance = 0.15 -- official: 0
 Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_right.damage_profile = "tusk_spear_light_3" -- official: "medium_slashing_linesman_spear"
+Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_stab_1.additional_critical_strike_chance = 0.1 -- official: 0
 Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_stab_1.damage_profile = "tusk_spear_light_2" -- official: "medium_spear_smiter_stab"
+Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_stab_2.additional_critical_strike_chance = 0.2 -- official: 0
 Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_stab_2.damage_profile = "tusk_spear_light_4" -- official: "medium_spear_smiter_stab"
 
 -- tusk_spear_heavy_1: replaces the existing block
@@ -7826,15 +7998,15 @@ DamageProfileTemplates.heavy_slashing_smiter_stab.targets[1].boost_curve_coeffic
 		* action_one.heavy_attack_up: Reduced targets[1].boost_curve_coefficient_headshot to 1.5 (from 2, -25%)
 		* action_one.heavy_attack_up: Reduced targets[2].power_distribution.attack to 0.175 (from 0.18, -3%)
 		* action_one.heavy_attack_up: Reduced targets[3].power_distribution.attack to 0.1 (from 0.15, -33%)
-		* action_one.light_attack_bopp: Changed damage_profile to tb_1h_sword_light_1_2 (from light_slashing_linesman_elf)
+		* action_one.light_attack_bopp: Changed damage_profile to tb_elven_sword_push_attack (from light_slashing_linesman_elf)
 		* action_one.light_attack_bopp: Changed targets[1].boost_curve_type to ninja_curve (from linesman_curve)
 		* action_one.light_attack_bopp: Changed targets[2].boost_curve_type to ninja_curve (from linesman_curve)
+		* action_one.light_attack_bopp: Increased armor_modifier.attack[1] to 1 (from 0.8, +25%)
+		* action_one.light_attack_bopp: Increased armor_modifier.impact[1] to 1 (from 0.75, +33%)
 		* action_one.light_attack_bopp: Increased default_target.power_distribution.attack to 0.125 (from 0.075, +67%)
-		* action_one.light_attack_bopp: Increased targets[1].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_bopp: Increased targets[1].power_distribution.attack to 0.2 (from 0.175, +14%)
-		* action_one.light_attack_bopp: Increased targets[2].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_bopp: Increased targets[2].power_distribution.attack to 0.15 (from 0.125, +20%)
 		* action_one.light_attack_bopp: Reduced anim_time_scale to 1.08 (from 1.305, -17%)
+		* action_one.light_attack_bopp: Reduced targets[1].power_distribution.attack to 0.2 (from 0.21, -5%)
+		* action_one.light_attack_bopp: Reduced targets[2].power_distribution.attack to 0.15 (from 0.185, -19%)
 		* action_one.light_attack_last: Changed damage_profile to light_slashing_smiter_finesse (from light_slashing_smiter_stab_swords)
 		* action_one.light_attack_last: Increased armor_modifier.attack[2] to 0.82 (from 0.65, +26%)
 		* action_one.light_attack_last: Increased armor_modifier.attack[6] to 0.82 (from 0.6, +37%)
@@ -7843,31 +8015,31 @@ DamageProfileTemplates.heavy_slashing_smiter_stab.targets[1].boost_curve_coeffic
 		* action_one.light_attack_last: Reduced allowed_chain_actions[2].start_time to 0.5 (from 0.65, -23%)
 		* action_one.light_attack_last: Reduced allowed_chain_actions[3].start_time to 0.5 (from 0.65, -23%)
 		* action_one.light_attack_last: Reduced anim_time_scale to 0.81 (from 1.215, -33%)
-		* action_one.light_attack_left: Changed damage_profile to tb_1h_sword_light_1_2 (from light_slashing_linesman_elf)
+		* action_one.light_attack_left: Changed damage_profile to tb_elven_sword_light_1 (from light_slashing_linesman_elf)
 		* action_one.light_attack_left: Changed targets[1].boost_curve_type to ninja_curve (from linesman_curve)
 		* action_one.light_attack_left: Changed targets[2].boost_curve_type to ninja_curve (from linesman_curve)
+		* action_one.light_attack_left: Increased armor_modifier.attack[1] to 1 (from 0.8, +25%)
+		* action_one.light_attack_left: Increased armor_modifier.impact[1] to 1 (from 0.75, +33%)
 		* action_one.light_attack_left: Increased default_target.power_distribution.attack to 0.125 (from 0.075, +67%)
-		* action_one.light_attack_left: Increased targets[1].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_left: Increased targets[1].power_distribution.attack to 0.2 (from 0.175, +14%)
-		* action_one.light_attack_left: Increased targets[2].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_left: Increased targets[2].power_distribution.attack to 0.15 (from 0.125, +20%)
 		* action_one.light_attack_left: Reduced anim_time_scale to 1.08 (from 1.215, -11%)
-		* action_one.light_attack_right: Changed damage_profile to tb_1h_sword_light_1_2 (from light_slashing_linesman_elf)
+		* action_one.light_attack_left: Reduced targets[1].power_distribution.attack to 0.2 (from 0.21, -5%)
+		* action_one.light_attack_left: Reduced targets[2].power_distribution.attack to 0.15 (from 0.185, -19%)
+		* action_one.light_attack_right: Changed damage_profile to tb_elven_sword_light_2 (from light_slashing_linesman_elf)
 		* action_one.light_attack_right: Changed targets[1].boost_curve_type to ninja_curve (from linesman_curve)
 		* action_one.light_attack_right: Changed targets[2].boost_curve_type to ninja_curve (from linesman_curve)
+		* action_one.light_attack_right: Increased armor_modifier.attack[1] to 1 (from 0.8, +25%)
+		* action_one.light_attack_right: Increased armor_modifier.impact[1] to 1 (from 0.75, +33%)
 		* action_one.light_attack_right: Increased default_target.power_distribution.attack to 0.125 (from 0.075, +67%)
 		* action_one.light_attack_right: Increased range_mod to 1.3 (from 1.2, +8%)
-		* action_one.light_attack_right: Increased targets[1].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_right: Increased targets[1].power_distribution.attack to 0.2 (from 0.175, +14%)
-		* action_one.light_attack_right: Increased targets[2].boost_curve_coefficient_headshot to 2 (from 1.5, +33%)
-		* action_one.light_attack_right: Increased targets[2].power_distribution.attack to 0.15 (from 0.125, +20%)
 		* action_one.light_attack_right: Reduced anim_time_scale to 1.08 (from 1.125, -4%)
+		* action_one.light_attack_right: Reduced targets[1].power_distribution.attack to 0.2 (from 0.21, -5%)
+		* action_one.light_attack_right: Reduced targets[2].power_distribution.attack to 0.15 (from 0.185, -19%)
 
 	$END_TB
 ]]
 
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_bopp.anim_time_scale = 1.08 -- official: 1.305
-Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_bopp.damage_profile = "tb_1h_sword_light_1_2" -- official: "light_slashing_linesman_elf"
+Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_bopp.damage_profile = "tb_elven_sword_push_attack" -- official: "light_slashing_linesman_elf"
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_last.allowed_chain_actions[1].start_time = 0.5 -- official: 0.65
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_last.allowed_chain_actions[2].start_time = 0.5 -- official: 0.65
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_last.allowed_chain_actions[3].start_time = 0.5 -- official: 0.65
@@ -7875,9 +8047,9 @@ Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_last.anim_t
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_last.damage_profile = "light_slashing_smiter_finesse" -- official: "light_slashing_smiter_stab_swords"
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_last.range_mod = 1.4 -- official: 1.2
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_left.anim_time_scale = 1.08 -- official: 1.215
-Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_left.damage_profile = "tb_1h_sword_light_1_2" -- official: "light_slashing_linesman_elf"
+Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_left.damage_profile = "tb_elven_sword_light_1" -- official: "light_slashing_linesman_elf"
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_right.anim_time_scale = 1.08 -- official: 1.125
-Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_right.damage_profile = "tb_1h_sword_light_1_2" -- official: "light_slashing_linesman_elf"
+Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_right.damage_profile = "tb_elven_sword_light_2" -- official: "light_slashing_linesman_elf"
 Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_right.range_mod = 1.3 -- official: 1.2
 Weapons.we_one_hand_sword_template_1.dodge_count = 4 -- official: 1e+02
 
@@ -7889,7 +8061,218 @@ DamageProfileTemplates.light_slashing_smiter_finesse.armor_modifier.attack[6] = 
 
 -- uses medium_slashing_tank_1h_finesse (exported under one_handed_swords_template_1)
 
--- uses tb_1h_sword_light_1_2 (exported under dual_wield_hammer_sword_template)
+-- tb_elven_sword_light_1: replaces the existing block
+-- used by Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_left.damage_profile
+NewDamageProfileTemplates.tb_elven_sword_light_1 = { -- official: light_slashing_linesman_elf
+	armor_modifier = {
+		attack = {
+			1, -- official: 0.8
+			0,
+			2,
+			1,
+			1,
+		},
+		impact = {
+			1, -- official: 0.75
+			0.3,
+			0.5,
+			1,
+			1,
+		},
+	},
+	charge_value = "light_attack",
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1,
+			0.5,
+			2.5,
+			1,
+			1,
+		},
+		impact_armor_power_modifer = {
+			1,
+			0.5,
+			0.5,
+			1,
+			1,
+		},
+	},
+	cleave_distribution = {
+		attack = 0.35,
+		impact = 0.2,
+	},
+	default_target = {
+		attack_template = "light_slashing_linesman",
+		boost_curve_type = "linesman_curve",
+		power_distribution = {
+			attack = 0.125, -- official: 0.075
+			impact = 0.05,
+		},
+	},
+	targets = {
+		{
+			attack_template = "light_slashing_linesman_hs",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2,
+			boost_curve_coefficient = 2,
+			power_distribution = {
+				attack = 0.2, -- official: 0.21
+				impact = 0.1,
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2,
+			power_distribution = {
+				attack = 0.15, -- official: 0.185
+				impact = 0.075,
+			},
+		},
+	},
+}
+
+-- tb_elven_sword_light_2: replaces the existing block
+-- used by Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_right.damage_profile
+NewDamageProfileTemplates.tb_elven_sword_light_2 = { -- official: light_slashing_linesman_elf
+	armor_modifier = {
+		attack = {
+			1, -- official: 0.8
+			0,
+			2,
+			1,
+			1,
+		},
+		impact = {
+			1, -- official: 0.75
+			0.3,
+			0.5,
+			1,
+			1,
+		},
+	},
+	charge_value = "light_attack",
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1,
+			0.5,
+			2.5,
+			1,
+			1,
+		},
+		impact_armor_power_modifer = {
+			1,
+			0.5,
+			0.5,
+			1,
+			1,
+		},
+	},
+	cleave_distribution = {
+		attack = 0.35,
+		impact = 0.2,
+	},
+	default_target = {
+		attack_template = "light_slashing_linesman",
+		boost_curve_type = "linesman_curve",
+		power_distribution = {
+			attack = 0.125, -- official: 0.075
+			impact = 0.05,
+		},
+	},
+	targets = {
+		{
+			attack_template = "light_slashing_linesman_hs",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2,
+			boost_curve_coefficient = 2,
+			power_distribution = {
+				attack = 0.2, -- official: 0.21
+				impact = 0.1,
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2,
+			power_distribution = {
+				attack = 0.15, -- official: 0.185
+				impact = 0.075,
+			},
+		},
+	},
+}
+
+-- tb_elven_sword_push_attack: replaces the existing block
+-- used by Weapons.we_one_hand_sword_template_1.actions.action_one.light_attack_bopp.damage_profile
+NewDamageProfileTemplates.tb_elven_sword_push_attack = { -- official: light_slashing_linesman_elf
+	armor_modifier = {
+		attack = {
+			1, -- official: 0.8
+			0,
+			2,
+			1,
+			1,
+		},
+		impact = {
+			1, -- official: 0.75
+			0.3,
+			0.5,
+			1,
+			1,
+		},
+	},
+	charge_value = "light_attack",
+	critical_strike = {
+		attack_armor_power_modifer = {
+			1,
+			0.5,
+			2.5,
+			1,
+			1,
+		},
+		impact_armor_power_modifer = {
+			1,
+			0.5,
+			0.5,
+			1,
+			1,
+		},
+	},
+	cleave_distribution = {
+		attack = 0.35,
+		impact = 0.2,
+	},
+	default_target = {
+		attack_template = "light_slashing_linesman",
+		boost_curve_type = "linesman_curve",
+		power_distribution = {
+			attack = 0.125, -- official: 0.075
+			impact = 0.05,
+		},
+	},
+	targets = {
+		{
+			attack_template = "light_slashing_linesman_hs",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2,
+			boost_curve_coefficient = 2,
+			power_distribution = {
+				attack = 0.2, -- official: 0.21
+				impact = 0.1,
+			},
+		},
+		{
+			attack_template = "light_slashing_linesman",
+			boost_curve_type = "ninja_curve", -- official: "linesman_curve"
+			boost_curve_coefficient_headshot = 2,
+			power_distribution = {
+				attack = 0.15, -- official: 0.185
+				impact = 0.075,
+			},
+		},
+	},
+}
 
 -- ################ ranged ################
 
@@ -8560,6 +8943,29 @@ SpreadTemplates.empire_longbow.continuous.zoomed_still.max_yaw = 0 -- official: 
 ]]
 
 -- uses arrow_carbine (exported under longbow_empire_template)
+
+-- ======== one_handed_throwing_axes_template ========
+
+--[[
+	$BEGIN_TB
+		## one_handed_throwing_axes_template
+
+		* Added default_projectile_action.anim_time_scale: 1.25
+		* action_one.default: Added anim_time_scale: 1.25
+		* action_one.throw_charged: Added anim_time_scale: 1.25
+		* action_two.default: Added anim_time_scale: 1.3
+		* weapon_reload.catch: Added anim_time_scale: 1.5
+		* weapon_reload.default: Increased anim_time_scale to 1.5 (from 1.25, +20%)
+
+	$END_TB
+]]
+
+Weapons.one_handed_throwing_axes_template.actions.action_one.default.anim_time_scale = 1.25 -- official: none
+Weapons.one_handed_throwing_axes_template.actions.action_one.throw_charged.anim_time_scale = 1.25 -- official: none
+Weapons.one_handed_throwing_axes_template.actions.action_two.default.anim_time_scale = 1.3 -- official: none
+Weapons.one_handed_throwing_axes_template.actions.weapon_reload.catch.anim_time_scale = 1.5 -- official: none
+Weapons.one_handed_throwing_axes_template.actions.weapon_reload.default.anim_time_scale = 1.5 -- official: 1.25
+Weapons.one_handed_throwing_axes_template.default_projectile_action.anim_time_scale = 1.25 -- official: none
 
 -- ======== shortbow_hagbane_template_1 ========
 
