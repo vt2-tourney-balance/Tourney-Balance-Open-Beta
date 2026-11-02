@@ -2,6 +2,7 @@ local mod = get_mod("TourneyBalance")
 
 -- handgun_template_2
 Weapons.handgun_template_2.actions.action_one.default.total_time = 0.35 -- official: 0.5
+Weapons.handgun_template_2.actions.action_one.default.damage_profile = "tb_bardin_handgun_shot" -- official: "shot_sniper"
 Weapons.handgun_template_2.actions.action_one.zoomed_shot.allowed_chain_actions[1].start_time = 0.35 -- official: 0.6
 Weapons.handgun_template_2.actions.action_one.zoomed_shot.damage_profile = "tb_bardin_handgun_shot" -- official: "shot_sniper"
 Weapons.handgun_template_2.actions.action_one.zoomed_shot.total_time = 0.35 -- official: 0.8
@@ -29,7 +30,7 @@ NewDamageProfileTemplates.tb_bardin_handgun_shot = { -- official: shot_sniper
 	no_stagger_damage_reduction_ranged = true,
 	armor_modifier_near = {
 		attack = {
-			1.465, -- official: 1
+			1.01, -- official: 1, 1.465
 			1.04, -- official: 1.2
 			2.17, -- official: 1.5
 			1,
