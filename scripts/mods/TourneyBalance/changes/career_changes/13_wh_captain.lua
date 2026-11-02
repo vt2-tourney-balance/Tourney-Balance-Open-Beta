@@ -8,15 +8,10 @@ local is_local = shared_utils.is_local
 	$BEGIN_TB
 		---
 		## Witch Hunter Captain
-		### Passives
-		**Riposte (renamed from Killing Shot)**
-		- Critical headshot instant kill now only applies to charged melee attacks.
-		- Parrying grants a guaranteed melee crit on the next melee attack within 2 seconds (moved from the Riposte talent).
-
 		### Talents
-		**Killing Shot (renamed from Riposte)**
-		- Now grants the instant kill on all critical headshots, including ranged and light melee attacks (moved from the Killing Shot passive).
-		- Parrying grants a guaranteed ranged crit on the next ranged attack within 2 seconds.
+		**Riposte**
+		- Fix description: crits also applpy to ranged attacks.
+		- A melee headshot while Riposte is active grants one extra guaranteed melee crit on the next melee attack within 2 seconds (at most one extra crit per parry).
 
 		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
@@ -42,86 +37,53 @@ local is_local = shared_utils.is_local
 ]]
 
 --[[
-	Riposte (vanilla Killing Shot)
+	Riposte
 ]]
--- Vanilla crit headshot instakill (victor_witchhunter_headshot_crit_killing_blow) moves to the Killing Shot talent. The
--- passive keeps it for charged attacks only, applied where the perk is read, in the calculate_damage override
--- (thp_stagger_damage_changes/01_damage_calc_changes.lua)
-mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_witchhunter_charged_crit_headshot_killing_blow", {
-	perks = {
-		"tb_charged_crit_headshot_killing_blow",
-	},
+-- A melee headshot while Riposte is up grants a melee-only copy of it
+local RIPOSTE_MELEE_COPY_BUFF = "tb_victor_witchhunter_guaranteed_melee_crit_on_headshot_buff"
+
+local function is_melee_headshot(params)
+	local hit_zone_name = params[3]
+	local buff_type = params[5]
+
+	return (buff_type == "MELEE_1H" or buff_type == "MELEE_2H") and (hit_zone_name == "head" or hit_zone_name == "neck")
+end
+
+-- Vanilla Riposte: still consumed by the first hit of any kind (was "dummy_function" + remove_on_proc)
+mod_api.insert_proc_function("tb_riposte_consume", function (owner_unit, buff, params)
+	if is_melee_headshot(params) and ALIVE[owner_unit] then
+		ScriptUnit.extension(owner_unit, "buff_system"):add_buff(RIPOSTE_MELEE_COPY_BUFF)
+	end
+
+	return true
+end)
+mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_guaranteed_crit_on_timed_block_buff", {
+	buff_func = "tb_riposte_consume", -- "dummy_function"
 })
 
--- Melee half of the vanilla Riposte talent's parry crit (vanilla "critical_strike_chance" and consumed by any hit).
--- Consumed by the next melee hit, ignoring ranged hits and cleave targets.
-mod_api.insert_proc_function("tb_riposte_melee_crit_consume", function (owner_unit, buff, params)
+-- Melee-only copy: consumed by the next melee hit (headshot or not) and doesn't chain, so there is at most one
+-- extra crit per parry. Ranged hits and cleave targets are ignored.
+local function is_first_melee_target(params)
 	local target_number = params[4]
 	local buff_type = params[5]
 
 	return (buff_type == "MELEE_1H" or buff_type == "MELEE_2H") and target_number == 1
+end
+
+mod_api.insert_proc_function("tb_riposte_melee_copy_consume", function (owner_unit, buff, params)
+	return is_first_melee_target(params)
 end)
-mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_witchhunter_guaranteed_melee_crit_on_timed_block_buff", {
-	buff_func = "tb_riposte_melee_crit_consume",
+mod_api.insert_talent_buff_template("witch_hunter", RIPOSTE_MELEE_COPY_BUFF, {
+	buff_func = "tb_riposte_melee_copy_consume",
 	event = "on_hit",
 	icon = "victor_witchhunter_guaranteed_crit_on_timed_block",
 	duration = 2,
 	max_stacks = 1,
-	refresh_durations = true,
 	remove_on_proc = true,
 	stat_buff = "critical_strike_chance_melee",
 	bonus = 1,
 })
-mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_witchhunter_guaranteed_melee_crit_on_timed_block_add", {
-	buff_func = "add_buff_local",
-	buff_to_add = "tb_victor_witchhunter_guaranteed_melee_crit_on_timed_block_buff",
-	event = "on_timed_block",
-})
-mod_api.remove_career_passives("wh_3", {
-	"victor_witchhunter_headshot_crit_killing_blow",
-})
-mod_api.insert_career_passives("wh_3", {
-	"tb_victor_witchhunter_charged_crit_headshot_killing_blow",
-	"tb_victor_witchhunter_guaranteed_melee_crit_on_timed_block_add",
-})
-mod_api.insert_text("career_passive_name_wh_3c", "Riposte")
-mod_api.insert_text("career_passive_desc_wh_3c", "Parrying grants a guaranteed melee critical strike on the next melee attack within 2 seconds. Charged melee critical headshots instantly slay man-sized enemies.")
-
---[[
-
-	WHC Talents
-
-]]
-
---[[
-	Killing Shot (vanilla Riposte)
-]]
--- Ranged half of the vanilla Riposte talent's parry crit, consumed by the next ranged hit
-mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_witchhunter_guaranteed_ranged_crit_on_timed_block_buff", {
-	buff_func = "dummy_function",
-	event = "on_ranged_hit",
-	icon = "victor_witchhunter_guaranteed_crit_on_timed_block",
-	duration = 2,
-	max_stacks = 1,
-	refresh_durations = true,
-	remove_on_proc = true,
-	stat_buff = "critical_strike_chance_ranged",
-	bonus = 1,
-})
-mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_witchhunter_guaranteed_ranged_crit_on_timed_block_add", {
-	buff_func = "add_buff_local",
-	buff_to_add = "tb_victor_witchhunter_guaranteed_ranged_crit_on_timed_block_buff",
-	event = "on_timed_block",
-})
-mod_api.update_talent("wh_captain", 2, 1, {
-	buffer = "both", -- the instakill perk is read server side, the parry crit is rolled on the owner
-	buffs = {
-		"victor_witchhunter_headshot_crit_killing_blow",
-		"tb_victor_witchhunter_guaranteed_ranged_crit_on_timed_block_add",
-	},
-})
-mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block", "Killing Shot")
-mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Critical headshots with any attack instantly slay man-sized enemies. Parrying grants a guaranteed ranged critical strike on the next ranged attack within 2 seconds.")
+mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Parrying causes your next attack within 2 seconds to be a guaranteed critical hit. Landing a melee headshot during this window grants an additional guaranteed melee critical strike within 2 seconds.")
 
 --[[
 	Templar's Knowledge

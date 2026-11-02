@@ -48,7 +48,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Reduces the Crank Gun's spin-up time before firing, and before the right click aim is ready, to 0.2s (from 0.5s).
 
 		**Innovative Ammo Hoppers**
-		- No longer increases the ability bar by 50% (moved to Linked Compression Chamber).
+		- No longer increases the ability bar by 50%.
 		- The 4s after killing a special now also make guns consume no ammo and Drakefire weapons generate no heat. Explosive shots (the Trollhammer torpedo) are excluded.
 	$END_TB
 ]]
