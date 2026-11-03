@@ -56,19 +56,6 @@ mod_api.insert_buff_template("sienna_adept_ability_trail", {
 
 	Talents
 
-]]
---[[
-    Famished Flames
-]]
-mod_api.update_talent_buff_template("bright_wizard", "sienna_adept_increased_burn_damage", {
-    multiplier = 1.5, -- 1,
-})
-mod_api.update_talent_buff_template("bright_wizard", "sienna_adept_reduced_non_burn_damage", {
-    multiplier = -0.3, -- -0.15,
-})
-mod_api.insert_text("sienna_adept_increased_burn_damage_reduced_non_burn_damage_desc", "Burning damage over time is increased by 150.0%%. All non-burn damage is reduced by 30.0%%.")
-
-
 --[[
     Lingering Flames
 ]]
