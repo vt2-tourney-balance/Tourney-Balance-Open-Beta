@@ -10,7 +10,7 @@ Weapons.staff_blast_beam_template_1.actions.action_one.default.zoom_thresholds =
 Weapons.staff_blast_beam_template_1.actions.action_one.default.zoom_condition_function = function ()
 	return true
 end
-PlayerUnitStatusSettings.overcharge_values.beam_staff_shotgun = 5
+PlayerUnitStatusSettings.overcharge_values.beam_staff_shotgun = 7
 Weapons.staff_blast_beam_template_1.actions.action_two.charged_beam.spread_template_override = "spear"
 Weapons.staff_blast_beam_template_1.actions.action_two.charged_beam.damage_window_start = 0.01
 Weapons.staff_blast_beam_template_1.actions.action_one.shoot_charged.damage_profile = "beam_blast"
