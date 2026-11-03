@@ -25,11 +25,11 @@ NewDamageProfileTemplates.beam_blast = {
 	dot_template_name = "burning_dot_1tick",
 	critical_strike = {
 		attack_armor_power_modifer = {
-			1,
+			0.9, -- official: 1
 			0.2,
 			1,
 			1,
-			0.7,
+			0.63, -- official: 1
 			0.15
 		},
 		impact_armor_power_modifer = {
@@ -43,11 +43,11 @@ NewDamageProfileTemplates.beam_blast = {
 	},
 	armor_modifier = {
 		attack = {
-			1,
+			0.9, -- official: 1
 			0,
 			1,
 			1,
-			0.6,
+			0.54, -- official: 1
 			0
 		},
 		impact = {
@@ -70,7 +70,7 @@ NewDamageProfileTemplates.beam_blast = {
 		attack_template = "flame_blast",
 		power_distribution_near = {
 			attack = 0.1,
-			impact = 0.275
+			impact = 0.18, -- official: 0.275
 		},
 		power_distribution_far = {
 			attack = 0.05,
