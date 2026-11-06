@@ -358,6 +358,9 @@ mod:dofile("scripts/mods/TourneyBalance/logging_and_qol/skeleton_transparency")
 -- Debugging Tools
 mod:dofile("scripts/mods/TourneyBalance/debugging/stagger_state_visualizer")
 
+-- Career strings export - "/tb_copy_career_strings" copies career ability/passive/perk/talent strings as JSON
+mod:dofile("scripts/mods/TourneyBalance/debugging/career_strings_export")
+
 
 --[[
 
