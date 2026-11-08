@@ -39,6 +39,8 @@ mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_falchion
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_flail")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_hammer_and_tome")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_holy_hammer")
+mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/melee/wh_rapier")
+
 -- ranged
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_beam")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_bolt")
