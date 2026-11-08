@@ -4,7 +4,10 @@ local mod = get_mod("TourneyBalance")
 --Weapons.two_handed_hammer_priest_template.actions.action_one.heavy_attack_01.hit_mass_count = HEAVY_LINESMAN_HIT_MASS_COUNT
 --Weapons.two_handed_hammer_priest_template.actions.action_one.heavy_attack_02.hit_mass_count = HEAVY_LINESMAN_HIT_MASS_COUNT
 Weapons.two_handed_hammer_priest_template.buffs.change_dodge_distance.external_optional_multiplier = 1.1 -- 1 (GS: 1.1)
-DamageProfileTemplates.priest_hammer_blunt_smiter.shield_break = true -- H3 ignores shields (like pickaxe heavies); profile is HGH-only
+-- H3 ignores shields like the charged pickaxe heavies: ignore_armour_hit skips the shield-block check in ActionSweep
+-- (shield_break alone only knocks the shield off while the hit is still blocked). Also stops H3 bouncing off armour.
+Weapons.two_handed_hammer_priest_template.actions.action_one.heavy_attack_03.ignore_armour_hit = true -- vanilla: none
+DamageProfileTemplates.priest_hammer_blunt_smiter.shield_break = true -- vanilla: none; profile is HGH-only
 
 --[[
 	Holy Hammer
