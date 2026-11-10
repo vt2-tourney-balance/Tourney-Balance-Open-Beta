@@ -11,7 +11,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		### Passives
 		**Protective Presence**
-		- Aura radius increased to 15 (from 5).
+		- Aura radius increased to 10 (from 5).
 
 		**CDR on Damage Taken**
 		- Reduced ult cooldown gain on damage taken to 0.35 (from 0.5).
@@ -26,14 +26,12 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Rock of Reikland**
 		- Removes range limit for Protective Presence
 		- Increased block cost reduction to 30% (from 20%)
-		- Added 30% stamina recovery
 
 		**That's Bloody Teamwork!**
-		- Grants 3.33% damage reduction per nearby ally (up to 3).
-		- Range increased to 15 (from 5).
+		- Range increased to 10 (from 5).
 
 		**Comrades in Arms**
-		- Range increased to 15 (from 5).
+		- Range increased to 10 (from 5).
 		- Closest player mode (green outline).
 		- Guard select team mate mode (green outline with number).
 		- If the selected team mate leaves the range, the closest ally is guarded instead (red outline with number) until they return.
@@ -88,6 +86,13 @@ end)
 
 ]]
 --[[
+	Ult CD on Taking Damage
+]]
+mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_cooldown_on_damage_taken", {
+	bonus = 0.35 -- 0.5
+})
+
+--[[
 	Protective Presence
 ]]
 -- Increase aura range - Repeat for all lvl 20 talents, because game creates snapshot of original values at load time
@@ -114,12 +119,6 @@ mod_api.insert_talent_buff_template("empire_soldier", ROCK_OF_REIKLAND_BUFF, {
 		icon = "markus_knight_passive_block_cost_aura",
 	},
 	{
-		name = "tb_markus_knight_rock_of_reikland_stamina_regen",
-		max_stacks = 1,
-		stat_buff = "fatigue_regen",
-		multiplier = 0.3,
-	},
-	{
 		name = "tb_markus_knight_rock_of_reikland_damage_taken",
 		max_stacks = 1,
 		stat_buff = "damage_taken",
@@ -127,7 +126,6 @@ mod_api.insert_talent_buff_template("empire_soldier", ROCK_OF_REIKLAND_BUFF, {
 	},
 })
 
--- Same pattern as Sister of the Thorn's team auras (range = 100)
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_passive_block_cost_aura", {
 	buff_to_add = ROCK_OF_REIKLAND_BUFF,
 	update_func = "activate_buff_on_distance",
@@ -138,21 +136,21 @@ mod_api.update_talent("es_knight", 4, 1, {
 	description = "tb_markus_knight_rock_of_reikland_desc",
 	description_values = {},
 })
-mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presence is always active and grants 30% block cost reduction and 30% stamina regeneration.")
+mod_api.insert_text("tb_markus_knight_rock_of_reikland_desc", "Protective Presence is always active and grants 30% block cost reduction.")
 
 --[[
 	That's Bloody Teamwork - Adjustment from Passive
 ]]
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_damage_taken_ally_proximity", {
 	buff_to_add = "markus_knight_damage_taken_ally_proximity_buff",
-	range = 15, -- 5
-	update_func = "activate_party_buff_stacks_on_ally_proximity", -- TODO: Check - Removed proc function, might break, replaced buff.range replaced w/ template.range
+	range = 10, -- 5
+	update_func = "activate_party_buff_stacks_on_ally_proximity",
 	chunk_size = 1,
 	max_stacks = 3,
 	remove_buff_func = "remove_party_buff_stacks"
 })
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_damage_taken_ally_proximity_buff", {
-	multiplier = -0.0333 -- -0.05
+	multiplier = -0.05 -- -0.05
 })
 mod_api.update_talent("es_knight", 4, 2, { -- update description
 	description_values = {},
@@ -481,7 +479,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard_defen
 	stat_buff = "damage_taken",
 	update_func = "tb_activate_buff_on_selected_or_closest",
 	remove_buff_func = "remove_aura_buff",
-	range = 15 -- 5
+	range = 10 -- 5
 })
 mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard", {
 	buff_to_add = "markus_knight_passive_power_increase_buff",
@@ -489,14 +487,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_guard", {
 	remove_buff_func = "remove_aura_buff",
 	icon = "markus_knight_passive_power_increase",
 	update_func = "tb_activate_buff_on_selected_or_closest",
-	range = 15 -- 5
-})
-
---[[
-	Unlisted: Ult CD on Taking Damage
-]]
-mod_api.update_talent_buff_template("empire_soldier", "markus_knight_ability_cooldown_on_damage_taken", {
-	bonus = 0.35 -- 0.5
+	range = 10 -- 5
 })
 
 --[[

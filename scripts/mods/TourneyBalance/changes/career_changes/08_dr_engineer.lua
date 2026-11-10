@@ -23,7 +23,6 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Additionally non-explosive ranged attacks deal no friendly fire.
 
 		**Bombadier**
-		- Bardin can carry 4 bombs (from 3) and starts the mission with 4 random bombs (frag or fire).
 		- Overcharge no longer slows Bardin down.
 		- Overcharge explosions also detonate a regular and an incendiary bomb.
 
@@ -31,8 +30,8 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Build Pressure stacks now expire one at a time.
 
 		**Superior Gaskets**
-		- Firing now starts a separate 6s debuff timer (from 1.5s) that removes one Build Pressure stack when it runs out. The stacks themselves no longer show a running out timer.
-
+		- Firing now starts a separate 6s debuff timer (from 1.5s) that removes one Build Pressure stack when it runs out.
+		
 		**Ablative Armor**
 		- A damage reduction stack is no longer lost immediately, but 2s after taking damage.
 
@@ -164,46 +163,7 @@ mod_api.insert_text("bardin_engineer_ranged_pierce_desc_2", "Non-explosive range
 --[[
 	Bombadier
 ]]
--- Same flow as vanilla's PassiveAbilityEngineer._add_5_2_bombs (server only, once per mission via the party status,
--- topped up every time in the keep), but with a bigger bomb capacity and random bombs.
 local TB_BOMBADIER_TALENT = "bardin_engineer_upgraded_grenades"
-local TB_BOMBADIER_BOMBS = 4 -- 3
-local TB_BOMBADIER_ITEMS = { "grenade_frag_01", "grenade_fire_01" }
-local TB_BOMBADIER_GIVEN_FLAG = "_engineer_upgraded_grenades_added"
--- The equipped bomb doesn't count towards the additional slots.
-local TB_BOMBADIER_EXTRA_SLOTS = TB_BOMBADIER_BOMBS - 1
-local TB_BOMBADIER_BASE_EXTRA_SLOTS = CareerSettings.dr_engineer.additional_item_slots.slot_grenade
-
-mod:hook_origin(PassiveAbilityEngineer, "_add_5_2_bombs", function (self)
-	local has_talent = self._talent_extension:has_talent(TB_BOMBADIER_TALENT)
-	local inventory_extension = self._inventory_extension
-
-	-- The capacity lives on every peer's inventory extension, so this runs before the server only part.
-	inventory_extension:get_additional_items_table().slot_grenade.max_slots = has_talent and TB_BOMBADIER_EXTRA_SLOTS or TB_BOMBADIER_BASE_EXTRA_SLOTS
-
-	if not self._is_server or not has_talent then
-		return
-	end
-
-	local game_mode_data = Managers.party:get_status_from_unique_id(self._player:unique_id()).game_mode_data
-
-	if not global_is_inside_inn and game_mode_data[TB_BOMBADIER_GIVEN_FLAG] then
-		return
-	end
-
-	game_mode_data[TB_BOMBADIER_GIVEN_FLAG] = true
-
-	local slot_name = "slot_grenade"
-	local unit_id = Managers.state.unit_storage:go_id(self._owner_unit)
-	local slot_id = NetworkLookup.equipment_slots[slot_name]
-	local network_transmit = Managers.state.network.network_transmit
-
-	for _ = inventory_extension:get_total_item_count(slot_name) + 1, TB_BOMBADIER_BOMBS do
-		local item_name_id = NetworkLookup.item_names[TB_BOMBADIER_ITEMS[math.random(#TB_BOMBADIER_ITEMS)]]
-
-		network_transmit:send_rpc_server("rpc_give_equipment", NetworkConstants.invalid_game_object_id, unit_id, slot_id, item_name_id, Vector3.zero())
-	end
-end)
 
 -- Overcharge (heat) no longer slows down the attack speed and movement, same perk the Ironbreaker talent uses.
 local TB_BOMBADIER_NO_SLOW_BUFF = "tb_engineer_bombadier_overcharge_no_slow"
@@ -215,10 +175,7 @@ mod_api.update_talent("dr_engineer", 2, 3, {
 	description_values = {},
 	buffs = { "bardin_engineer_5_2", TB_BOMBADIER_NO_SLOW_BUFF },
 })
--- Overcharge explosion also detonates a regular + fire bomb (frag_fire_grenade, the combined template the
--- frag_fire_grenades perk swaps in for thrown bombs). Done in the create_explosion wrapper chain, which runs on the
--- exploding peer and, through rpc_create_explosion, on every other peer: the explosion damages on the server, the fire
--- patch is server spawned (create_aoe is networked), the rest is just fx.
+-- Overcharge explosion also detonates a regular + fire bomb
 local TB_BOMBADIER_BOMB_EXPLOSION = "frag_fire_grenade"
 
 mod:add_create_explosion_wrapper(function (func, world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, ...)
@@ -243,7 +200,7 @@ mod:add_create_explosion_wrapper(function (func, world, attacker_unit, impact_po
 	return result
 end)
 
-mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin can carry 4 bombs and starts the mission with 4 random bombs. Bombs have both regular and incendiary effect. Overcharge explosions also detonate a regular and incendiary bomb. No overcharge slowdown.")
+mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin starts the mission with 3 bombs. Bombs have both regular and incendiary effect. Overcharge explosions also detonate a regular and incendiary bomb. No overcharge slowdown.")
 
 --[[
 	Full Head of Steam
