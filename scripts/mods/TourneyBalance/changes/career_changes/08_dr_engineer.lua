@@ -15,9 +15,6 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Aimed shots consume the ability bar 3 times as fast.
 
 		### Talents
-		**Full Head of Steam**
-		- Build Pressure stacks now expire one at a time.
-
 		**Ingenious Ordnance**
 		- Reduced the bomb cooldown to 60s (from 80s).
 		- If Bardin's inventory is full, the bomb is dropped on the ground.
@@ -28,9 +25,13 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		**Bombadier**
 		- Bardin can carry 4 bombs (from 3) and starts the mission with 4 random bombs (frag or fire).
 		- Overcharge no longer slows Bardin down.
+		- Overcharge explosions also detonate a regular and an incendiary bomb.
+
+		**Full Head of Steam**
+		- Build Pressure stacks now expire one at a time.
 
 		**Superior Gaskets**
-		- Increased the time until a stack is lost to 6s (from 1.5s).
+		- Firing now starts a separate 6s debuff timer (from 1.5s) that removes one Build Pressure stack when it runs out. The stacks themselves no longer show a running out timer.
 
 		**Ablative Armor**
 		- A damage reduction stack is no longer lost immediately, but 2s after taking damage.
@@ -65,81 +66,6 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 	Talents
 
 ]]
---[[
-	Full Head of Steam
-]]
--- Each Build Pressure stack gets its own expiry, 12s after the one before it. Pumping again resets the timers.
-local TB_FULL_HEAD_OF_STEAM_TALENT = "bardin_engineer_power_on_max_pump"
-local TB_BUILD_PRESSURE_BUFF = "bardin_engineer_pump_buff"
-local TB_BUILD_PRESSURE_STACK_DURATION = 12
-
-mod_api.insert_buff_function("tb_build_pressure_stagger_stacks", function (unit, buff, params, world)
-	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
-	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
-
-	if not talent_extension or not buff_extension or not talent_extension:has_talent(TB_FULL_HEAD_OF_STEAM_TALENT) then
-		return
-	end
-
-	local stacks = buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF)
-
-	if not stacks then
-		return
-	end
-
-	local num_stacks = #stacks
-	-- This runs before the pump's new stack is added, unless the stacks are already maxed out and nothing is added.
-	local newest_rank = num_stacks >= buff.template.max_stacks and 1 or 2
-
-	for i = 1, num_stacks do
-		if stacks[i] == buff then
-			buff.duration = TB_BUILD_PRESSURE_STACK_DURATION * (num_stacks - i + newest_rank)
-
-			return
-		end
-	end
-end)
-mod_api.update_talent_buff_template("dwarf_ranger", TB_BUILD_PRESSURE_BUFF, {
-	reapply_buff_func = "tb_build_pressure_stagger_stacks",
-})
-
--- The buff icon's ring runs over the duration of the stack that expires first, which grows with every stack that is
--- staggered behind it. Keeping the ring within the 12s step makes it count down to the next stack being lost.
-local function tb_install_build_pressure_ui_hook()
-	mod:hook_safe(BuffUI, "_sync_buffs", function (self)
-		local widget = self._buff_name_to_widget[TB_BUILD_PRESSURE_BUFF]
-		local buff = widget and widget.content.buff
-
-		if not buff or not buff.duration or buff.duration == math.huge then
-			return
-		end
-
-		local remaining = buff.start_time + buff.duration - Managers.time:time("game")
-
-		if remaining > 0 then
-			local step_remaining = remaining % TB_BUILD_PRESSURE_STACK_DURATION
-
-			-- A full step left would read as 0 and show the ring as already finished.
-			if step_remaining == 0 then
-				step_remaining = TB_BUILD_PRESSURE_STACK_DURATION
-			end
-
-			widget.content.progress = 1 - step_remaining / TB_BUILD_PRESSURE_STACK_DURATION
-		end
-	end)
-end
-
-if BuffUI then
-	tb_install_build_pressure_ui_hook()
-else
-	mod:hook_require("scripts/ui/hud_ui/buff_ui", tb_install_build_pressure_ui_hook)
-end
-
-mod_api.update_talent("dr_engineer", 4, 1, {
-	description_values = {},
-})
-mod_api.insert_text("bardin_engineer_power_on_max_pump_desc_b", "While at 5 stacks of Pressure, Bardin gains 15% Attack Speed. Pressure stacks expire one at a time, 12 seconds apart, instead of all at once.")
-
 --[[
 	Ingenious Ordnance
 ]]
@@ -289,13 +215,113 @@ mod_api.update_talent("dr_engineer", 2, 3, {
 	description_values = {},
 	buffs = { "bardin_engineer_5_2", TB_BOMBADIER_NO_SLOW_BUFF },
 })
-mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin can carry 4 bombs and starts the mission with 4 random bombs. Bombs have both regular and incendiary effect. No overcharge slowdown.")
+-- Overcharge explosion also detonates a regular + fire bomb (frag_fire_grenade, the combined template the
+-- frag_fire_grenades perk swaps in for thrown bombs). Done in the create_explosion wrapper chain, which runs on the
+-- exploding peer and, through rpc_create_explosion, on every other peer: the explosion damages on the server, the fire
+-- patch is server spawned (create_aoe is networked), the rest is just fx.
+local TB_BOMBADIER_BOMB_EXPLOSION = "frag_fire_grenade"
+
+mod:add_create_explosion_wrapper(function (func, world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, ...)
+	local result = func(world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, ...)
+
+	if damage_source == "overcharge" and ALIVE[attacker_unit] then
+		local career_extension = ScriptUnit.has_extension(attacker_unit, "career_system")
+		local talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
+
+		if career_extension and career_extension:career_name() == "dr_engineer" and talent_extension and talent_extension:has_talent(TB_BOMBADIER_TALENT) then
+			local bomb_template = ExplosionUtils.get_template(TB_BOMBADIER_BOMB_EXPLOSION)
+
+			-- func is the rest of the chain, so this doesn't pass through this wrapper again.
+			func(world, attacker_unit, impact_position, rotation, bomb_template, scale, damage_source, is_server, ...)
+
+			if is_server and bomb_template.aoe then
+				DamageUtils.create_aoe(world, attacker_unit, impact_position, damage_source, bomb_template)
+			end
+		end
+	end
+
+	return result
+end)
+
+mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin can carry 4 bombs and starts the mission with 4 random bombs. Bombs have both regular and incendiary effect. Overcharge explosions also detonate a regular and incendiary bomb. No overcharge slowdown.")
+
+--[[
+	Full Head of Steam
+]]
+-- Stacks decay 1 at a time
+local TB_FULL_HEAD_OF_STEAM_TALENT = "bardin_engineer_power_on_max_pump"
+local TB_BUILD_PRESSURE_BUFF = "bardin_engineer_pump_buff"
+
+mod_api.insert_buff_function("tb_build_pressure_remove", function (unit, buff, params, world)
+	BuffFunctionTemplates.functions.remove_buff_local(unit, buff, params, world)
+
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+	local stacks = buff_extension and buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF)
+
+	if not stacks or not talent_extension or not talent_extension:has_talent(TB_FULL_HEAD_OF_STEAM_TALENT) then
+		return
+	end
+
+	local t = Managers.time:time("game")
+
+	-- The removed stack is still in the list at this point.
+	for i = 1, #stacks do
+		local stack = stacks[i]
+
+		if stack ~= buff then
+			stack.start_time = t
+		end
+	end
+end)
+mod_api.update_talent_buff_template("dwarf_ranger", TB_BUILD_PRESSURE_BUFF, {
+	remove_buff_func = "tb_build_pressure_remove",
+})
+
+mod_api.update_talent("dr_engineer", 4, 1, {
+	description_values = {},
+})
+mod_api.insert_text("bardin_engineer_power_on_max_pump_desc_b", "While at 5 stacks of Pressure, Bardin gains 15% Attack Speed. Pressure stacks expire one at a time.")
 
 --[[
 	Superior Gaskets
 ]]
--- Read by ActionCareerDREngineer._handle_infinite_stacks every time the talent starts a stack's countdown while firing.
-CareerConstants.dr_engineer.talent_4_3_stack_duration = 6 -- 1.5
+-- Build Pressure stacks have no duration with this talent. Firing starts a separate timer buff instead, which takes one
+-- stack away when it runs out, so the stacks themselves stay readable on the HUD while the timer is shown by its own icon.
+local TB_GASKETS_TALENT = "bardin_engineer_pump_buff_long"
+local TB_GASKETS_TIMER_BUFF = "tb_engineer_gaskets_stack_timer"
+local TB_GASKETS_STACK_DURATION = 6 -- 1.5
+
+mod_api.insert_buff_function("tb_engineer_gaskets_lose_stack", function (unit, buff, params)
+	local buff_extension = ALIVE[unit] and ScriptUnit.has_extension(unit, "buff_system")
+	local stacks = buff_extension and buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF)
+
+	if stacks and stacks[1] then
+		buff_extension:remove_buff(stacks[1].id)
+	end
+end)
+mod_api.insert_buff_template(TB_GASKETS_TIMER_BUFF, {
+	-- Talent icons only exist in the live atlas under the names the talent itself uses.
+	icon = Talents.dwarf_ranger[TalentIDLookup[TB_GASKETS_TALENT].talent_id].icon,
+	debuff = true,
+	max_stacks = 1,
+	duration = TB_GASKETS_STACK_DURATION,
+	remove_buff_func = "tb_engineer_gaskets_lose_stack",
+})
+mod_api.insert_text(TB_GASKETS_TIMER_BUFF, "Build Pressure Loss")
+
+-- Replaces the vanilla countdown on the stacks. Called on every shot tick, so it only looks for the timer first.
+mod:hook_origin(ActionCareerDREngineer, "_handle_infinite_stacks", function (self, dt, t)
+	local buff_extension = self.buff_extension
+
+	if not self._talent_extension:has_talent(TB_GASKETS_TALENT) or buff_extension:has_buff_type(TB_GASKETS_TIMER_BUFF) then
+		return
+	end
+
+	if buff_extension:get_stacking_buff(TB_BUILD_PRESSURE_BUFF) then
+		buff_extension:add_buff(TB_GASKETS_TIMER_BUFF)
+	end
+end)
 
 
 --[[
