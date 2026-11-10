@@ -41,7 +41,7 @@ local random_utils = require("scripts/mods/TourneyBalance/_api/random_utils")
 		- Added 30% cooldown reduction.
 
 		**Ranger's Parting Gift**
-		- Free bomb buff can stack 3 times.
+		- Free bomb buff can stack 2 times.
 		- Free bomb only applies to engineer bombs.
 		- Added pseudo-random 6% chance to drop engineer bombs with every Survivalist drop (bag size 100 with 6 winning tickets).
 	$END_TB
@@ -320,7 +320,7 @@ end)
 -- Remove free grenade perk
 mod_api.update_talent_buff_template("dwarf_ranger", "bardin_ranger_ability_free_grenade_buff", {
 	perks = {},
-	max_stacks = 3, -- 1
+	max_stacks = 2, -- 1
 	buff_func = "tb_ranger_free_grenade_consume_one_stack",
 })
 -- Free engineer grenade
@@ -360,5 +360,5 @@ mod:hook(ActionChargedProjectileUtility, "fire_charged_projectile", function (fu
 
 	return result
 end)
--- 12% engineer bomb drop on Survivalist drops: see bardin_ranger_scavenge_proc above
-mod_api.insert_text("bardin_ranger_ability_free_grenade_desc", "Activating Disengage causes the next engineer bomb Bardin throws to not be consumed. Max 3 stacks. Survivalist gains a 6% chance to drop an engineer bomb.")
+-- 6% engineer bomb drop on Survivalist drops: see bardin_ranger_scavenge_proc above
+mod_api.insert_text("bardin_ranger_ability_free_grenade_desc", "Activating Disengage causes the next engineer bomb Bardin throws to not be consumed. Max 2 stacks. Survivalist gains a 6% chance to drop an engineer bomb.")

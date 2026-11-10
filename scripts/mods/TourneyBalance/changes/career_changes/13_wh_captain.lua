@@ -1,13 +1,14 @@
 local mod = get_mod("TourneyBalance")
 local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
-local shared_utils = require("scripts/mods/TourneyBalance/_api/shared_utils")
-local is_server = shared_utils.is_server
-local is_local = shared_utils.is_local
 
 --[[
 	$BEGIN_TB
 		---
 		## Witch Hunter Captain
+		### Passive
+		**Witch-Hunt**
+		- Tagging no longer applies Witch Hunt to Lords and Monsters.
+
 		### Talents
 		**Riposte**
 		- Fix description: crits also applpy to ranged attacks.
@@ -15,17 +16,13 @@ local is_local = shared_utils.is_local
 
 		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
-		- Elites and specials take 25% more direct damage from Saltzpyre.
+		- Tagging also applies Witch Hunt to Lords and Monsters.
 
 		**I Shall Judge You All**
-		- Creates and aura that applies Witch Hunt within Animosity's range every second.
-		- Headshotting Witch-Hunted enemies extends the aura duration by 2s.
-
-		**Fervency**
-		- Increased duration to 8s (from 6s).
+		- Melee headshots also apply Witch Hunt (and Templar's Knowledge) to all enemies hit, including Lords and Monsters.
 
 		**The Unending Hunt**
-		- Decreased crit chance granted to team to 15% (from 25%)
+		- Decreased crit chance granted to team to 10% (from 25%)
 	$END_TB
 ]]
 
@@ -35,6 +32,62 @@ local is_local = shared_utils.is_local
 	WHC Passive
 
 ]]
+local WITCH_HUNT_BUFF = "defence_debuff_enemies"
+local TEMPLARS_KNOWLEDGE_TALENT = "victor_witchhunter_improved_damage_taken_ping"
+
+-- Tagging only applies Witch Hunt to non-boss enemies (no Lords or Monsters).
+-- Templar's Knowledge extends it to every enemy.
+-- Only the tag is gated: the shared buff template is untouched (Huntsman, vanilla ISJYA's explosion hit everything).
+local function can_be_witch_hunted(enemy_unit, has_templars_knowledge)
+	if has_templars_knowledge then
+		return true
+	end
+
+	local breed = Unit.get_data(enemy_unit, "breed")
+
+	return breed and not breed.boss or false
+end
+
+-- Tag: vanilla adds Witch Hunt (+ Templar's Knowledge) for every WHC on the pinger's side, now gated per enemy
+mod:hook_origin(PingTargetExtension, "_add_witch_hunter_buff", function (self, pinger_unit)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local buff_extension = self._buff_extension
+
+	if not buff_extension then
+		return
+	end
+
+	local side = Managers.state.side.side_by_unit[pinger_unit]
+
+	if not side then
+		return
+	end
+
+	local enemy_unit = self._unit
+	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+
+	for i = 1, #player_and_bot_units do
+		local player_unit = player_and_bot_units[i]
+		local career_extension = ScriptUnit.has_extension(player_unit, "career_system")
+
+		if career_extension and career_extension:career_name() == "wh_captain" then
+			local talent_extension = ScriptUnit.has_extension(player_unit, "talent_system")
+			local has_templars_knowledge = talent_extension and talent_extension:has_talent(TEMPLARS_KNOWLEDGE_TALENT)
+
+			if can_be_witch_hunted(enemy_unit, has_templars_knowledge) then
+				buff_extension:add_buff(WITCH_HUNT_BUFF)
+
+				if has_templars_knowledge then
+					buff_extension:add_buff(TEMPLARS_KNOWLEDGE_TALENT)
+				end
+			end
+		end
+	end
+end)
+mod_api.insert_text("career_passive_desc_wh_3a_2", "Tagged enemies take an additional 20% damage (excluding Lords and Monsters). Does not stack with similar effects.")
 
 --[[
 	Riposte
@@ -88,7 +141,7 @@ mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "P
 --[[
 	Templar's Knowledge
 ]]
--- 25% damage increase to specials and elites under thp_stagger_changes.lua
+-- Lets tagging apply Witch Hunt to every enemy, Lords and Monsters included (see can_be_witch_hunted above)
 -- Duration increase
 mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_improved_damage_taken_ping", {
 	duration = 15, -- 5
@@ -97,307 +150,48 @@ mod_api.update_talent("wh_captain", 4, 1, {
 	description = "victor_witchhunter_improved_damage_taken_ping_desc",
 	description_values = {},
 })
-mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage. Victor deals additional 25.0% direct damage to enemies affected by Witch Hunt (excluding Lords and Bosses).")
-
+mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage and also applies to Lords and Monsters.")
 
 --[[
 	I Shall Judge You All
 ]]
--- Headshotting a Witch Hunted enemy extends the isjya aura's duration by 1s
-mod_api.insert_proc_function("tb_isjya_refresh_animosity_on_headshot", function (owner_unit, buff, params)
-	if not Unit.alive(owner_unit) or not (is_server() or is_local(owner_unit)) then
-		return
-	end
-
+-- Vanilla: Animosity's explosion applies Witch Hunt (+ Templar's Knowledge) to every enemy hit.
+-- Added: melee headshots apply Witch Hunt (+ Templar's Knowledge) to every enemy, Lords and Monsters included (not
+-- gated like tagging). Server-side like Huntsman's on-hit debuff, hence buffer = "server".
+mod_api.insert_proc_function("tb_isjya_witch_hunt_on_melee_headshot", function (owner_unit, buff, params)
 	local hit_unit = params[1]
-	local hit_zone_name = params[3]
 
-	if hit_zone_name ~= "head" and hit_zone_name ~= "neck" then
+	if not Managers.player.is_server or not ALIVE[owner_unit] or not ALIVE[hit_unit] or not is_melee_headshot(params) then
 		return
 	end
 
-	local hit_unit_buff_extension = hit_unit and ALIVE[hit_unit] and ScriptUnit.has_extension(hit_unit, "buff_system")
+	local hit_unit_buff_extension = ScriptUnit.has_extension(hit_unit, "buff_system")
 
-	if not hit_unit_buff_extension or not hit_unit_buff_extension:has_buff_type("defence_debuff_enemies") then
+	if not hit_unit_buff_extension then
 		return
 	end
 
-	local owner_buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
-	local aura_buff = owner_buff_extension:get_buff_type("tb_isjya_aura")
+	hit_unit_buff_extension:add_buff(WITCH_HUNT_BUFF)
 
-	if aura_buff and aura_buff.duration then
-		local t = Managers.time:time("game")
-		local remaining = math.max(0, aura_buff.start_time + aura_buff.duration - t)
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
 
-		aura_buff.start_time = t
-		aura_buff.duration = remaining + 2 -- DURATION EXTENSION
+	if talent_extension and talent_extension:has_talent(TEMPLARS_KNOWLEDGE_TALENT) then
+		hit_unit_buff_extension:add_buff(TEMPLARS_KNOWLEDGE_TALENT)
 	end
 end)
-
-mod_api.insert_talent_buff_template("witch_hunter", "tb_isjya_refresh_animosity_on_headshot", {
-	buff_func = "tb_isjya_refresh_animosity_on_headshot",
+mod_api.insert_talent_buff_template("witch_hunter", "tb_isjya_witch_hunt_on_melee_headshot", {
+	buff_func = "tb_isjya_witch_hunt_on_melee_headshot",
 	event = "on_hit",
 })
-
 mod_api.update_talent("wh_captain", 6, 1, {
+	buffer = "server",
 	buffs = {
-		"tb_isjya_refresh_animosity_on_headshot",
+		"tb_isjya_witch_hunt_on_melee_headshot",
 	},
+	description = "victor_captain_activated_ability_stagger_ping_debuff_desc",
+	description_values = {},
 })
-mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Applies Witch Hunt to enemies within range of Animosity every second. Headshotting Witch-Hunted enemies extends this effect by 2 seconds.")
-
---[[ Ping Specials within ult radius on WHC ISJYA ULT ]]
-local PING_DURATION = 15
--- Special reveal/outline disabled
---[[
-local marked_enemies = {}
-
--- Outline in the game's dangerous enemy color. With AccessibilityOptions, its own "Dangerous Enemy" color table is used
--- instead: its add_outline hook then tracks these outlines and recolors them (presets, custom, rainbow).
--- File locals, not OutlineSettings entries: outline_settings.lua reassigning those tables wiped them (nil index crash).
-local JUDGED_SPECIAL_DEFAULT_COLOR = {
-	pulsate = false,
-	pulse_multiplier = 50,
-	color = { 255, 227, 4, 4 }, -- alpha, r, g, b
-}
-local JUDGED_SPECIAL_OUTLINE = {
-	method = "ai_alive",
-	priority = 15,
-	outline_color = JUDGED_SPECIAL_DEFAULT_COLOR,
-	flag = OutlineSettings.flags.non_wall_occluded,
-}
-]]
-
--- Applies Witch Hunt (+ Templar's Knowledge) to every special within radius of position (reveal/outline disabled)
-local function apply_isjya_special_marks(attacker_unit, position, radius, has_templars_knowledge)
-	-- JUDGED_SPECIAL_OUTLINE.outline_color = get_mod("AccessibilityOptions") and OutlineSettings.colors.accessibility_dangerous_enemy_marker or JUDGED_SPECIAL_DEFAULT_COLOR
-
-	local proximity_system = Managers.state.entity:system("proximity_system")
-	local t = Managers.time:time("game")
-	local radius_sq = radius * radius
-
-	for enemy_unit, _ in pairs(proximity_system.ai_unit_extensions_map) do
-		local breed = Unit.get_data(enemy_unit, "breed")
-		local is_special = breed and breed.special
-		local enemy_position = is_special and POSITION_LOOKUP[enemy_unit]
-
-		if ALIVE[enemy_unit] and enemy_position and Vector3.distance_squared(position, enemy_position) <= radius_sq then
-			--[[
-			if marked_enemies[enemy_unit] then
-				marked_enemies[enemy_unit].expire_t = t + PING_DURATION
-			else
-				local ping_extension = ScriptUnit.has_extension(enemy_unit, "ping_system")
-
-				if ping_extension then
-					ping_extension:set_pinged(true, false, attacker_unit, false)
-
-					local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
-					local outline_id = outline_extension and outline_extension:add_outline(JUDGED_SPECIAL_OUTLINE)
-
-					marked_enemies[enemy_unit] = {
-						owner_unit = attacker_unit,
-						expire_t = t + PING_DURATION,
-						outline_id = outline_id,
-					}
-				end
-			end
-			]]
-
-			if Managers.state.network.is_server then
-				local buff_system = Managers.state.entity:system("buff_system")
-
-				buff_system:add_buff_synced(enemy_unit, "defence_debuff_enemies", BuffSyncType.All, {
-					external_optional_duration = PING_DURATION,
-				})
-
-				if has_templars_knowledge then
-					buff_system:add_buff_synced(enemy_unit, "victor_witchhunter_improved_damage_taken_ping", BuffSyncType.All, {
-						external_optional_duration = PING_DURATION,
-					})
-				end
-			end
-		end
-	end
-end
-
--- Applies Witch Hunt (+ Templar's Knowledge) to every enemy within radius of position.
-local function apply_isjya_radius_debuff(attacker_unit, position, radius, has_templars_knowledge)
-	if not Managers.state.network.is_server then
-		return
-	end
-
-	local nearby_enemy_units = FrameTable.alloc_table()
-	local proximity_system = Managers.state.entity:system("proximity_system")
-	local broadphase = proximity_system.enemy_broadphase
-
-	Broadphase.query(broadphase, position, radius, nearby_enemy_units)
-
-	local buff_system = Managers.state.entity:system("buff_system")
-
-	for _, enemy_unit in pairs(nearby_enemy_units) do
-		if ALIVE[enemy_unit] then
-			buff_system:add_buff_synced(enemy_unit, "defence_debuff_enemies", BuffSyncType.All, {
-				external_optional_duration = PING_DURATION,
-			})
-
-			if has_templars_knowledge then
-				buff_system:add_buff_synced(enemy_unit, "victor_witchhunter_improved_damage_taken_ping", BuffSyncType.All, {
-					external_optional_duration = PING_DURATION,
-				})
-			end
-		end
-	end
-end
-
--- isjya aura: while active, every 3s re-runs the marking/debuff
-mod_api.insert_buff_function("tb_isjya_aura_pulse", function (unit, buff, params, world)
-	if not HEALTH_ALIVE[unit] then
-		return
-	end
-
-	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
-	local has_templars_knowledge = talent_extension and talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
-
-	local position = POSITION_LOOKUP[unit]
-
-	apply_isjya_special_marks(unit, position, buff.range, has_templars_knowledge)
-	apply_isjya_radius_debuff(unit, position, buff.range, has_templars_knowledge)
-end)
-local ISJYA_AURA_DURATION = 6
-mod_api.insert_talent_buff_template("witch_hunter", "tb_isjya_aura", {
-	icon = "wh_6_1",
-	duration = ISJYA_AURA_DURATION,
-	range = 10, -- Animosity's explosion radius
-	update_func = "tb_isjya_aura_pulse",
-	update_frequency = 1,
-})
-
--- Register outline colors
-local function tb_isjya_on_create_explosion(world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, is_husk, damaging_unit, attacker_power_level, is_critical_strike, source_attacker_unit)
-	if damage_source ~= "career_ability" or not ALIVE[attacker_unit] then
-		return
-	end
-
-	local career_extension = ScriptUnit.has_extension(attacker_unit, "career_system")
-
-	if not career_extension or career_extension:career_name() ~= "wh_captain" then
-		return
-	end
-
-	local talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
-
-	if not talent_extension or not talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") then
-		return
-	end
-
-	local has_templars_knowledge = talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping")
-
-	apply_isjya_special_marks(attacker_unit, impact_position, explosion_template.explosion.radius * (scale or 1), has_templars_knowledge)
-
-	-- Add ISJYA aura - if recasting while the old one is still active, reset
-	if Managers.state.network.is_server then
-		local buff_extension = ScriptUnit.extension(attacker_unit, "buff_system")
-		local existing_aura = buff_extension:get_buff_type("tb_isjya_aura")
-
-		if existing_aura then
-			-- Duration drifts upward with each headshot extension (see the
-			-- headshot proc above), so a recast must reset it back to base,
-			-- not just re-anchor start_time.
-			existing_aura.start_time = Managers.time:time("game")
-			existing_aura.duration = ISJYA_AURA_DURATION
-		else
-			mod_api.add_buff(attacker_unit, "tb_isjya_aura")
-		end
-	end
-end
-
--- Runs after the original, like a hook_safe. Registered through the dispatcher in TourneyBalance.lua.
-mod:add_create_explosion_wrapper(function (func, ...)
-	local result = func(...)
-
-	tb_isjya_on_create_explosion(...)
-
-	return result
-end)
-
--- Clean up expired outlines (disabled with the special reveal/outline)
---[[
-local MARK_EXPIRY_CHECK_INTERVAL = 1
-local next_mark_expiry_check_t = 0
-mod:add_ingame_hud_update_function(function (self)
-	if not next(marked_enemies) then
-		return
-	end
-
-	local t = Managers.time:time("game")
-
-	if t < next_mark_expiry_check_t then
-		return
-	end
-
-	next_mark_expiry_check_t = t + MARK_EXPIRY_CHECK_INTERVAL
-
-	for enemy_unit, data in pairs(marked_enemies) do
-		if not ALIVE[enemy_unit] or t >= data.expire_t then
-			if ALIVE[enemy_unit] then
-				local ping_extension = ScriptUnit.has_extension(enemy_unit, "ping_system")
-
-				if ping_extension then
-					ping_extension:set_pinged(false, nil, data.owner_unit, false)
-				end
-
-				local outline_extension = ScriptUnit.has_extension(enemy_unit, "outline_system")
-
-				if outline_extension and data.outline_id then
-					outline_extension:remove_outline(data.outline_id)
-				end
-			end
-
-			marked_enemies[enemy_unit] = nil
-		end
-	end
-end)
-]]
-
---[[
-	Fervency
-]]
--- Extend durationto 9s
-mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_guaranteed_crit_self_buff", {
-	duration = 8, -- 6
-	icon = "wh_6_2",
-})
-
---[[
--- Additional 20 stacks of guaranteed melee crit hits on ult use
-mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_crit_stacks", { -- 20 stacks of melee crits buff
-	icon = "wh_6_2",
-	stat_buff = "critical_strike_chance_melee",
-	bonus = 1,
-	max_stacks = 20,
-})
-mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_provider", { -- provides the 20 stacks on ult
-	buff_func = "add_buff_reff_buff_stack",
-	buff_to_add = "tb_fervency_crit_stacks",
-	amount_to_add = 20,
-	event = "on_ability_activated",
-})
-mod_api.insert_talent_buff_template("witch_hunter", "tb_fervency_stack_consumer", { -- consumes 1 stack per enemy hit
-	buff_func = "remove_buff_stack",
-	event = "on_melee_hit",
-	max_stacks = 1,
-	remove_buff_stack_data = {
-		{ buff_to_remove = "tb_fervency_crit_stacks", num_stacks = 1 },
-	},
-})
-mod_api.update_talent("wh_captain", 6, 2, {
-	buffs = {
-		"tb_fervency_stack_provider",
-		"tb_fervency_stack_consumer"
-	},
-})
-]]
-mod_api.insert_text("victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc", "Animosity grants Victor guaranteed melee critical strikes for 8 seconds. No longer affects teammates and ranged attacks.")
+mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Apply Witch Hunt to all enemies hit by Animosity or melee headshots.")
 
 --[[
 	Unending Hunt

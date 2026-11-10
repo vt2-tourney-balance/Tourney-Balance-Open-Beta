@@ -141,6 +141,14 @@ local function tb_instant_block_set_blocking(unit, status_extension, blocking, t
     end
 end
 
+-- Current weapon action settings (false when idle, so it can be stored and compared like an action). Only called on frames
+-- where the hook is about to force block, not every frame.
+local function tb_instant_block_current_action(inventory_extension)
+    local _, right_hand_weapon_extension, left_hand_weapon_extension = CharacterStateHelper.get_item_data_and_weapon_extensions(inventory_extension)
+
+    return CharacterStateHelper.get_current_action_data(left_hand_weapon_extension, right_hand_weapon_extension) or false
+end
+
 -- Let real weapon action system go first, so push chaining back into block on continued hold happens completely untouched.
 mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit, input_extension, inventory_extension, health_extension)
     func(t, unit, input_extension, inventory_extension, health_extension)
@@ -157,13 +165,31 @@ mod:hook(CharacterStateHelper, "update_weapon_actions", function (func, t, unit,
         local wants_block = input_extension:get("action_two_hold")
 
         if wants_block and not status_extension.blocking then
-            tb_instant_block_set_blocking(unit, status_extension, true, t)
+            local current_action = tb_instant_block_current_action(inventory_extension)
 
-            status_extension._tb_instant_block_forced_block = true
+            -- Safeguard against fighting vanilla over the blocking flag: if something else cleared the block we forced during
+            -- this same action (e.g. ActionPushStagger clears blocking every frame once 0.5s into a push, which never ends
+            -- while the game is paused), yield until the action changes or block is released. Otherwise both sides would
+            -- send rpc_set_blocking every frame and can overflow a lagging peer's reliable send queue.
+            if current_action ~= status_extension._tb_instant_block_yielded_action then
+                if status_extension._tb_instant_block_forced_block and current_action == status_extension._tb_instant_block_forced_action then
+                    status_extension._tb_instant_block_yielded_action = current_action
+                    status_extension._tb_instant_block_forced_block = false
+                else
+                    tb_instant_block_set_blocking(unit, status_extension, true, t)
+
+                    status_extension._tb_instant_block_forced_block = true
+                    status_extension._tb_instant_block_forced_action = current_action
+                end
+            end
         elseif status_extension._tb_instant_block_forced_block and not wants_block then
             tb_instant_block_set_blocking(unit, status_extension, false, t)
 
             status_extension._tb_instant_block_forced_block = false
+        end
+
+        if not wants_block then
+            status_extension._tb_instant_block_yielded_action = nil
         end
     end
 

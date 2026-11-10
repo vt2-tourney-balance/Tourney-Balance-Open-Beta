@@ -16,6 +16,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**A Sustenance of Leechlings**
 		- Decreased temp health siphon from team to 10% (from 100%).
 
+		**Blackvenom Blades**
+		- The melee poison's 12% increased damage taken only applies to man-sized enemies.
+
 		### Talents
 		**Surge of Malice**
 		- Lowered required health threshold to 70% (from 90%).
@@ -28,7 +31,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Only consume crit stacks on hit, and at most 1 stack per attack (even against multiple enemies).
 
 		**Bonded Spirit**
-		- Updated description: Internal CD of losing cooldown is  1s.
+		- Updated description: Internal CD of losing cooldown is 1s.
 
 		**Radiant Inheritance**
 		- Can be activated with Thornwake (regular ult).
@@ -40,6 +43,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Ironbark Thicket**
 		- When holding cast, pressing weapon special key toggles a flat-wall mode (Ironbark Thicket icon)
 		- A flat wall no longer blocks enemy movement, but enemies touching it are slowed by 50% for 10s.
+		- Enemies inside a flat wall are poisoned with Blackvenom (both stacks with Recursive Toxin), always including the 12% increased damage taken, on all enemies.
 
 		**Tanglegrasp Thicket**
 		- Reduced drag amount of Berserkers to 0.1 (from 1). Same as Stormvermin
@@ -47,6 +51,8 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Blackvenom Thicket**
 		- Added 40% cooldown reduction.
+		- With Recursive Toxin, a single cast applies both Blackvenom stacks.
+		- Its poison always applies the 12% increased damage taken, to all enemies (also upgrading existing melee poison stacks on non-man-sized enemies).
 	$END_TB
 ]]
 
@@ -84,6 +90,84 @@ end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_temp_health_funnel_aura_buff", {
 	multiplier = 0.10
 })
+
+--[[
+	Blackvenom Blades
+]]
+-- The melee poison's 12% damage taken only applies to man-sized enemies.
+local THORN_SISTER_POISON = "thorn_sister_passive_poison"
+local RECURSIVE_TOXIN_POISON = "thorn_sister_passive_poison_improved"
+local melee_poison_params = {}
+
+-- Blackvenom Thicket and Ironbark's Thornbed always apply the full damage taken debuff. A refresh keeps a stack's
+-- multiplier, so melee poison stacks on non-man-sized enemies (multiplier 0) are upgraded in place. Only the stat
+-- entry is swapped, so the poison's dot timing and duration aren't touched.
+local function upgrade_poison_debuff_stacks(target_unit, dot_template_name)
+	local buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
+	local poison_template = buff_extension and BuffTemplates[dot_template_name].buffs[1]
+	local stacks = poison_template and buff_extension:get_stacking_buff(poison_template.name)
+
+	if not stacks then
+		return
+	end
+
+	local full_multiplier = poison_template.multiplier
+
+	for i = 1, #stacks do
+		local stack_buff = stacks[i]
+
+		if (stack_buff.multiplier or 0) < full_multiplier and stack_buff.stat_buff_index then
+			buff_extension:_remove_stat_buff(stack_buff)
+
+			stack_buff.multiplier = full_multiplier
+			stack_buff.stat_buff_index = buff_extension:_add_stat_buff(stack_buff.template, stack_buff)
+		end
+	end
+end
+
+mod_api.insert_proc_function("tb_thorn_sister_add_melee_poison", function (owner_unit, buff, params)
+	local hit_unit = params[1]
+
+	if not ALIVE[owner_unit] or not HEALTH_ALIVE[hit_unit] then
+		return
+	end
+
+	local attack_type = params[2]
+
+	if attack_type ~= "light_attack" and attack_type ~= "heavy_attack" then
+		return
+	end
+
+	local target_buff_extension = ScriptUnit.has_extension(hit_unit, "buff_system")
+
+	if not target_buff_extension then
+		return false
+	end
+
+	local template = buff.template
+	local poison = template.poison
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+	if talent_extension and talent_extension:has_talent("kerillian_thorn_sister_double_poison") then
+		poison = template.improved_poison
+	end
+
+	local career_extension = ScriptUnit.extension(owner_unit, "career_system")
+	local breed = Unit.get_data(hit_unit, "breed")
+	local is_man_sized = breed and not breed.boss and not breed.primary_armor_category
+
+	table.clear(melee_poison_params)
+
+	melee_poison_params.power_level = career_extension:get_career_power_level()
+	melee_poison_params.attacker_unit = owner_unit
+	melee_poison_params.external_optional_multiplier = not is_man_sized and 0 or nil
+
+	Managers.state.entity:system("buff_system"):add_buff_synced(hit_unit, poison, BuffSyncType.LocalAndServer, melee_poison_params)
+end)
+mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_poison_on_hit", {
+	buff_func = "tb_thorn_sister_add_melee_poison", -- thorn_sister_add_melee_poison
+})
+mod_api.insert_text("career_passive_desc_we_thornsister_a_2", "Melee attacks apply a Poison that deals damage and for man-sized enemies increases damage suffered by 12% for 10 seconds. Applying Poison with Thornwake applies the increased damage suffered to all enemies.")
 
 --[[
 
@@ -322,7 +406,8 @@ local function tb_tilt_wall_rotation(wall_rotation, tilt_angle)
 	return Quaternion.look(tilted_forward, tilted_up)
 end
 
--- Flat wall segments, weak-keyed; set in spawn_func below, read by the enemy-slow hook further down.
+-- Flat wall segments -> casting Thornsister, weak-keyed; set in spawn_func below (server-only), read by the
+-- enemy-slow/poison hook further down.
 local tb_flat_wall_units = setmetatable({}, { __mode = "k" })
 -- Shared by both slow mechanisms below.
 local TB_FLAT_WALL_ENEMY_SLOW_MULTIPLIER = 0.5 -- 50% slowdown
@@ -560,7 +645,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		local wall_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, UNIT_TEMPLATE_NAME, extension_init_data, position, final_rotation)
 
 		if is_tilted then
-			tb_flat_wall_units[wall_unit] = true
+			tb_flat_wall_units[wall_unit] = source_unit
 		end
 
 		local buff_extension = ScriptUnit.has_extension(wall_unit, "buff_system")
@@ -578,7 +663,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 		end
 	end
 }
-mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall and duration to 10 seconds.\n\nPressing weapon special while casting switches to Thornbed. Enemies walking through it are slowed by 50%% for 10 seconds.")
+mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the width of the Thorn Wall and duration to 10 seconds.\n\nWeapon special: Toggles Thornbed, slowing enemies inside by 50%% for 10 seconds and applying Blackvenom to them.")
 
 -- Registered last on purpose: piggybacks on the wall's own per-tick area-effect (which already slows nearby
 -- allies) to also slow nearby enemies, for segments tracked as flat above. If registering a hook on this
@@ -587,10 +672,43 @@ mod_api.insert_text("kerillian_thorn_sister_tanky_wall_desc_2", "Increase the wi
 local tb_flat_wall_last_check_t = setmetatable({}, { __mode = "k" })
 local TB_FLAT_WALL_CHECK_INTERVAL = 0.1 -- fixed interval; per-frame scanning got expensive with many enemies nearby
 local TB_FLAT_WALL_ENEMY_SLOW_RADIUS = 0.5 -- kept separate from the 0.3 "radius" param (ally-slow/nav-tag)
+
+-- Enemies in a Thornbed are also poisoned with the caster's Blackvenom (full debuff on every enemy, like Blackvenom
+-- Thicket; both stacks with Recursive Toxin), refreshed while they stay in it. Shared per-enemy throttle so
+-- standing across several segments doesn't reapply it more often. Plain server add_buff, like the wall's poison.
+local TB_FLAT_WALL_POISON_INTERVAL = 0.5
+local tb_flat_wall_poison_next_t = setmetatable({}, { __mode = "k" })
+local tb_flat_wall_poison_params = {}
+
+local function tb_flat_wall_poison_enemy(enemy_unit, buff_extension, source_unit, poison, t)
+	local next_t = tb_flat_wall_poison_next_t[enemy_unit]
+
+	if next_t and t < next_t then
+		return
+	end
+
+	tb_flat_wall_poison_next_t[enemy_unit] = t + TB_FLAT_WALL_POISON_INTERVAL
+
+	table.clear(tb_flat_wall_poison_params)
+
+	tb_flat_wall_poison_params.power_level = ScriptUnit.extension(source_unit, "career_system"):get_career_power_level()
+	tb_flat_wall_poison_params.attacker_unit = source_unit
+
+	buff_extension:add_buff(poison, tb_flat_wall_poison_params)
+
+	if poison == RECURSIVE_TOXIN_POISON then
+		buff_extension:add_buff(poison, tb_flat_wall_poison_params)
+	end
+
+	upgrade_poison_debuff_stacks(enemy_unit, poison)
+end
+
 mod:hook(AreaDamageTemplates.templates.we_thornsister_thorn_wall.client, "update", function (func, world, radius, aoe_unit, ...)
 	func(world, radius, aoe_unit, ...)
 
-	if not tb_flat_wall_units[aoe_unit] then
+	local source_unit = tb_flat_wall_units[aoe_unit]
+
+	if not source_unit then
 		return
 	end
 
@@ -615,6 +733,15 @@ mod:hook(AreaDamageTemplates.templates.we_thornsister_thorn_wall.client, "update
 		return
 	end
 
+	-- Poison needs a living caster (power level, damage attribution); the slow doesn't.
+	local poison
+
+	if ALIVE[source_unit] then
+		local talent_extension = ScriptUnit.has_extension(source_unit, "talent_system")
+
+		poison = talent_extension and talent_extension:has_talent("kerillian_thorn_sister_double_poison") and RECURSIVE_TOXIN_POISON or THORN_SISTER_POISON
+	end
+
 	local enemy_units = side:enemy_units()
 
 	for _, enemy_unit in pairs(enemy_units) do
@@ -629,6 +756,10 @@ mod:hook(AreaDamageTemplates.templates.we_thornsister_thorn_wall.client, "update
 
 				if buff_extension then
 					buff_extension:add_buff("tb_flat_wall_enemy_slow")
+
+					if poison and HEALTH_ALIVE[enemy_unit] then
+						tb_flat_wall_poison_enemy(enemy_unit, buff_extension, source_unit, poison, t)
+					end
 				end
 			end
 		end
@@ -661,3 +792,23 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_blackvenom_cdr", {
 	max_stacks = 1
 })
 mod_api.insert_text("kerillian_thorn_sister_debuff_wall_desc_2", "Thornwake instead causes roots to burst from the ground, staggering enemies and applying Blackvenom to them. Reduces cooldown by 40%%.")
+
+-- The wall's explosion reaches poison_dot via AreaDamageSystem -> DamageUtils.apply_dot (server-side). It's identified
+-- by its damage profile, so Lingering Blackvenom's poison burst and melee poison are unaffected.
+-- 1. With Recursive Toxin, one cast fills both Blackvenom stacks (vanilla: one stack per enemy per cast).
+-- 2. The wall always applies the full damage taken debuff, to every enemy (see upgrade_poison_debuff_stacks).
+local BLACKVENOM_THICKET_DAMAGE_PROFILE = "thorn_wall_explosion_improved_damage"
+
+mod:hook(Dots, "poison_dot", function (func, dot_template_name, damage_profile, target_index, power_level, target_unit, ...)
+	local applied = func(dot_template_name, damage_profile, target_index, power_level, target_unit, ...)
+
+	if applied and damage_profile and damage_profile.name == BLACKVENOM_THICKET_DAMAGE_PROFILE then
+		if dot_template_name == RECURSIVE_TOXIN_POISON then
+			func(dot_template_name, damage_profile, target_index, power_level, target_unit, ...)
+		end
+
+		upgrade_poison_debuff_stacks(target_unit, dot_template_name)
+	end
+
+	return applied
+end)
