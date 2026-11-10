@@ -21,8 +21,11 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**I Shall Judge You All**
 		- Melee headshots also apply Witch Hunt (and Templar's Knowledge) to all enemies hit, including Lords and Monsters.
 
+		**Fervency**
+		- Duration increased to 7s (from 6s).
+
 		**The Unending Hunt**
-		- Decreased crit chance granted to team to 10% (from 25%)
+		- Decreased crit chance granted to team to 12.5% (from 25%)
 	$END_TB
 ]]
 
@@ -194,6 +197,18 @@ mod_api.update_talent("wh_captain", 6, 1, {
 mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Apply Witch Hunt to all enemies hit by Animosity or melee headshots.")
 
 --[[
+	Fervency
+]]
+mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_guaranteed_crit_self_buff", {
+	duration = 7, -- 6
+})
+mod_api.update_talent("wh_captain", 6, 2, {
+	description = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc",
+	description_values = {},
+})
+mod_api.insert_text("victor_witchhunter_activated_ability_guaranteed_crit_self_buff_desc", "Animosity grants Victor guaranteed melee critical strikes for 7 seconds. No longer affects teammates and ranged attacks.")
+
+--[[
 	Unending Hunt
 ]]
 -- Teammates' crit chance reduced to 25% only when the caster has Unending Hunt (6-3); the caster keeps 25%
@@ -221,7 +236,7 @@ do
 	-- Distinct name so num_buff_type/max_stacks don't collide with the vanilla sub-buff
 	local unending_hunt_sub_buff = table.clone(vanilla_sub_buff)
 	unending_hunt_sub_buff.name = "tb_unending_hunt_crit_buff"
-	unending_hunt_sub_buff.bonus = 0.1 -- 0.25
+	unending_hunt_sub_buff.bonus = 0.125 -- 0.25
 	unending_hunt_sub_buff.apply_condition = function (unit, template, params)
 		return is_unending_hunt_ally(unit, params)
 	end
