@@ -17,7 +17,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Decreased temp health siphon from team to 10% (from 100%).
 
 		**Blackvenom Blades**
-		- The melee poison's 12% increased damage taken only applies to man-sized enemies.
+		- The melee poison's 12% increased damage taken only applies to trash enemies (not elites, specials or bosses).
 
 		### Talents
 		**Surge of Malice**
@@ -50,9 +50,8 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Reduced stagger strength against berserker and armoured enemies to medium_stagger (from heavy_stagger)
 
 		**Blackvenom Thicket**
-		- Added 40% cooldown reduction.
 		- With Recursive Toxin, a single cast applies both Blackvenom stacks.
-		- Its poison always applies the 12% increased damage taken, to all enemies (also upgrading existing melee poison stacks on non-man-sized enemies).
+		- Its poison always applies the 12% increased damage taken, to all enemies (also upgrading existing melee poison stacks on non-trash enemies).
 	$END_TB
 ]]
 
@@ -61,7 +60,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 	Ultimate
 
 ]]
-mod_api.update_career_ability_cooldown("we_thornsister", 60) -- 40
+-- mod_api.update_career_ability_cooldown("we_thornsister", 60) -- 40
 
 
 --[[
@@ -70,8 +69,8 @@ mod_api.update_career_ability_cooldown("we_thornsister", 60) -- 40
 --[[
 	A Cluster of Radiants
 ]]
-PassiveAbilitySettings.we_thornsister.passive_ability_classes[1].init_data.cooldown = 80 -- 60
-mod_api.insert_text("career_passive_desc_we_thornsister", "Kerillian is granted Radiance (a free use of her career skill) every 80 seconds.")
+-- PassiveAbilitySettings.we_thornsister.passive_ability_classes[1].init_data.cooldown = 80 -- 60
+-- mod_api.insert_text("career_passive_desc_we_thornsister", "Kerillian is granted Radiance (a free use of her career skill) every 80 seconds.")
 
 -- Start with every Radiance charge ready (2 with Incandescence) instead of on cooldown.
 mod:hook_safe(PassiveAbilityThornsister, "extensions_ready", function (self)
@@ -94,13 +93,13 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_
 --[[
 	Blackvenom Blades
 ]]
--- The melee poison's 12% damage taken only applies to man-sized enemies.
+-- The melee poison's 12% damage taken only applies to trash enemies (not elite, special or boss).
 local THORN_SISTER_POISON = "thorn_sister_passive_poison"
 local RECURSIVE_TOXIN_POISON = "thorn_sister_passive_poison_improved"
 local melee_poison_params = {}
 
 -- Blackvenom Thicket and Ironbark's Thornbed always apply the full damage taken debuff. A refresh keeps a stack's
--- multiplier, so melee poison stacks on non-man-sized enemies (multiplier 0) are upgraded in place. Only the stat
+-- multiplier, so melee poison stacks on non-trash enemies (multiplier 0) are upgraded in place. Only the stat
 -- entry is swapped, so the poison's dot timing and duration aren't touched.
 local function upgrade_poison_debuff_stacks(target_unit, dot_template_name)
 	local buff_extension = ScriptUnit.has_extension(target_unit, "buff_system")
@@ -154,20 +153,20 @@ mod_api.insert_proc_function("tb_thorn_sister_add_melee_poison", function (owner
 
 	local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 	local breed = Unit.get_data(hit_unit, "breed")
-	local is_man_sized = breed and not breed.boss and not breed.primary_armor_category
+	local is_trash = breed and not breed.boss and not breed.elite and not breed.special
 
 	table.clear(melee_poison_params)
 
 	melee_poison_params.power_level = career_extension:get_career_power_level()
 	melee_poison_params.attacker_unit = owner_unit
-	melee_poison_params.external_optional_multiplier = not is_man_sized and 0 or nil
+	melee_poison_params.external_optional_multiplier = not is_trash and 0 or nil
 
 	Managers.state.entity:system("buff_system"):add_buff_synced(hit_unit, poison, BuffSyncType.LocalAndServer, melee_poison_params)
 end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_poison_on_hit", {
 	buff_func = "tb_thorn_sister_add_melee_poison", -- thorn_sister_add_melee_poison
 })
-mod_api.insert_text("career_passive_desc_we_thornsister_a_2", "Melee attacks apply a Poison that deals damage and for man-sized enemies increases damage suffered by 12% for 10 seconds. Applying Poison with Thornwake applies the increased damage suffered to all enemies.")
+mod_api.insert_text("career_passive_desc_we_thornsister_a_2", "Melee attacks apply a Poison that deals damage and increases damage suffered by 12% for 10 seconds for trash enemies. Applying Poison with Thornwake applies max stacks of increased damage suffered to all enemies.")
 
 --[[
 
@@ -217,9 +216,6 @@ mod_api.update_talent("we_thornsister", 2, 3, {
 	},
 })
 -- consume 1 stack only on hit
--- Explosions can't rely on target_number: remote clients receive every explosion hit via rpc_buff_on_attack with
--- target_number hardcoded to 1, and the hits are spread over several frames (aoe damage ring buffer + network).
--- So an explosion consumes one stack, then further explosion hits are ignored for a short window.
 local TB_CRIT_STACK_AOE_WINDOW = 0.5
 local tb_crit_stack_last_aoe_consume_t = setmetatable({}, { __mode = "k" })
 mod_api.insert_proc_function("tb_thorn_sister_remove_crit_stack_on_first_hit", function (owner_unit, buff, params)
@@ -781,6 +777,7 @@ thorn_wall_push_data.stagger_impact[5] = stagger_types.medium
 --[[
 	Blackvenom Thicket
 ]]
+--[[
 mod_api.update_talent("we_thornsister", 6, 3, {
     buffs = {
         "tb_blackvenom_cdr"
@@ -791,7 +788,8 @@ mod_api.insert_talent_buff_template("wood_elf", "tb_blackvenom_cdr", {
 	multiplier = -0.4,
 	max_stacks = 1
 })
-mod_api.insert_text("kerillian_thorn_sister_debuff_wall_desc_2", "Thornwake instead causes roots to burst from the ground, staggering enemies and applying Blackvenom to them. Reduces cooldown by 40%%.")
+]]
+mod_api.insert_text("kerillian_thorn_sister_debuff_wall_desc_2", "Thornwake instead causes roots to burst from the ground, staggering enemies and applying Blackvenom to them.")
 
 -- The wall's explosion reaches poison_dot via AreaDamageSystem -> DamageUtils.apply_dot (server-side). It's identified
 -- by its damage profile, so Lingering Blackvenom's poison burst and melee poison are unaffected.
