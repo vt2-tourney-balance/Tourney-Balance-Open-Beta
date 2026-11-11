@@ -15,7 +15,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Tagging applies Witch Hunt to all enemies except Lords and Monsters.
 
 		**I Shall Judge You All**
-		- Melee headshots also apply Witch Hunt (and Templar's Knowledge) to all enemies hit, including Lords and Monsters.
+		- Headshots (melee and ranged) also apply Witch Hunt (and Templar's Knowledge) to all enemies hit, including Lords and Monsters.
 
 		**Fervency**
 		- Duration increased to 7s (from 6s).
@@ -36,7 +36,7 @@ local TEMPLARS_KNOWLEDGE_TALENT = "victor_witchhunter_improved_damage_taken_ping
 
 -- Tagging only applies Witch Hunt to man-sized enemies (no Lords, Monsters or super-armoured enemies).
 -- Templar's Knowledge extends it to every enemy except Lords and Monsters.
--- Only the tag is gated: the shared buff template is untouched (Huntsman, ISJYA's explosion and melee headshots hit
+-- Only the tag is gated: the shared buff template is untouched (Huntsman, ISJYA's explosion and headshots hit
 -- everything).
 local function can_be_witch_hunted(enemy_unit, has_templars_knowledge)
 	local breed = Unit.get_data(enemy_unit, "breed")
@@ -107,12 +107,17 @@ mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch
 	I Shall Judge You All
 ]]
 -- Vanilla: Animosity's explosion applies Witch Hunt (+ Templar's Knowledge) to every enemy hit.
--- Added: melee headshots apply Witch Hunt (+ Templar's Knowledge) to every enemy, Lords and Monsters included (not
--- gated like tagging). Server-side like Huntsman's on-hit debuff, hence buffer = "server".
+-- Added: headshots (melee or ranged) apply Witch Hunt (+ Templar's Knowledge) to every enemy
+local function is_headshot(params)
+	local hit_zone_name = params[3]
+
+	return hit_zone_name == "head" or hit_zone_name == "neck"
+end
+
 mod_api.insert_proc_function("tb_isjya_witch_hunt_on_melee_headshot", function (owner_unit, buff, params)
 	local hit_unit = params[1]
 
-	if not Managers.player.is_server or not ALIVE[owner_unit] or not ALIVE[hit_unit] or not is_melee_headshot(params) then
+	if not Managers.player.is_server or not ALIVE[owner_unit] or not ALIVE[hit_unit] or not is_headshot(params) then
 		return
 	end
 
@@ -142,7 +147,7 @@ mod_api.update_talent("wh_captain", 6, 1, {
 	description = "victor_captain_activated_ability_stagger_ping_debuff_desc",
 	description_values = {},
 })
-mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Apply Witch Hunt to all enemies hit by Animosity or melee headshots.")
+mod_api.insert_text("victor_captain_activated_ability_stagger_ping_debuff_desc", "Apply Witch Hunt to all enemies hit by Animosity or headshots.")
 
 --[[
 	Fervency
