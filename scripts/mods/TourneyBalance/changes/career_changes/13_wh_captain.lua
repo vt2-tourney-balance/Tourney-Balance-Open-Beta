@@ -7,7 +7,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		## Witch Hunter Captain
 		### Passive
 		**Witch-Hunt**
-		- Tagging no longer applies Witch Hunt to Lords and Monsters.
+		- Tagging only applies Witch Hunt to man-sized enemies (not Lords, Monsters or super-armoured enemies).
 
 		### Talents
 		**Riposte**
@@ -16,7 +16,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
-		- Tagging also applies Witch Hunt to Lords and Monsters.
+		- Tagging applies Witch Hunt to all enemies except Lords and Monsters.
 
 		**I Shall Judge You All**
 		- Melee headshots also apply Witch Hunt (and Templar's Knowledge) to all enemies hit, including Lords and Monsters.
@@ -38,17 +38,18 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 local WITCH_HUNT_BUFF = "defence_debuff_enemies"
 local TEMPLARS_KNOWLEDGE_TALENT = "victor_witchhunter_improved_damage_taken_ping"
 
--- Tagging only applies Witch Hunt to non-boss enemies (no Lords or Monsters).
--- Templar's Knowledge extends it to every enemy.
--- Only the tag is gated: the shared buff template is untouched (Huntsman, vanilla ISJYA's explosion hit everything).
+-- Tagging only applies Witch Hunt to man-sized enemies (no Lords, Monsters or super-armoured enemies).
+-- Templar's Knowledge extends it to every enemy except Lords and Monsters.
+-- Only the tag is gated: the shared buff template is untouched (Huntsman, ISJYA's explosion and melee headshots hit
+-- everything).
 local function can_be_witch_hunted(enemy_unit, has_templars_knowledge)
-	if has_templars_knowledge then
-		return true
-	end
-
 	local breed = Unit.get_data(enemy_unit, "breed")
 
-	return breed and not breed.boss or false
+	if not breed or breed.boss then
+		return false
+	end
+
+	return has_templars_knowledge or not breed.primary_armor_category
 end
 
 -- Tag: vanilla adds Witch Hunt (+ Templar's Knowledge) for every WHC on the pinger's side, now gated per enemy
@@ -90,7 +91,7 @@ mod:hook_origin(PingTargetExtension, "_add_witch_hunter_buff", function (self, p
 		end
 	end
 end)
-mod_api.insert_text("career_passive_desc_wh_3a_2", "Tagged enemies take an additional 20% damage (excluding Lords and Monsters). Does not stack with similar effects.")
+mod_api.insert_text("career_passive_desc_wh_3a_2", "Tagged man-sized enemies take an additional 20% damage. Does not stack with similar effects.")
 
 --[[
 	Riposte
@@ -144,7 +145,7 @@ mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "P
 --[[
 	Templar's Knowledge
 ]]
--- Lets tagging apply Witch Hunt to every enemy, Lords and Monsters included (see can_be_witch_hunted above)
+-- Lets tagging apply Witch Hunt to every enemy except Lords and Monsters (see can_be_witch_hunted above)
 -- Duration increase
 mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_improved_damage_taken_ping", {
 	duration = 15, -- 5
@@ -153,7 +154,7 @@ mod_api.update_talent("wh_captain", 4, 1, {
 	description = "victor_witchhunter_improved_damage_taken_ping_desc",
 	description_values = {},
 })
-mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage and also applies to Lords and Monsters.")
+mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage. Tagging applies Witch Hunt to all enemies except Lords and Monsters.")
 
 --[[
 	I Shall Judge You All
