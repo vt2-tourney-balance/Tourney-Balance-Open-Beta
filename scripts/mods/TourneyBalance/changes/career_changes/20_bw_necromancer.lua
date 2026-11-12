@@ -73,7 +73,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 
 		**Curse of the Undeath**
 		- Releasing a skeleton also gives 3 damage reduction stacks (as well as casting the ultimate).
-		- Taking damage removes a stack after 5 seconds (instead of immediately).
+		- Taking damage removes a stack after 2 seconds (instead of immediately).
 
 		**Lost Souls**
 		- Also removes the slowdown from overcharge.
@@ -676,7 +676,7 @@ mod_api.insert_text("sienna_necromancer_5_1_desc", "Killing an elite enemy raise
 ]]
 -- Stacks come from casting the ultimate and from releasing a skeleton (on_necromancer_skeleton_released). Like Ablative
 -- Armor (08_dr_engineer.lua) a hit queues the loss of a stack, which happens later
-local CURSE_LOSS_DELAY = 5
+local CURSE_LOSS_DELAY = 2
 local CURSE_CHECK_INTERVAL = 0.25
 
 mod_api.insert_proc_function("tb_curse_of_the_undeath_queue_loss", function (owner_unit, buff, params)
@@ -715,7 +715,7 @@ mod_api.update_talent("bw_necromancer", 5, 2, {
 	description = "sienna_necromancer_5_2_desc",
 	description_values = {},
 })
-mod_api.insert_text("sienna_necromancer_5_2_desc", "Casting Raise Dead or releasing a skeleton grants 3 stacks of 80% damage reduction. Taking damage removes a stack after 5 seconds.")
+mod_api.insert_text("sienna_necromancer_5_2_desc", "Casting Raise Dead or releasing a skeleton grants 3 stacks of 80% damage reduction. Taking damage removes a stack after 2 seconds.")
 
 --[[
 	Lost Souls

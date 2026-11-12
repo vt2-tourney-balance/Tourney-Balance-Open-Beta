@@ -403,7 +403,7 @@ end)
 mod_api.update_talent("dr_engineer", 5, 2, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power for 10 seconds and grants a free non-explosive anged attack. Max 10 stacks.")
+mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power for 10 seconds and grants a free non-explosive Ranged Attack. Max 10 stacks.")
 
 --[[
 	Piston Power

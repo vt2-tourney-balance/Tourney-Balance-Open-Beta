@@ -155,7 +155,7 @@ mod_api.update_talent_buff_template("empire_soldier", "markus_knight_damage_take
 mod_api.update_talent("es_knight", 4, 2, { -- update description
 	description_values = {},
 })
-mod_api.insert_text("markus_knight_damage_taken_ally_proximity_desc_2", "Increases damage reduction from Protective Presence by 3.33% for each ally nearby.")
+mod_api.insert_text("markus_knight_damage_taken_ally_proximity_desc_2", "Increases damage reduction from Protective Presence by 5% for each ally nearby.")
 
 --[[
 	Comrades in Arms - Adjustment from Passive
