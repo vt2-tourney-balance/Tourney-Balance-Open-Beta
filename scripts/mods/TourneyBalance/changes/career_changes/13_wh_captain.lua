@@ -12,6 +12,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		### Talents
 		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
+		- Increased bonus damage taken to 7% (from 5%).
 		- Tagging applies Witch Hunt to all enemies except Lords and Monsters.
 
 		**I Shall Judge You All**
@@ -96,12 +97,13 @@ mod_api.insert_text("career_passive_desc_wh_3a_2", "Tagged man-sized enemies tak
 -- Duration increase
 mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_improved_damage_taken_ping", {
 	duration = 15, -- 5
+	multiplier = 0.1, -- 0.05
 })
 mod_api.update_talent("wh_captain", 4, 1, {
 	description = "victor_witchhunter_improved_damage_taken_ping_desc",
 	description_values = {},
 })
-mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage. Tagging applies Witch Hunt to all enemies except Lords and Monsters.")
+mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 10.0% damage. Tagging applies Witch Hunt to all enemies except Lords and Monsters.")
 
 --[[
 	I Shall Judge You All
