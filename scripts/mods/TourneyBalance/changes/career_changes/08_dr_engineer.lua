@@ -8,11 +8,9 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		## Outcast Engineer
 		### Career Skill
 		**Steam-Assisted Crank Gun (Mk II)**
-		- Dodge count increased to 3 (from 1).
 		- The Crank Gun now always starts at full rotation speed. Previously this required Linked Compression Chamber.
-		- Shots fired while aiming with right click are now pinpoint accurate and increased damage fall off range to 30-50 (from 10-20).
-		- Increased range where bullets dissappear to 100 (from 30)
-		- Aimed shots consume the ability bar 3 times as fast.
+		- Shots fired while aiming with right click are now pinpoint accurate.
+		- Increased range where bullets dissappear to 100 (from 30) for all crank gun shots.
 
 		### Talents
 		**Ingenious Ordnance**
@@ -23,6 +21,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Additionally non-explosive ranged attacks deal no friendly fire.
 
 		**Bombadier**
+		- Bardin starts the mission with 3 bombs (from 2).
 		- Overcharge no longer slows Bardin down.
 		- Overcharge explosions also detonate a regular and an incendiary bomb.
 
@@ -164,6 +163,9 @@ mod_api.insert_text("bardin_engineer_ranged_pierce_desc_2", "Non-explosive range
 	Bombadier
 ]]
 local TB_BOMBADIER_TALENT = "bardin_engineer_upgraded_grenades"
+
+-- Read at runtime by PassiveAbilityEngineer._add_5_2_bombs; official realm only has 2.
+CareerConstants.dr_engineer.num_starting_bombs = 3 -- 2
 
 -- Overcharge (heat) no longer slows down the attack speed and movement, same perk the Ironbreaker talent uses.
 local TB_BOMBADIER_NO_SLOW_BUFF = "tb_engineer_bombadier_overcharge_no_slow"

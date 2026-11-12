@@ -8,22 +8,14 @@ local TB_ENGINEER_AIMED_SPREAD = "tb_engineer_aimed"
 local TB_ENGINEER_AIMED_SHOT = "tb_engineer_ability_shot_aimed"
 local TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE = "tb_engineer_ability_shot_armor_pierce_aimed"
 local TB_ENGINEER_AIMED_SUB_ACTIONS = { "aimed_fire", "aimed_base_fire", "aimed_armor_pierce_fire" }
--- Hitscan range of a shot; the crank gun has none set and falls back to ActionRangedBase's 30m, which made aimed shots vanish.
-local TB_ENGINEER_AIMED_RANGE = 100
--- Each aimed shot takes this many times the ability bar of the same shot from the hip.
-local TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER = 3
--- Vanilla handgun falloff
-local TB_ENGINEER_AIMED_DROPOFF_RANGES = {
-	dropoff_end = 50,
-	dropoff_start = 30,
-}
+-- Hitscan range of every shot; the crank gun has none set and falls back to ActionRangedBase's 30m, which made bullets vanish.
+local TB_ENGINEER_BULLET_RANGE = 100
+local TB_ENGINEER_FIRE_SUB_ACTIONS = { "base_fire", "fast_fire", "armor_pierce_fire" }
 
 --[[
 	Baseline
 ]]
 -- Linked Compression Chamber's instant windup is baseline for every crank gun variant.
--- Mirrors the talent branch in ActionCareerDREngineerSpin / ActionCareerDREngineer; the talent's
--- 30% max_rps boost is applied before this runs, so talented players keep their higher cap.
 local function starting_windup()
 	if Managers.mechanism:current_mechanism_name() == "versus" then
 		return CareerConstants.dr_engineer.talent_6_2_starting_rps_vs
@@ -32,30 +24,22 @@ local function starting_windup()
 	return CareerConstants.dr_engineer.talent_6_2_starting_rps
 end
 
--- The spin actions don't handle spread_template_override themselves (only ActionRangedBase does), so the right click aim
--- applies and resets it here, which makes the crosshair show the aimed spread while aiming. The same hook sets the
--- baseline starting windup, since a function can only be hooked once.
 mod:hook_safe(ActionCareerDREngineerSpin, "client_owner_start_action", function (self, new_action, t)
 	self._current_windup = starting_windup()
 
 	local spread_template_override = new_action.spread_template_override
+	local spread_extension = spread_template_override and ScriptUnit.has_extension(self.weapon_unit, "spread_system")
 
-	if spread_template_override then
-		local spread_extension = ScriptUnit.has_extension(self.weapon_unit, "spread_system")
-
-		if spread_extension then
-			spread_extension:override_spread_template(spread_template_override)
-		end
+	if spread_extension then
+		spread_extension:override_spread_template(spread_template_override)
 	end
 end)
 
 mod:hook_safe(ActionCareerDREngineerSpin, "finish", function (self, reason)
-	if self.current_action.spread_template_override then
-		local spread_extension = ScriptUnit.has_extension(self.weapon_unit, "spread_system")
+	local spread_extension = self.current_action.spread_template_override and ScriptUnit.has_extension(self.weapon_unit, "spread_system")
 
-		if spread_extension then
-			spread_extension:reset_spread_template()
-		end
+	if spread_extension then
+		spread_extension:reset_spread_template()
 	end
 end)
 
@@ -87,7 +71,7 @@ armor_pierce_profile.critical_strike.attack_armor_power_modifer = { 1, 1.4, 1.5,
 armor_pierce_profile.critical_strike.impact_armor_power_modifer = { 1, 1, 1, 1, 1, 1 } -- { 1, 1, 1, 1, 1, 0.5 }
 armor_pierce_profile.armor_modifier_near.attack = { 1, 1.2, 1.5, 1, 0.75, 0.5 } -- { 1, 1, 1, 1, 0.5, 0.4 }
 armor_pierce_profile.armor_modifier_near.impact = { 1, 1, 1, 1, 1, 1 } -- { 1, 1, 1, 1, 1, 0.4 }
-armor_pierce_profile.armor_modifier_far.attack = { 1, 1, 1, 1, 0.75, 0.25 } -- { 1, 1, 1, 1, 0.5, 0.4 }
+armor_pierce_profile.armor_modifier_far.attack = { 1, 1, 1, 1, 0.75, 0.4 } -- { 1, 1, 1, 1, 0.5, 0.4 }
 armor_pierce_profile.armor_modifier_far.impact = { 1, 1, 1, 1, 1, 0.75 } -- { 1, 1, 1, 1, 1, 0.4 }
 armor_pierce_profile.cleave_distribution.attack = 0.3 -- 0.25
 armor_pierce_profile.cleave_distribution.impact = 0.3 -- 0.25
@@ -124,33 +108,33 @@ SpreadTemplates[TB_ENGINEER_AIMED_SPREAD] = {
 	},
 }
 
-local function make_aimed_damage_profile(base_profile_name)
-	local profile = table.clone(DamageProfileTemplates[base_profile_name])
+NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT] = table.clone(DamageProfileTemplates.engineer_ability_shot)
+NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE] = table.clone(DamageProfileTemplates.engineer_ability_shot_armor_pierce)
 
-	profile.default_target.range_modifier_settings = TB_ENGINEER_AIMED_DROPOFF_RANGES
+local function make_aimed_sub_action(source_action, damage_profile)
+	local aimed_action = table.shallow_copy(source_action)
 
-	return profile
+	aimed_action.damage_profile = damage_profile
+	aimed_action.spread_template_override = TB_ENGINEER_AIMED_SPREAD
+
+	return aimed_action
 end
-NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT] = make_aimed_damage_profile("engineer_ability_shot")
-NewDamageProfileTemplates[TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE] = make_aimed_damage_profile("engineer_ability_shot_armor_pierce")
 
 for _, weapon_name in ipairs(CRANK_GUN_WEAPONS) do
 	local actions = Weapons[weapon_name].actions
 	local action_one = actions.action_one
 
-	local aimed_base_fire = table.shallow_copy(action_one.base_fire)
-	aimed_base_fire.damage_profile = TB_ENGINEER_AIMED_SHOT
-	aimed_base_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
-	aimed_base_fire.range = TB_ENGINEER_AIMED_RANGE
-	aimed_base_fire.ammo_usage = aimed_base_fire.ammo_usage * TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER
-	action_one.aimed_base_fire = aimed_base_fire
+	-- Before the aimed sub actions are copied from them, so those get the range too.
+	for _, sub_action_name in ipairs(TB_ENGINEER_FIRE_SUB_ACTIONS) do
+		local sub_action = action_one[sub_action_name]
 
-	local aimed_armor_pierce_fire = table.shallow_copy(action_one.armor_pierce_fire)
-	aimed_armor_pierce_fire.damage_profile = TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE
-	aimed_armor_pierce_fire.spread_template_override = TB_ENGINEER_AIMED_SPREAD
-	aimed_armor_pierce_fire.range = TB_ENGINEER_AIMED_RANGE
-	aimed_armor_pierce_fire.ammo_usage = aimed_armor_pierce_fire.ammo_usage * TB_ENGINEER_AIMED_SHOT_COST_MULTIPLIER
-	action_one.aimed_armor_pierce_fire = aimed_armor_pierce_fire
+		if sub_action then
+			sub_action.range = TB_ENGINEER_BULLET_RANGE
+		end
+	end
+
+	action_one.aimed_base_fire = make_aimed_sub_action(action_one.base_fire, TB_ENGINEER_AIMED_SHOT)
+	action_one.aimed_armor_pierce_fire = make_aimed_sub_action(action_one.armor_pierce_fire, TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE)
 
 	local aimed_fire = table.shallow_copy(action_one.fire)
 	aimed_fire.conditional_actions = {
