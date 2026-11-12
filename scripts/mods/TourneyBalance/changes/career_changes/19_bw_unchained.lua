@@ -11,8 +11,9 @@ local reduce_cooldown_percent_on_owner = require("scripts/mods/TourneyBalance/_a
 		- Never deals friendly fire.
 
 		### Passives
-		**Blood Magic / Abandon**
-		- Vanilla Abandon is now part of the passive (listed in the passive description next to Blood Magic): at high overcharge, health is drained into ult cooldown (can be lethal).
+		**Blood Magic**
+		- Weakened Abandon is passive: at high overcharge, health is drained into ult cooldown (can be lethal).
+		- Drains 6% max health per 0.25s for 10% ult cooldown, 60% of max health for a full ult.
 		- Only grants ult cooldown when health is actually lost (none while invulnerable, e.g. inside Warrior Priest's bubble).
 		- The overcharge explosion deals no friendly fire.
 
@@ -27,10 +28,6 @@ local reduce_cooldown_percent_on_owner = require("scripts/mods/TourneyBalance/_a
 		**Enfeebling Flames**
 		- Reduced damage reduction against burning enemies to 10% (from 30%).
 		
-		**Abandon (reworked)**
-		- Overcharge explosion is now instant and always deals a fixed 50% of maximum health as damage to Sienna (lethal), then fully resets her ult cooldown.
-		- No more staff lockout or health drain over time. Replaces the passive's lethal drain.
-
 		**Natural Talent**
 		- Increased overcharge reduction to 20% (from 10%).
 
@@ -51,8 +48,8 @@ local reduce_cooldown_percent_on_owner = require("scripts/mods/TourneyBalance/_a
 --[[
 	Abandon (passive, vanilla talent effect)
 ]]
--- Vanilla Abandon as part of the passive: at high overcharge, drains 5% max health per 0.25s into 10% ult cooldown
--- (lethal). Overcharging explodes as in vanilla. Replaced by the reworked Abandon talent (instant explosion).
+-- Vanilla Abandon as part of the passive: at high overcharge, drains 6% max health per 0.25s into 10% ult cooldown (60% of max health for a full ult)
+-- (lethal). Overcharging explodes as in vanilla. The Abandon talent drains the same way, but 5% per tick (50% for a full ult).
 local ABANDON_TALENT = "sienna_unchained_health_to_ult" -- row 5 col 2, vanilla Abandon's slot
 
 local function tb_has_abandon(unit)
@@ -62,11 +59,12 @@ local function tb_has_abandon(unit)
 end
 
 local ABANDON_TICK_INTERVAL = 0.25
-local ABANDON_MAX_HEALTH_COST = 0.05 -- of max health, per tick
+local ABANDON_MAX_HEALTH_COST = 0.06 -- of max health, per tick (0.05)
+local ABANDON_TALENT_MAX_HEALTH_COST = 0.05 -- of max health, per tick, as in vanilla
 local ABANDON_COOLDOWN = 0.1 -- of ult, per tick
 
 -- Vanilla activate_buff_stacks_based_on_overcharge_chunks (owner side), but the drain stack is synced to the server,
--- where health is. Abandon taken: no lethal drain, drop a stack that was already up
+-- where health is
 mod_api.insert_buff_function("tb_abandon_activate_stacks", function (unit, buff, params)
 	local owner_player = Managers.player:owner(unit)
 
@@ -77,13 +75,8 @@ mod_api.insert_buff_function("tb_abandon_activate_stacks", function (unit, buff,
 	local buff_extension = ScriptUnit.extension(unit, "buff_system")
 	local template = buff.template
 	local buff_to_add = template.buff_to_add
-	local num_chunks = 0
-
-	if not tb_has_abandon(unit) then
-		local overcharge = ScriptUnit.extension(unit, "overcharge_system"):current_overcharge_status()
-
-		num_chunks = math.min(math.floor(overcharge / template.chunk_size), template.max_stacks)
-	end
+	local overcharge = ScriptUnit.extension(unit, "overcharge_system"):current_overcharge_status()
+	local num_chunks = math.min(math.floor(overcharge / template.chunk_size), template.max_stacks)
 
 	local stack_ids = buff.stack_ids
 
@@ -133,7 +126,15 @@ mod_api.insert_buff_function("tb_abandon_health_to_cooldown_update", function (u
 	end
 
 	local health_before = health_extension:current_health()
-	local damage = health_extension:get_max_health() * ABANDON_MAX_HEALTH_COST
+	-- Abandon talent is the vanilla cost, the passive alone costs more
+	local cost = buff.tb_max_health_cost
+
+	if not cost then
+		cost = tb_has_abandon(unit) and ABANDON_TALENT_MAX_HEALTH_COST or ABANDON_MAX_HEALTH_COST
+		buff.tb_max_health_cost = cost
+	end
+
+	local damage = health_extension:get_max_health() * cost
 
 	DamageUtils.add_damage_network(unit, unit, damage, "torso", "life_tap", nil, Vector3(0, 0, 0), "life_tap", nil, unit, nil, nil, nil, nil, nil, nil, nil, nil, 1)
 
@@ -147,41 +148,7 @@ mod_api.update_talent_buff_template("bright_wizard", "sienna_unchained_health_to
 mod_api.insert_career_passives("bw_3", {
 	"sienna_unchained_health_to_ult",
 })
-mod_api.insert_text("career_passive_desc_bw_3a", "50% damage taken transferred to Overcharge. When overcharging, Sienna drains 5% health for 10% cooldown reduction every 0.25 seconds.")
-
---[[
-	Abandon: instant explosion
-]]
-local ABANDON_SELF_DAMAGE = 0.5 -- of max health, fixed (lethal)
-
--- Takes over vanilla Abandon's talent slot; its effect lives in the explode hook below
-mod_api.update_talent("bw_unchained", 5, 2, {
-	description_values = {},
-	buffs = {},
-})
-mod_api.insert_text(ABANDON_TALENT, "Abandon")
-mod_api.insert_text("sienna_unchained_health_to_ult_desc", "When overcharging, Sienna explodes immediately, losing 50% of her health and resetting her ultimate.")
-
--- Overcharge explosion with Abandon: instant, fixed self damage (vanilla life_tap damage), then ult back.
--- Without the talent the explosion is vanilla.
-mod:hook_safe(PlayerCharacterStateOverchargeExploding, "on_enter", function (self, unit, input, dt, context, t)
-	local career_extension = ScriptUnit.has_extension(unit, "career_system")
-
-	self.tb_abandon = career_extension and career_extension:career_name() == "bw_unchained" and tb_has_abandon(unit)
-
-	if self.tb_abandon then
-		self.explosion_time = t
-		self.percent_health_lost = ABANDON_SELF_DAMAGE
-	end
-end)
-
-mod:hook(PlayerCharacterStateOverchargeExploding, "explode", function (func, self)
-	func(self)
-
-	if self.tb_abandon then
-		reduce_cooldown_percent_on_owner(self.unit, 1)
-	end
-end)
+mod_api.insert_text("career_passive_desc_bw_3a", "50% damage taken transferred to Overcharge. When overcharging, Sienna drains 6% health for 10% cooldown reduction every 0.25 seconds.")
 
 -- No friendly fire from Unchained's overcharge explosion or Living Bomb.
 local TB_UNCHAINED_NO_FRIENDLY_FIRE_SOURCES = {
@@ -356,6 +323,11 @@ mod_api.update_talent("bw_unchained", 5, 1, { -- update description
 		},
 	},
 })
+
+--[[
+	Abandon (talent)
+]]
+mod_api.insert_text("sienna_unchained_health_to_ult_desc", "When overcharging, Sienna drains 5% health for 10% cooldown reduction every 0.25 seconds.")
 
 --[[
 	Natural Talent
