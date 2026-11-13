@@ -13,11 +13,18 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Increased initial explosion armor_modifier.attack vs. Monster by 700%.
 
 		### Talents
+		**Unstoppable Force**
+		- Also grants unmovable for 4s: enemy collisions and pushes no longer displace him (unless disabled).
+
+		**Rising Judgement**
+		- Light attacks now grant a stack for every enemy hit (instead of only the first).
+		- Heavy attacks can no longer be interrupted.
+
 		**Blazing Bright**
 		- Fury gain damage taken increased to 1 (from 0.6)
 
 		**See My Wrath**
-		- Smite now deals 40 damage to each enemy hit, once per weapon (instead of 40% of the attack's damage).
+		- Smite now deals 40 damage to each enemy damaged per weapon attack (instead of 40% of the attack's damage).
 
 		**From Fury, Fortitude**
 		- Team changed to Kill THP/4 as percentage of each hero's max health (from Kill THP/2 as flat health).
@@ -74,6 +81,87 @@ BuffTemplates.victor_priest_nuke_dot.buffs[1].damage_profile = "tb_victor_priest
 
 ]]
 --[[
+	Unstoppable Force
+]]
+-- The 4s buff unmovable: every displacement (enemy collisions, block knockback, shoves, slams) goes through add_external_velocity
+local UNMOVABLE_PERK = "tb_unmovable"
+
+BuffTemplates.victor_priest_2_1_buff.buffs[1].perks = {
+	"slayer_stamina", -- vanilla: halved push cost
+	UNMOVABLE_PERK,
+}
+
+mod:hook(PlayerUnitLocomotionExtension, "add_external_velocity", function (func, self, ...)
+	local unit = self.unit
+	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+
+	if buff_extension and buff_extension:has_buff_perk(UNMOVABLE_PERK) then
+		local status_extension = ScriptUnit.has_extension(unit, "status_system")
+
+		if status_extension and not status_extension:is_disabled() then
+			return
+		end
+	end
+
+	return func(self, ...)
+end)
+
+mod_api.update_talent("wh_priest", 2, 1, {
+	description_values = {},
+})
+mod_api.insert_text("victor_priest_2_1_desc", "Striking 3 enemies in a single attack halves the cost of pushing and makes Victor unmovable for 4 seconds. Enemy collisions and pushes no longer displace him.")
+
+--[[
+	Rising Judgement
+]]
+-- Light attacks grant a stack per enemy hit
+mod_api.insert_proc_function("tb_victor_priest_2_2_add_stack", function (owner_unit, buff, params)
+	if not ALIVE[owner_unit] then
+		return
+	end
+
+	local target_number = params[4]
+
+	if target_number > 1 and params[2] ~= "light_attack" then
+		return
+	end
+
+	local buff_ids = buff.buff_ids
+
+	if not buff_ids then
+		buff_ids = {}
+		buff.buff_ids = buff_ids
+	end
+
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+	local buff_id = buff_extension:add_buff(buff.template.buff_to_add)
+
+	if buff_id then -- nil at max stacks
+		buff_ids[#buff_ids + 1] = buff_id
+	end
+end)
+mod_api.update_talent_buff_template("witch_hunter", "victor_priest_2_2", {
+	buff_func = "tb_victor_priest_2_2_add_stack", -- victor_priest_add_buff_first_target
+})
+
+-- Heavy attacks can't be interrupted
+mod_api.insert_talent_buff_template("witch_hunter", "tb_victor_priest_2_2_uninterruptible_heavy", {
+	max_stacks = 1,
+	perks = {
+		"uninterruptible_heavy"
+	}
+})
+mod_api.update_talent("wh_priest", 2, 2, {
+	buffs = {
+		"victor_priest_2_2",
+		"victor_priest_2_2_remover",
+		"tb_victor_priest_2_2_uninterruptible_heavy",
+	},
+	description_values = {}, -- plain % in the text below
+})
+mod_api.insert_text("victor_priest_2_2_desc", "Hits increase the Power of the next charged attack by 8%. Light attacks grant a stack for every enemy hit. Max stacks 5. Heavy attacks can no longer be interrupted.")
+
+--[[
 	Blazing Bright
 ]]
 CareerConstants.wh_priest.talent_4_1_fury_gain_mult = 1 -- 0.6
@@ -81,7 +169,7 @@ CareerConstants.wh_priest.talent_4_1_fury_gain_mult = 1 -- 0.6
 --[[
 	See My Wrath
 ]]
--- Upgraded smite deals a flat 40 damage to every enemy hit, instead of 40% of the hit's damage.
+-- Upgraded smite deals a flat damage to every enemy hit, instead of 40% of the hit's damage.
 -- Each hand of a dual weapon is its own hit, so it lands once per weapon.
 -- The base smite (without the talent) keeps its 20% of the hit's damage.
 local SEE_MY_WRATH_SMITE_DAMAGE = 40
@@ -90,12 +178,12 @@ local smite_upgraded = BuffTemplates.victor_priest_passive_smite_upgraded.buffs[
 smite_upgraded.damage_multiplier = 1 -- 0.4 (CareerConstants.wh_priest.talent_4_2_smite_improved_damage)
 smite_upgraded.tb_flat_damage = SEE_MY_WRATH_SMITE_DAMAGE
 
--- Shared remove func of both smite buffs: deals buff.value * damage_multiplier. buff.value is the hit's damage,
--- so the upgraded smite swaps in its flat damage first.
+-- Only on hits that dealt damage
 mod:hook(BuffFunctionTemplates.functions, "victor_priest_activated_ability_aftershock_update", function (func, owner_unit, buff, ...)
 	local flat_damage = buff.template.tb_flat_damage
+	local hit_damage = buff.value
 
-	if flat_damage then
+	if flat_damage and hit_damage and hit_damage > 0 then
 		buff.value = flat_damage
 	end
 
@@ -171,7 +259,7 @@ end)
 mod_api.update_talent("wh_priest", 4, 3, {
 	description_values = {}, -- plain % in the text below
 })
-mod_api.insert_text("victor_priest_4_3_desc_new", "Each kill now grants 2% Fury and during Righteous Fury restores Health to the party based on the Hero's max health.")
+mod_api.insert_text("victor_priest_4_3_desc_new", "Each kill now grants 2% Fury and during Righteous Fury restores Health to the party based on max health.")
 
 --[[
 	Prayer of Vengeance

@@ -529,7 +529,7 @@ end)
 mod_api.update_talent_buff_template("bright_wizard", "sienna_necromancer_4_1_cursed_blood", {
 	propagation_multiplier = 0.25 -- 0.10
 })
-mod_api.insert_text("sienna_necromancer_4_1_desc", "Releasing a skeleton cause the next critical attack against enemies afflicted by the Malediction of Nagash to burst, damaging nearby enemies for 25% of the attack.  Max 3 stacks.")
+mod_api.insert_text("sienna_necromancer_4_1_desc", "Releasing a skeleton cause the next critical attack against enemies afflicted by the Malediction of Nagash to burst, damaging nearby enemies for 25% of the attack. Max 3 stacks.")
 
 --[[
 	Raising a skeleton that decays (Soul Harvest, Spirit Leech)
