@@ -13,7 +13,7 @@ Weapons.staff_life.actions.action_one.cast_vortex.overcharge_amount = 12 -- 10
 OverchargeData.we_thornsister.critical_overcharge_margin = math.huge
 
 -- Overcharge explosion self-damage
---OverchargeData.we_thornsister.percent_health_lost = 0.8 -- 0.4
+OverchargeData.we_thornsister.percent_health_lost = 0.8 -- 0.4
 
 -- Heat decay start time
 OverchargeData.we_thornsister.time_until_overcharge_decreases = 3 --0.5
