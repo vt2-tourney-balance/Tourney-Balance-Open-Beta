@@ -72,7 +72,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 			headshot_boost_boss = 0.175, -- official: none
 			armor_modifier = {
 				attack = {
-					1,
+					1.3, -- official: 1
 					0.56, -- official: 0.45
 					2,
 					1,
@@ -134,7 +134,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_slash = { -- official: heavy_slashing
 			headshot_boost_boss = 0.154, -- official: none
 			armor_modifier = {
 				attack = {
-					1.15, -- official: 1
+					1.5, -- official: 1, -- TB: 1.15
 					0.169, -- official: 0.5
 					1.5,
 					1,
@@ -263,7 +263,7 @@ NewDamageProfileTemplates.tb_halberd_light_slash = { -- official: medium_slashin
 NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing_smiter_stab
 	armor_modifier = {
 		attack = {
-			1,
+			1.385, -- official: 1
 			0.53, -- official: 0.25
 			2.25,
 			1,
