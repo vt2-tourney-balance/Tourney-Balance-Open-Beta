@@ -12,7 +12,6 @@ Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_left.dama
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_stab.damage_profile = "tb_halberd_light_stab"
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_down.damage_profile = "tb_halberd_push_attack"
 
--- changed: targets[1].boost_curve_coefficient_headshot 2.8 -> 2
 NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_smiter_stab_polearm
 	armor_modifier = {
 		attack = {
@@ -38,7 +37,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 			2.5,
 			1,
 			1,
-			0.01, -- official: none
+			0.63, -- official: none, TB: 0.01
 		},
 		impact_armor_power_modifer = {
 			1,
@@ -77,7 +76,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 					2,
 					1,
 					0.75,
-					0.15, -- official: none
+					0.65, -- official: none, TB: 0.15
 				},
 				impact = {
 					1,
@@ -95,7 +94,7 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = { -- official: heavy_slashing_
 	},
 }
 
--- changed: targets[1].boost_curve_coefficient_headshot 1.75 -> 1
+
 NewDamageProfileTemplates.tb_halberd_heavy_slash = { -- official: heavy_slashing_linesman_polearm
 	armor_modifier = "armor_modifier_linesman_H",
 	charge_value = "heavy_attack",
@@ -258,8 +257,6 @@ NewDamageProfileTemplates.tb_halberd_light_slash = { -- official: medium_slashin
 	},
 }
 
--- changed: armor_modifier.attack[2] 0.7 -> 0.53
--- changed: critical_strike.attack_armor_power_modifer[2] 0.8 -> 0.58
 NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing_smiter_stab
 	armor_modifier = {
 		attack = {
@@ -268,7 +265,7 @@ NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing
 			2.25,
 			1,
 			0.75,
-			0.1, -- official: none
+			1.52, -- official: none, TB: 0.01
 		},
 		impact = {
 			1,
@@ -286,7 +283,7 @@ NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing
 			2.5,
 			1,
 			1,
-			0.01, -- official: none
+			1.35, -- official: none, TB: 0.01
 		},
 		impact_armor_power_modifer = {
 			1,
@@ -313,8 +310,6 @@ NewDamageProfileTemplates.tb_halberd_light_stab = { -- official: medium_slashing
 	},
 }
 
--- changed: armor_modifier.attack[2] 1.25 -> 0.9
--- changed: critical_strike.attack_armor_power_modifer[2] 1.25 -> 1.07
 NewDamageProfileTemplates.tb_halberd_light_chop = { -- official: medium_slashing_smiter_2h
 	armor_modifier = {
 		attack = {
@@ -370,9 +365,6 @@ NewDamageProfileTemplates.tb_halberd_light_chop = { -- official: medium_slashing
 	},
 }
 
--- changed: armor_modifier.attack[2] 1.25 -> 0.9
--- changed: critical_strike.attack_armor_power_modifer[2] 1.25 -> 1.07
--- changed: critical_strike.attack_armor_power_modifer[6] 1.17 -> 1.045
 NewDamageProfileTemplates.tb_halberd_push_attack = { -- official: medium_slashing_smiter_2h
 	armor_modifier = {
 		attack = {
