@@ -10,6 +10,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Tagging only applies Witch Hunt to man-sized enemies (not Lords, Monsters or super-armoured enemies).
 
 		### Talents
+		**Deathknell**
+		- Increased headshot damage bonus to 75% (from 50%).
+
 		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
 		- Increased bonus damage taken to 7% (from 5%).
@@ -91,19 +94,34 @@ end)
 mod_api.insert_text("career_passive_desc_wh_3a_2", "Tagged man-sized enemies take an additional 20% damage. Does not stack with similar effects.")
 
 --[[
+	Deathknell
+]]
+mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_headshot_damage_increase", {
+	multiplier = 0.75, -- 0.5
+})
+mod_api.update_talent("wh_captain", 2, 2, { -- update description
+	description_values = {
+		{
+			value_type = "percent",
+			value = 0.75, -- buff_tweak_data.victor_witchhunter_headshot_damage_increase.multiplier
+		},
+	},
+})
+
+--[[
 	Templar's Knowledge
 ]]
 -- Lets tagging apply Witch Hunt to every enemy except Lords and Monsters (see can_be_witch_hunted above)
 -- Duration increase
 mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_improved_damage_taken_ping", {
 	duration = 15, -- 5
-	multiplier = 0.1, -- 0.05
+	multiplier = 0.05, -- 0.05
 })
 mod_api.update_talent("wh_captain", 4, 1, {
 	description = "victor_witchhunter_improved_damage_taken_ping_desc",
 	description_values = {},
 })
-mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 10.0% damage. Tagging applies Witch Hunt to all enemies except Lords and Monsters.")
+mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage. Tagging applies Witch Hunt to all enemies except Lords and Monsters.")
 
 --[[
 	I Shall Judge You All
