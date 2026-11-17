@@ -94,6 +94,12 @@ end)
 mod_api.insert_text("career_passive_desc_wh_3a_2", "Tagged man-sized enemies take an additional 20% damage. Does not stack with similar effects.")
 
 --[[
+	Riposte
+]]
+mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Parrying causes your next attack within 2 seconds to be a guaranteed critical hit.")
+
+
+--[[
 	Deathknell
 ]]
 mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_headshot_damage_increase", {

@@ -24,7 +24,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Fury gain damage taken increased to 1 (from 0.6)
 
 		**See My Wrath**
-		- Smite now deals 40 damage to each enemy damaged per weapon attack (instead of 40% of the attack's damage).
+		- Smite now deals 20% of the attack's damage plus 40 damage to the first enemy hit per weapon attack; other enemies hit take the base 20% smite (instead of 40% of the attack's damage to every enemy hit). Shield bashes only smite their center target.
 
 		**From Fury, Fortitude**
 		- Team changed to Kill THP/4 as percentage of each hero's max health (from Kill THP/2 as flat health).
@@ -169,31 +169,130 @@ CareerConstants.wh_priest.talent_4_1_fury_gain_mult = 1 -- 0.6
 --[[
 	See My Wrath
 ]]
--- Upgraded smite deals a flat damage to every enemy hit, instead of 40% of the hit's damage.
--- Each hand of a dual weapon is its own hit, so it lands once per weapon.
--- The base smite (without the talent) keeps its 20% of the hit's damage.
+-- Every enemy hit gets the base smite (20% of the hit's damage, with or without the talent). With the talent, the
+-- first enemy hit by an attack gets the upgraded smite instead: the same 20% plus a flat 40 (vanilla: 40% of the hit).
+-- Each hand of a dual weapon is its own attack, so the flat damage lands once per weapon.
+local SEE_MY_WRATH_TALENT = "victor_priest_4_2_new"
 local SEE_MY_WRATH_SMITE_DAMAGE = 40
+local SMITE_HIT_DAMAGE_MULTIPLIER = BuffTemplates.victor_priest_passive_smite.buffs[1].damage_multiplier -- 0.2
 
 local smite_upgraded = BuffTemplates.victor_priest_passive_smite_upgraded.buffs[1]
 smite_upgraded.damage_multiplier = 1 -- 0.4 (CareerConstants.wh_priest.talent_4_2_smite_improved_damage)
 smite_upgraded.tb_flat_damage = SEE_MY_WRATH_SMITE_DAMAGE
+smite_upgraded.tb_hit_damage_multiplier = SMITE_HIT_DAMAGE_MULTIPLIER
 
--- Only on hits that dealt damage
+-- Shared remove func of both smite buffs: deals buff.value * damage_multiplier, buff.value being the hit's damage.
+-- Only on hits that dealt damage: skips shield bash splash hits (no_damage profiles always deal 0), like vanilla.
 mod:hook(BuffFunctionTemplates.functions, "victor_priest_activated_ability_aftershock_update", function (func, owner_unit, buff, ...)
-	local flat_damage = buff.template.tb_flat_damage
+	local template = buff.template
+	local flat_damage = template.tb_flat_damage
 	local hit_damage = buff.value
 
 	if flat_damage and hit_damage and hit_damage > 0 then
-		buff.value = flat_damage
+		buff.value = hit_damage * template.tb_hit_damage_multiplier + flat_damage
 	end
 
 	return func(owner_unit, buff, ...)
 end)
 
+-- target index 1 only
+local current_hit_damage_profile = nil
+
+local function clear_current_hit_damage_profile(...)
+	current_hit_damage_profile = nil
+
+	return ...
+end
+
+mod:hook(DamageUtils, "add_damage_network_player", function (func, damage_profile, ...)
+	current_hit_damage_profile = damage_profile
+
+	return clear_current_hit_damage_profile(func(damage_profile, ...))
+end)
+
+-- Built on first use, after weapon changes have set every action's profiles. Keyed by damage profile table.
+local shield_bash_secondary_profiles = nil
+
+local function get_shield_bash_secondary_profiles()
+	if shield_bash_secondary_profiles then
+		return shield_bash_secondary_profiles
+	end
+
+	local target_profile_names = {}
+	local secondary_profile_names = {}
+
+	for _, weapon_template in pairs(Weapons) do
+		local actions = type(weapon_template) == "table" and weapon_template.actions
+
+		if actions then
+			for _, action in pairs(actions) do
+				for _, sub_action in pairs(action) do
+					local target_profile_name = type(sub_action) == "table" and sub_action.damage_profile_target
+
+					if target_profile_name then
+						target_profile_names[target_profile_name] = true
+						secondary_profile_names[sub_action.damage_profile or false] = true
+						secondary_profile_names[sub_action.damage_profile_aoe or false] = true
+					end
+				end
+			end
+		end
+	end
+
+	shield_bash_secondary_profiles = {}
+
+	for profile_name in pairs(secondary_profile_names) do
+		local damage_profile = profile_name and not target_profile_names[profile_name] and rawget(DamageProfileTemplates, profile_name)
+
+		if damage_profile then
+			shield_bash_secondary_profiles[damage_profile] = true
+		end
+	end
+
+	return shield_bash_secondary_profiles
+end
+
+-- Copy of vanilla add_buff_to_hit_enemy (buff_settings_bless.lua, only used by Shield of Faith's aftershock): the upgraded
+-- smite now only goes to the first target, everyone else gets the base smite.
+mod_api.insert_proc_function("add_buff_to_hit_enemy", function (owner_unit, buff, params)
+	local hit_unit = params[1]
+	local attack_type = params[7]
+
+	if not ALIVE[owner_unit] or not ALIVE[hit_unit] or (attack_type ~= "light_attack" and attack_type ~= "heavy_attack") then
+		return
+	end
+
+	-- Shield bashes only smite their direct (center) target
+	if get_shield_bash_secondary_profiles()[current_hit_damage_profile] then
+		return
+	end
+
+	local target_buff_extension = ScriptUnit.has_extension(hit_unit, "buff_system")
+
+	if not target_buff_extension then
+		return
+	end
+
+	local template = buff.template
+	local buff_to_add = template.buff_to_add
+	if params[8] == 1 then -- first target
+		local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+		if talent_extension and talent_extension:has_talent(SEE_MY_WRATH_TALENT) then
+			buff_to_add = template.buff_to_add_upgraded
+		end
+	end
+
+	target_buff_extension:add_buff(buff_to_add, {
+		external_optional_value = params[3],
+		attacker_unit = owner_unit,
+	})
+end)
+
 mod_api.update_talent("wh_priest", 4, 2, {
 	description_values = {}, -- plain % in the text below
 })
-mod_api.insert_text("victor_priest_4_2_desc_new", "Shield of Faith grants Victor 60% Fury. Smite now deals 40 damage per attack.")
+mod_api.insert_text("victor_priest_4_2_desc_new", "Shield of Faith grants Victor 60% Fury. Smite now deals an additional 40 damage to the first enemy hit by an attack.")
 
 --[[
 	From Fury, Fortitude
@@ -266,13 +365,13 @@ mod_api.insert_text("victor_priest_4_3_desc_new", "Each kill now grants 2% Fury 
 ]]
 -- Party power vs monsters (armor 3, so hookrats too)
 mod_api.update_talent_buff_template("witch_hunter", "victor_priest_5_1_buff", {
-	multiplier = 0.4, -- 0.15
+	multiplier = 0.25, -- 0.15
 })
 mod_api.update_talent("wh_priest", 5, 1, { -- update description
 	description_values = {
 		{
 			value_type = "percent",
-			value = 0.4, -- buff_tweak_data.victor_priest_5_1_buff.multiplier
+			value = 0.25, -- buff_tweak_data.victor_priest_5_1_buff.multiplier
 		},
 	},
 })
@@ -296,7 +395,7 @@ mod_api.insert_text(TB_PRAYER_OF_MIGHT_TALENT .. "_desc", "Blesses Shield of Fai
 -- Heavy stagger on every non-boss enemy, if is_explosion = false
 local function make_heavy_stagger_profile(profile)
 	local heavy_profile = table.clone(profile)
-	heavy_profile.is_explosion = true
+	heavy_profile.is_explosion = false
 	heavy_profile.armor_modifier.impact = { -- vanilla is the same for both profiles
 		10, -- 1, infantry
 		10, -- 0.5, armored
