@@ -177,7 +177,7 @@ mod_api.insert_text("career_passive_desc_we_thornsister_a_2", "Melee attacks app
 	Surge of Malice
 ]]
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_attack_speed_on_full", {
-	health_threshold = 0.7, -- 0.9
+	health_threshold = 0.8, -- 0.9
 })
 mod_api.update_talent("we_thornsister", 2, 1, {
 	description_values = {},
