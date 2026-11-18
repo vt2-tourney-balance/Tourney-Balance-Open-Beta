@@ -30,7 +30,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Team changed to Kill THP/4 as percentage of each hero's max health (from Kill THP/2 as flat health).
 
 		**Prayer of Vengeance**
-		- Increased power vs monsters to 40% (from 15%).
+		- Increased power vs monsters to 25% (from 15%).
 
 		**Prayer of Might**
 		- No longer an aura. Instead, the Shield of Faith explosion now heavily staggers every enemy except bosses (instead of granting the party 25% stagger power).

@@ -9,20 +9,21 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Witch-Hunt**
 		- Tagging only applies Witch Hunt to man-sized enemies (not Lords, Monsters or super-armoured enemies).
 
+		**Power of Sigmar & Sigmar's Charm**
+		- Added unlisted perk description.
+		- 25% headshot bonus damage
+		- 5% critical strike chance.
+
 		### Talents
 		**Deathknell**
 		- Increased headshot damage bonus to 75% (from 50%).
 
 		**Templar's Knowledge**
 		- Duration increased to 15s (from 5s).
-		- Increased bonus damage taken to 7% (from 5%).
 		- Tagging applies Witch Hunt to all enemies except Lords and Monsters.
 
 		**I Shall Judge You All**
 		- Headshots (melee and ranged) also apply Witch Hunt (and Templar's Knowledge) to all enemies hit, including Lords and Monsters.
-
-		**Fervency**
-		- Duration increased to 6s (from 6s).
 
 		**The Unending Hunt**
 		- Decreased crit chance granted to team to 10% (from 25%)
@@ -32,7 +33,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 --[[
 
-	WHC Passive
+	Passive
 
 ]]
 local WITCH_HUNT_BUFF = "defence_debuff_enemies"
@@ -94,6 +95,18 @@ end)
 mod_api.insert_text("career_passive_desc_wh_3a_2", "Tagged man-sized enemies take an additional 20% damage. Does not stack with similar effects.")
 
 --[[
+	Power of Sigmar & Sigmar's Charn
+]]
+mod_api.insert_perk_text("tb_wh_3d", "Power of Sigmar & Sigmar's Charm", "Increases headshot bonus damage by 25% and critical strike chance by 5%.")
+mod_api.insert_career_perk_descriptions("wh_3", "tb_wh_3d")
+
+
+--[[
+
+	Talents
+
+]]
+--[[
 	Riposte
 ]]
 mod_api.insert_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Parrying causes your next attack within 2 seconds to be a guaranteed critical hit.")
@@ -127,7 +140,7 @@ mod_api.update_talent("wh_captain", 4, 1, {
 	description = "victor_witchhunter_improved_damage_taken_ping_desc",
 	description_values = {},
 })
-mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage. Tagging applies Witch Hunt to all enemies except Lords and Monsters.")
+mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage and applies to all taggable enemies except Lords and Monsters.")
 
 --[[
 	I Shall Judge You All
