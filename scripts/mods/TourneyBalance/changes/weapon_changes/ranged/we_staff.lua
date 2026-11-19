@@ -14,13 +14,13 @@ VortexTemplates.spirit_storm.time_of_life = { 2,2 }
 Weapons.staff_life.actions.action_one.cast_vortex.overcharge_amount = 12 --10
 
 -- Overcharge explosion safety net = max - critical_overcharge_margin
---OverchargeData.we_thornsister.critical_overcharge_margin = 7 --1.2
+OverchargeData.we_thornsister.critical_overcharge_margin = 7.5 --1.2
 
 -- Vent damage
 mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_thorn_sister_vent_damage", {
 	stat_buff = "vent_damage",
 	max_stacks = 1,
-	multiplier = 1.5,
+	multiplier = 0.85,
 })
 mod_api.insert_career_passives("we_thornsister", {
 	"tb_kerillian_thorn_sister_vent_damage",
