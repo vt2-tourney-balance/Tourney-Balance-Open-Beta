@@ -19,6 +19,9 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		**Blackvenom Blades**
 		- The melee poison's 12% increased damage taken only applies to trash enemies (not elites, specials or bosses).
 
+		**An Attendance of Munificents**
+		- The party's 25% increased healing received only applies to healing from temporary health talents (Execute, Carve, Sting, Second Wind) and healing items (from all healing).
+
 		### Talents
 		**Surge of Malice**
 		- Lowered required health threshold to 70% (from 90%).
@@ -34,7 +37,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Updated description: Internal CD of losing cooldown is 1s.
 
 		**Radiant Inheritance**
-		- Can be activated with Thornwake (regular ult).
+		- Can also be activated with a non-wall Thornwake (Blackvenom Thicket or Ironbark Thicket's Thornbed).
 		- Allies now also see a depleting-icon timer for the buff (previously a static icon).
 
 		**Repel**
@@ -89,6 +92,41 @@ end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_temp_health_funnel_aura_buff", {
 	multiplier = 0.10
 })
+
+--[[
+	An Attendance of Munificents
+]]
+-- The 25% healing received only applies to heals from THP talents and healing items.
+local MUNIFICENTS_BUFF = "kerillian_thorn_sister_passive_healing_received_aura_buff"
+local MUNIFICENTS_MULTIPLIER = BuffTemplates[MUNIFICENTS_BUFF].buffs[1].multiplier -- 0.25 (vanilla tweak data)
+local MUNIFICENTS_ITEM_HEAL_TYPES = {
+	healing_draught = true,
+	healing_draught_temp_health = true,
+	bandage = true,
+	bandage_temp_health = true,
+	bandage_trinket = true, -- self-heal when using medical supplies on an ally (trinket)
+	buff_shared_medpack = true, -- nearby allies healed by medical supplies (trait)
+	buff_shared_medpack_temp_health = true,
+}
+
+BuffTemplates[MUNIFICENTS_BUFF].buffs[1].stat_buff = nil
+TalentBuffTemplates.wood_elf[MUNIFICENTS_BUFF].buffs[1].stat_buff = nil
+
+mod:hook(DamageUtils, "apply_buffs_to_heal", function (func, healed_unit, healer_unit, heal_amount, heal_type, healed_units)
+	local buffed_heal_amount, shared_medpack = func(healed_unit, healer_unit, heal_amount, heal_type, healed_units)
+
+	if MUNIFICENTS_ITEM_HEAL_TYPES[heal_type] or mod:is_thp_talent_heal() then
+		local buff_extension = ScriptUnit.has_extension(healed_unit, "buff_system")
+
+		-- Added on the base amount, so it stacks additively with other healing received buffs like the stat did
+		if buff_extension and buff_extension:has_buff_type(MUNIFICENTS_BUFF) then
+			buffed_heal_amount = buffed_heal_amount + heal_amount * MUNIFICENTS_MULTIPLIER
+		end
+	end
+
+	return buffed_heal_amount, shared_medpack
+end)
+mod_api.insert_text("career_passive_desc_we_thornsister_c", "Healing received by the party from temporary health talents and healing items is increased by 25%.")
 
 --[[
 	Blackvenom Blades
@@ -362,11 +400,41 @@ mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_team_buf
 	duration_modifier_func = tb_radiant_thorn_duration_modifier,
 	update_func = "tb_radiant_thorn_activate_buff_on_distance",
 })
--- trigger radiant inheritance on regular ult too, not just extra-charge uses
+-- Radiance always triggers it (vanilla on_extra_ability_consumed). A regular Thornwake only does when it's
+-- Blackvenom Thicket or an Ironbark Thornbed (flat wall). The wall-cast hook in the Ironbark section marks a
+-- qualifying cast around client_owner_start_action, which is where start_activated_ability_cooldown fires
+-- both events synchronously: on_extra_ability_consumed (Radiance only), then on_ability_cooldown_started.
+local tb_radiant_regular_ult_qualifies = setmetatable({}, { __mode = "k" })
+
+mod_api.insert_proc_function("tb_radiant_inheritance_on_radiance", function (owner_unit, buff, params)
+	-- on_ability_cooldown_started follows for this same cast; don't add the aura a second time there
+	tb_radiant_regular_ult_qualifies[owner_unit] = nil
+
+	return ProcFunctions.add_buff(owner_unit, buff, params)
+end)
+mod_api.insert_proc_function("tb_radiant_inheritance_on_regular_ult", function (owner_unit, buff, params)
+	if tb_radiant_regular_ult_qualifies[owner_unit] then
+		tb_radiant_regular_ult_qualifies[owner_unit] = nil
+
+		return ProcFunctions.add_buff(owner_unit, buff, params)
+	end
+end)
 mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_team_buff", {
+	buff_func = "tb_radiant_inheritance_on_radiance", -- add_buff
+})
+-- Separate talent buff rather than a second sub-buff (vanilla asserts one sub-buff per talent buff)
+mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_thorn_sister_passive_team_buff_regular_ult", {
+	buff_func = "tb_radiant_inheritance_on_regular_ult",
+	buff_to_add = "kerillian_thorn_sister_team_buff_aura",
 	event = "on_ability_cooldown_started",
 })
-mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 10 seconds.")
+mod_api.update_talent("we_thornsister", 4, 3, {
+	buffs = {
+		"kerillian_thorn_sister_passive_team_buff",
+		"tb_kerillian_thorn_sister_passive_team_buff_regular_ult",
+	},
+})
+mod_api.insert_text("kerillian_thorn_sister_passive_team_buff_desc", "Consuming Radiance or casting non-wall Thornwake grants Kerillian and nearby allies 15.0%% power and 5.0%% critical strike chance for 10 seconds.")
 
 --[[
 	Repel
@@ -544,9 +612,17 @@ mod:hook(ActionCareerWEThornsisterTargetWall, "finish", function (func, self, re
 	return targeting_data
 end)
 mod:hook(ActionCareerWEThornsisterWall, "client_owner_start_action", function (func, self, new_action, t, chain_action_data, power_level, action_init_data)
-	self._wall_tilt_angle = chain_action_data and chain_action_data.wall_tilt_angle or 0
+	local wall_tilt_angle = chain_action_data and chain_action_data.wall_tilt_angle or 0
+	local owner_unit = self.owner_unit
+
+	self._wall_tilt_angle = wall_tilt_angle
+
+	-- Radiant Inheritance: a regular Thornwake only procs it as Blackvenom Thicket or a Thornbed (see that section)
+	tb_radiant_regular_ult_qualifies[owner_unit] = wall_tilt_angle > 0 or self.talent_extension:has_talent("kerillian_thorn_sister_debuff_wall") or nil
 
 	func(self, new_action, t, chain_action_data, power_level, action_init_data)
+
+	tb_radiant_regular_ult_qualifies[owner_unit] = nil
 end)
 -- Fold the tilt into wall_rotation here so it survives request_spawn_template_unit's RPC to the server - a
 -- plain Lua variable doesn't, since spawn_func runs later from the RPC handler, not synchronously inside this.

@@ -179,6 +179,37 @@ mod_api.insert_buff_template("tb_vanguard", {
 })
 
 --[[
+	THP talent heal flag
+]]
+-- True while one of the THP talent procs above runs. On the server, DamageUtils.heal_network reaches
+-- apply_buffs_to_heal/add_heal synchronously, so heal code can ask mod:is_thp_talent_heal() whether the
+-- current heal came from Execute, Carve, Sting or Second Wind. Shared here so the procs are hooked once
+-- (used by Handmaiden's Renewal and Sister of the Thorn's An Attendance of Munificents).
+local THP_TALENT_PROC_FUNCTIONS = {
+	"heal_percentage_of_enemy_hp_on_melee_kill", -- Execute
+	"heal_damage_targets_on_melee", -- Carve
+	"tb_heal_finesse_damage_on_melee", -- Sting
+	"tb_heal_stagger_targets_on_melee", -- Second Wind
+}
+local thp_talent_heal_active = false
+
+for i = 1, #THP_TALENT_PROC_FUNCTIONS do
+	mod:hook(ProcFunctions, THP_TALENT_PROC_FUNCTIONS[i], function (func, ...)
+		thp_talent_heal_active = true
+
+		local result = func(...)
+
+		thp_talent_heal_active = false
+
+		return result
+	end)
+end
+
+function mod.is_thp_talent_heal(self)
+	return thp_talent_heal_active
+end
+
+--[[
 
 	Text Localization
 
