@@ -11,7 +11,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 VortexTemplates.spirit_storm.time_of_life = { 1,1 }
 
 -- Heat cost per lift
-Weapons.staff_life.actions.action_one.cast_vortex.overcharge_amount = 40 --10
+Weapons.staff_life.actions.action_one.cast_vortex.overcharge_amount = 15 --10
 
 -- Overcharge explosion safety net = max - critical_overcharge_margin
 --OverchargeData.we_thornsister.critical_overcharge_margin = 7.5 --1.2
@@ -27,7 +27,7 @@ mod_api.insert_career_passives("we_thornsister", {
 })
 
 -- Overcharge explosion self-damage
-OverchargeData.we_thornsister.percent_health_lost = 1 --0.4
+OverchargeData.we_thornsister.percent_health_lost = 0.8 --0.4
 
 -- Heat decay start time
 OverchargeData.we_thornsister.time_until_overcharge_decreases = 5 --0.5

@@ -24,7 +24,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		### Talents
 		**Surge of Malice**
-		- Lowered required health threshold to 70% (from 90%).
+		- Lowered required health threshold to 80% (from 90%).
 
 		**Atharti's Delight**
 		- Bleed is now only applied by melee headshots against poisoned enemies (from any melee hit).
