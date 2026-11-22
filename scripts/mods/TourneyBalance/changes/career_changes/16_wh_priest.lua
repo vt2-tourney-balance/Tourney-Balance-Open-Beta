@@ -24,8 +24,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Fury gain damage taken increased to 1 (from 0.6)
 
 		**See My Wrath**
-		- Increased smite damage to 60% (from 40%).
-		- Also grants 60% crit power during Righteous Fury.
+		- Smite now deals at least 40 damage to the first enemy hit by an attack (40% of the attack's damage if higher).
 
 		**From Fury, Fortitude**
 		- Team changed to Kill THP/4 as percentage of each hero's max health (from Kill THP/2 as flat health).
@@ -170,29 +169,52 @@ CareerConstants.wh_priest.talent_4_1_fury_gain_mult = 1 -- 0.6
 --[[
 	See My Wrath
 ]]
--- Upgraded smite: 60% of the hit's damage. The template copied the constant at load, so set both.
-CareerConstants.wh_priest.talent_4_2_smite_improved_damage = 0.6 -- 0.4
-BuffTemplates.victor_priest_passive_smite_upgraded.buffs[1].damage_multiplier = 0.6 -- 0.4
-
--- 60% crit power during smite
+-- Upgraded smite stays vanilla (40% of the hit's damage), but the first enemy hit by an attack takes at least 40.
+-- The smite deals buff.value * damage_multiplier on removal, so the minimum is applied by raising the stored hit
+-- damage to 40 / multiplier. Hits that dealt no damage still don't smite, like vanilla.
+-- Each hand of a dual weapon is its own attack (own target count), so the minimum can land once per weapon.
 local SEE_MY_WRATH_TALENT = "victor_priest_4_2_new"
+local SEE_MY_WRATH_MIN_SMITE_DAMAGE = 40
+local SMITE_UPGRADED_MIN_HIT_DAMAGE = SEE_MY_WRATH_MIN_SMITE_DAMAGE / BuffTemplates.victor_priest_passive_smite_upgraded.buffs[1].damage_multiplier -- 40 / 0.4
 
-local fury_buffs = BuffTemplates.victor_priest_passive_aftershock.buffs
-fury_buffs[#fury_buffs + 1] = {
-	name = "tb_victor_priest_4_2_fury_crit_power",
-	stat_buff = "critical_strike_effectiveness",
-	multiplier = 0.6,
-	apply_condition = function (unit)
-		local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+-- Copy of vanilla add_buff_to_hit_enemy (buff_settings_bless.lua, only used by Righteous Fury's smite) plus the minimum
+mod_api.insert_proc_function("add_buff_to_hit_enemy", function (owner_unit, buff, params)
+	local hit_unit = params[1]
+	local attack_type = params[7]
 
-		return talent_extension and talent_extension:has_talent(SEE_MY_WRATH_TALENT) or false
-	end,
-}
+	if not ALIVE[owner_unit] or not ALIVE[hit_unit] or (attack_type ~= "light_attack" and attack_type ~= "heavy_attack") then
+		return
+	end
+
+	local target_buff_extension = ScriptUnit.has_extension(hit_unit, "buff_system")
+
+	if not target_buff_extension then
+		return
+	end
+
+	local template = buff.template
+	local buff_to_add = template.buff_to_add
+	local hit_damage = params[3]
+	local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
+
+	if talent_extension and talent_extension:has_talent(SEE_MY_WRATH_TALENT) then
+		buff_to_add = template.buff_to_add_upgraded
+
+		if params[8] == 1 and hit_damage and hit_damage > 0 and hit_damage < SMITE_UPGRADED_MIN_HIT_DAMAGE then -- first target
+			hit_damage = SMITE_UPGRADED_MIN_HIT_DAMAGE
+		end
+	end
+
+	target_buff_extension:add_buff(buff_to_add, {
+		external_optional_value = hit_damage,
+		attacker_unit = owner_unit,
+	})
+end)
 
 mod_api.update_talent("wh_priest", 4, 2, {
 	description_values = {}, -- plain % in the text below
 })
-mod_api.insert_text("victor_priest_4_2_desc_new", "Shield of Faith grants Victor 60% Fury. Smite now deals 60% of the attack's damage and grants 40% crit power.")
+mod_api.insert_text("victor_priest_4_2_desc_new", "Shield of Faith grants Victor 60% Fury. Smite now deals 40% of the attack's damage, and at least 40 damage to the first enemy hit.")
 
 --[[
 	From Fury, Fortitude

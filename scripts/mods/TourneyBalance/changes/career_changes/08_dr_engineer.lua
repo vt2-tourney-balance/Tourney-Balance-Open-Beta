@@ -22,8 +22,8 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 
 		**Bombadier**
 		- Bardin starts the mission with 3 bombs (from 2).
-		- Overcharge no longer slows Bardin down.
-		- Overcharge explosions also detonate a regular and an incendiary bomb.
+		- Explosive barrels Bardin sets off also explode like a regular bomb.
+		- Lamp oil Bardin sets off also explodes like an incendiary bomb.
 
 		**Full Head of Steam**
 		- Build Pressure stacks now expire one at a time.
@@ -32,11 +32,10 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 		- Firing now starts a separate 6s debuff timer (from 1.5s) that removes one Build Pressure stack when it runs out.
 		
 		**Ablative Armor**
-		- A damage reduction stack is no longer lost immediately, but 2s after taking damage.
+		- A damage reduction stack is no longer lost immediately, but 1s after taking damage.
 
 		**Combined Arms**
-		- Every 5 melee strikes also grants a stack of free ammo (up to 10 stacks, no duration).
-		- Each stack makes a non-explosive ranged attack not consume ammo from the clip.
+		- The 10s also make non-explosive ranged attacks not use up ammo and venting overcharge deals no damage.
 
 		**Piston Power**
 		- The heavy attack also has infinite cleave.
@@ -48,7 +47,7 @@ local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/se
 
 		**Innovative Ammo Hoppers**
 		- No longer increases the ability bar by 50%.
-		- The 4s after killing a special now also make guns consume no ammo and Drakefire weapons generate no heat. Explosive shots (the Trollhammer torpedo) are excluded.
+		- The 4s after killing a special now also make guns consume no ammo from the clip and Drakefire weapons generate no heat. Explosive shots (the Trollhammer torpedo) are excluded.
 	$END_TB
 ]]
 
@@ -167,42 +166,73 @@ local TB_BOMBADIER_TALENT = "bardin_engineer_upgraded_grenades"
 -- Read at runtime by PassiveAbilityEngineer._add_5_2_bombs; official realm only has 2.
 CareerConstants.dr_engineer.num_starting_bombs = 3 -- 2
 
--- Overcharge (heat) no longer slows down the attack speed and movement, same perk the Ironbreaker talent uses.
-local TB_BOMBADIER_NO_SLOW_BUFF = "tb_engineer_bombadier_overcharge_no_slow"
-
-mod_api.insert_talent_buff_template("dwarf_ranger", TB_BOMBADIER_NO_SLOW_BUFF, {
-	perks = { buff_perks.overcharge_no_slow },
-})
 mod_api.update_talent("dr_engineer", 2, 3, {
 	description_values = {},
-	buffs = { "bardin_engineer_5_2", TB_BOMBADIER_NO_SLOW_BUFF },
 })
--- Overcharge explosion also detonates a regular + fire bomb
-local TB_BOMBADIER_BOMB_EXPLOSION = "frag_fire_grenade"
 
-mod:add_create_explosion_wrapper(function (func, world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, ...)
-	local result = func(world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, is_server, ...)
+-- Explosive barrels and lamp oil that Bardin last hit also go off like a thrown bomb: regular for barrels, incendiary
+-- for lamp oil. Both are created as if the bomb item was thrown, so they follow the usual bomb damage rules.
+local TB_BOMBADIER_BARREL_EXPLOSION = "grenade"
+local TB_BOMBADIER_BARREL_BOMB_ITEM = "grenade_frag_01"
+local TB_BOMBADIER_LAMP_OIL_EXPLOSION = "fire_grenade"
+local TB_BOMBADIER_LAMP_OIL_BOMB_ITEM = "grenade_fire_01"
 
-	if damage_source == "overcharge" and ALIVE[attacker_unit] then
-		local career_extension = ScriptUnit.has_extension(attacker_unit, "career_system")
-		local talent_extension = ScriptUnit.has_extension(attacker_unit, "talent_system")
+local function tb_is_bombadier(unit)
+	if not ALIVE[unit] then
+		return false
+	end
 
-		if career_extension and career_extension:career_name() == "dr_engineer" and talent_extension and talent_extension:has_talent(TB_BOMBADIER_TALENT) then
-			local bomb_template = ExplosionUtils.get_template(TB_BOMBADIER_BOMB_EXPLOSION)
+	local career_extension = ScriptUnit.has_extension(unit, "career_system")
+	local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
 
-			-- func is the rest of the chain, so this doesn't pass through this wrapper again.
-			func(world, attacker_unit, impact_position, rotation, bomb_template, scale, damage_source, is_server, ...)
+	return career_extension ~= nil and talent_extension ~= nil and career_extension:career_name() == "dr_engineer" and talent_extension:has_talent(TB_BOMBADIER_TALENT)
+end
 
-			if is_server and bomb_template.aoe then
-				DamageUtils.create_aoe(world, attacker_unit, impact_position, damage_source, bomb_template)
-			end
-		end
+-- Barrels explode through the explosion chain (on every peer, the damage only on the server). The wrapper's func is the
+-- rest of the chain, so the extra explosion doesn't come back through this wrapper.
+mod:add_create_explosion_wrapper(function (func, world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, ...)
+	local result = func(world, attacker_unit, impact_position, rotation, explosion_template, scale, damage_source, ...)
+
+	if explosion_template and explosion_template.name == "explosive_barrel" and tb_is_bombadier(attacker_unit) then
+		local bomb_template = ExplosionUtils.get_template(TB_BOMBADIER_BARREL_EXPLOSION)
+
+		func(world, attacker_unit, impact_position, rotation, bomb_template, scale, TB_BOMBADIER_BARREL_BOMB_ITEM, ...)
 	end
 
 	return result
 end)
 
-mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin starts the mission with 3 bombs. Bombs have both regular and incendiary effect. Overcharge explosions also detonate a regular and incendiary bomb. No overcharge slowdown.")
+-- Lamp oil only spawns a fire pool on the server, with no explosion, so the incendiary bomb goes off from here.
+-- Server only, the explosion and the fire patch are networked from there.
+local lamp_oil_death_reaction = DeathReactions and DeathReactions.templates and DeathReactions.templates.lamp_oil
+
+if lamp_oil_death_reaction and lamp_oil_death_reaction.unit then
+	mod:hook(lamp_oil_death_reaction.unit, "update", function (func, unit, dt, context, t, data)
+		local was_exploded = data.exploded
+		local result = func(unit, dt, context, t, data)
+
+		if not was_exploded and data.exploded then
+			local health_extension = ScriptUnit.has_extension(unit, "health_system")
+			local attacker_unit_id = health_extension and health_extension.last_damage_data.attacker_unit_id
+			local attacker_unit = attacker_unit_id and Managers.state.network:game_object_or_level_unit(attacker_unit_id, false)
+
+			if tb_is_bombadier(attacker_unit) then
+				local position = POSITION_LOOKUP[unit]
+				local bomb_template = ExplosionUtils.get_template(TB_BOMBADIER_LAMP_OIL_EXPLOSION)
+
+				Managers.state.entity:system("area_damage_system"):create_explosion(attacker_unit, position, Unit.local_rotation(unit, 0), TB_BOMBADIER_LAMP_OIL_EXPLOSION, 1, TB_BOMBADIER_LAMP_OIL_BOMB_ITEM, nil, false)
+
+				if bomb_template.aoe then
+					DamageUtils.create_aoe(Managers.world:world("level_world"), attacker_unit, position, TB_BOMBADIER_LAMP_OIL_BOMB_ITEM, bomb_template)
+				end
+			end
+		end
+
+		return result
+	end)
+end
+
+mod_api.insert_text("bardin_engineer_upgraded_grenades_desc_b", "Bardin starts the mission with 3 bombs. Bombs have both regular and incendiary effect. Explosive barrels and lamp oils set off by Bardin have regular bomb and incendiary bomb effect correspondingly.")
 
 --[[
 	Full Head of Steam
@@ -287,7 +317,7 @@ end)
 	Ablative Armor
 ]]
 -- Loses DR stack after delay
-local TB_ABLATIVE_ARMOR_LOSS_DELAY = 2
+local TB_ABLATIVE_ARMOR_LOSS_DELAY = 1
 local TB_ABLATIVE_ARMOR_REGAIN_INTERVAL = 5 -- vanilla update_frequency
 local TB_ABLATIVE_ARMOR_TICK = 0.25
 
@@ -342,21 +372,31 @@ mod_api.insert_text("bardin_engineer_stacking_damage_reduction_desc", "Every 5 s
 --[[
 	Combined Arms
 ]]
--- Every 5 melee strikes grants stack that makes one non-explosive shot cost no ammo.
-local TB_COMBINED_ARMS_AMMO_BUFF = "tb_engineer_combined_arms_free_ammo"
-local TB_COMBINED_ARMS_AMMO_MAX_STACKS = 10
+-- The 10s ranged power buff (applied by the next ranged attack after 5 melee strikes) also stops shots from using up
+-- reserve ammo (the clip still empties, see the use_ammo hook below) and makes venting overcharge deal no damage.
+-- The overcharge extension skips the vent damage while its no_damage flag is set (it is also set in the inn and for some
+-- overcharge setups), so the buff raises it and puts the original value back when it ends.
+local TB_COMBINED_ARMS_BUFF = "bardin_engineer_melee_power_range_power_buff"
 
-mod_api.insert_buff_template(TB_COMBINED_ARMS_AMMO_BUFF, {
-	icon = "bardin_engineer_melee_power_free_shot",
-	max_stacks = TB_COMBINED_ARMS_AMMO_MAX_STACKS,
-})
-mod_api.update_talent_buff_template("dwarf_ranger", "bardin_engineer_melee_power_range_power_buff_counter", {
-	max_stack_data = {
-		buffs_to_add = {
-			"bardin_engineer_melee_power_range_power_starter",
-			TB_COMBINED_ARMS_AMMO_BUFF,
-		},
-	},
+mod_api.insert_buff_function("tb_combined_arms_no_vent_damage_apply", function (unit, buff, params, world)
+	local overcharge_extension = ScriptUnit.has_extension(unit, "overcharge_system")
+
+	if overcharge_extension and overcharge_extension.tb_original_no_damage == nil then
+		overcharge_extension.tb_original_no_damage = overcharge_extension.no_damage or false
+		overcharge_extension.no_damage = true
+	end
+end)
+mod_api.insert_buff_function("tb_combined_arms_no_vent_damage_remove", function (unit, buff, params, world)
+	local overcharge_extension = ScriptUnit.has_extension(unit, "overcharge_system")
+
+	if overcharge_extension and overcharge_extension.tb_original_no_damage ~= nil then
+		overcharge_extension.no_damage = overcharge_extension.tb_original_no_damage
+		overcharge_extension.tb_original_no_damage = nil
+	end
+end)
+mod_api.update_talent_buff_template("dwarf_ranger", TB_COMBINED_ARMS_BUFF, {
+	apply_buff_func = "tb_combined_arms_no_vent_damage_apply",
+	remove_buff_func = "tb_combined_arms_no_vent_damage_remove",
 })
 
 local function tb_is_explosive_action(weapon_unit)
@@ -370,40 +410,35 @@ end
 -- Innovative Ammo Hoppers' buff after killing a special, which makes every non-explosive shot free too.
 local TB_HOPPERS_BUFF = "bardin_engineer_increased_ability_bar_buff"
 
+-- Hoppers: the shot doesn't touch the clip. Combined Arms: the clip empties as usual, but the reserve ammo it would
+-- use up on the reload is given back right away. Explosive shots (the Trollhammer torpedo) are left alone by both.
 mod:hook(GenericAmmoUserExtension, "use_ammo", function (func, self, ...)
 	local shots_fired_before = self._shots_fired
 
 	func(self, ...)
 
+	local shots = self._shots_fired - shots_fired_before
 	local buff_extension = self.owner_buff_extension
 
-	if self._shots_fired > shots_fired_before and self.slot_name == "slot_ranged" and buff_extension and not tb_is_explosive_action(self.unit) then
-		local free_shot_stacks
+	if shots > 0 and self.slot_name == "slot_ranged" and buff_extension and not tb_is_explosive_action(self.unit) then
+		if buff_extension:has_buff_type(TB_HOPPERS_BUFF) then
+			-- The clip's ammo is its current ammo minus the shots fired, so undoing the shots leaves it untouched.
+			self._shots_fired = shots_fired_before
 
-		-- The hoppers' free shots don't use up the Combined Arms stacks.
-		if not buff_extension:has_buff_type(TB_HOPPERS_BUFF) then
-			free_shot_stacks = buff_extension:get_stacking_buff(TB_COMBINED_ARMS_AMMO_BUFF)
+			self:_update_anim_ammo()
+		elseif buff_extension:has_buff_type(TB_COMBINED_ARMS_BUFF) then
+			-- Same cap as when ammo is added to the reserve: reserve plus clip can't go above the max ammo.
+			local max_reserve = self._max_ammo - (self._current_ammo - self._shots_fired)
 
-			if not free_shot_stacks or #free_shot_stacks == 0 then
-				return
-			end
+			self._available_ammo = math.max(self._available_ammo, math.min(self._available_ammo + shots, max_reserve))
 		end
-
-		-- The clip's ammo is its current ammo minus the shots fired, so undoing the shots leaves it untouched.
-		self._shots_fired = shots_fired_before
-
-		if free_shot_stacks then
-			buff_extension:remove_buff(free_shot_stacks[#free_shot_stacks].id)
-		end
-
-		self:_update_anim_ammo()
 	end
 end)
 
 mod_api.update_talent("dr_engineer", 5, 2, {
 	description_values = {},
 })
-mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "Melee Power is increased by 10%. Every 5 Melee Strikes makes Bardin's next Ranged Attack grant 15% Ranged Power for 10 seconds and grants a free non-explosive Ranged Attack. Max 10 stacks.")
+mod_api.insert_text("bardin_engineer_melee_power_ranged_power_desc", "10% Melee Power. Every 5 Melee Strikes makes the next Ranged Attack grant 15% Ranged Power for 10 seconds. During this non-explosive Ranged Weapons consume no ammo and venting Drakefire heat deals no damage.")
 
 --[[
 	Piston Power
@@ -512,7 +547,7 @@ for _, templates in ipairs({ TalentBuffTemplates.dwarf_ranger, BuffTemplates }) 
 end
 
 -- Killing a special starts a 4s buff that already makes the Crank Gun free. Heat is stopped by the no_overcharge perk,
--- ammo by the use_ammo hook above, which leaves explosive shots (the Trollhammer torpedo) alone.
+-- the clip by the use_ammo hook above, which leaves explosive shots (the Trollhammer torpedo) alone.
 mod_api.update_talent_buff_template("dwarf_ranger", TB_HOPPERS_BUFF, {
 	perks = {
 		buff_perks.free_ability_engineer,
