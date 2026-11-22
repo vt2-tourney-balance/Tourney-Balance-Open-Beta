@@ -14,7 +14,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 
 		### Talents
 		**Unstoppable Force**
-		- Also grants unmovable for 4s: enemy collisions and pushes no longer displace him (unless disabled).
+		- Also grants immovable for 4s: while grounded, enemy collisions and pushes no longer displace him (unless disabled).
 
 		**Rising Judgement**
 		- Light attacks now grant a stack for every enemy hit (instead of only the first).
@@ -24,7 +24,8 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Fury gain damage taken increased to 1 (from 0.6)
 
 		**See My Wrath**
-		- Smite now deals 20% of the attack's damage plus 40 damage to the first enemy hit per weapon attack; other enemies hit take the base 20% smite (instead of 40% of the attack's damage to every enemy hit). Shield bashes only smite their center target.
+		- Increased smite damage to 60% (from 40%).
+		- Also grants 60% crit power during Righteous Fury.
 
 		**From Fury, Fortitude**
 		- Team changed to Kill THP/4 as percentage of each hero's max health (from Kill THP/2 as flat health).
@@ -83,7 +84,7 @@ BuffTemplates.victor_priest_nuke_dot.buffs[1].damage_profile = "tb_victor_priest
 --[[
 	Unstoppable Force
 ]]
--- The 4s buff unmovable: every displacement (enemy collisions, block knockback, shoves, slams) goes through add_external_velocity
+-- unmovable for 4s wrt. enemy collision and pushes
 local UNMOVABLE_PERK = "tb_unmovable"
 
 BuffTemplates.victor_priest_2_1_buff.buffs[1].perks = {
@@ -95,7 +96,7 @@ mod:hook(PlayerUnitLocomotionExtension, "add_external_velocity", function (func,
 	local unit = self.unit
 	local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
 
-	if buff_extension and buff_extension:has_buff_perk(UNMOVABLE_PERK) then
+	if self.on_ground and buff_extension and buff_extension:has_buff_perk(UNMOVABLE_PERK) then
 		local status_extension = ScriptUnit.has_extension(unit, "status_system")
 
 		if status_extension and not status_extension:is_disabled() then
@@ -109,7 +110,7 @@ end)
 mod_api.update_talent("wh_priest", 2, 1, {
 	description_values = {},
 })
-mod_api.insert_text("victor_priest_2_1_desc", "Striking 3 enemies in a single attack halves the cost of pushing and makes Victor unmovable for 4 seconds. Enemy collisions and pushes no longer displace him.")
+mod_api.insert_text("victor_priest_2_1_desc", "Striking 3 enemies at once grants halved push cost and immovable while on ground for 4 seconds.")
 
 --[[
 	Rising Judgement
@@ -159,7 +160,7 @@ mod_api.update_talent("wh_priest", 2, 2, {
 	},
 	description_values = {}, -- plain % in the text below
 })
-mod_api.insert_text("victor_priest_2_2_desc", "Hits increase the Power of the next charged attack by 8%. Light attacks grant a stack for every enemy hit. Max stacks 5. Heavy attacks can no longer be interrupted.")
+mod_api.insert_text("victor_priest_2_2_desc", "Hits increase the power of the next charged attack by 8%. Max stacks 5. Heavy attacks can no longer be interrupted.")
 
 --[[
 	Blazing Bright
@@ -169,130 +170,29 @@ CareerConstants.wh_priest.talent_4_1_fury_gain_mult = 1 -- 0.6
 --[[
 	See My Wrath
 ]]
--- Every enemy hit gets the base smite (20% of the hit's damage, with or without the talent). With the talent, the
--- first enemy hit by an attack gets the upgraded smite instead: the same 20% plus a flat 40 (vanilla: 40% of the hit).
--- Each hand of a dual weapon is its own attack, so the flat damage lands once per weapon.
+-- Upgraded smite: 60% of the hit's damage. The template copied the constant at load, so set both.
+CareerConstants.wh_priest.talent_4_2_smite_improved_damage = 0.6 -- 0.4
+BuffTemplates.victor_priest_passive_smite_upgraded.buffs[1].damage_multiplier = 0.6 -- 0.4
+
+-- 60% crit power during smite
 local SEE_MY_WRATH_TALENT = "victor_priest_4_2_new"
-local SEE_MY_WRATH_SMITE_DAMAGE = 40
-local SMITE_HIT_DAMAGE_MULTIPLIER = BuffTemplates.victor_priest_passive_smite.buffs[1].damage_multiplier -- 0.2
 
-local smite_upgraded = BuffTemplates.victor_priest_passive_smite_upgraded.buffs[1]
-smite_upgraded.damage_multiplier = 1 -- 0.4 (CareerConstants.wh_priest.talent_4_2_smite_improved_damage)
-smite_upgraded.tb_flat_damage = SEE_MY_WRATH_SMITE_DAMAGE
-smite_upgraded.tb_hit_damage_multiplier = SMITE_HIT_DAMAGE_MULTIPLIER
+local fury_buffs = BuffTemplates.victor_priest_passive_aftershock.buffs
+fury_buffs[#fury_buffs + 1] = {
+	name = "tb_victor_priest_4_2_fury_crit_power",
+	stat_buff = "critical_strike_effectiveness",
+	multiplier = 0.6,
+	apply_condition = function (unit)
+		local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
 
--- Shared remove func of both smite buffs: deals buff.value * damage_multiplier, buff.value being the hit's damage.
--- Only on hits that dealt damage: skips shield bash splash hits (no_damage profiles always deal 0), like vanilla.
-mod:hook(BuffFunctionTemplates.functions, "victor_priest_activated_ability_aftershock_update", function (func, owner_unit, buff, ...)
-	local template = buff.template
-	local flat_damage = template.tb_flat_damage
-	local hit_damage = buff.value
-
-	if flat_damage and hit_damage and hit_damage > 0 then
-		buff.value = hit_damage * template.tb_hit_damage_multiplier + flat_damage
-	end
-
-	return func(owner_unit, buff, ...)
-end)
-
--- target index 1 only
-local current_hit_damage_profile = nil
-
-local function clear_current_hit_damage_profile(...)
-	current_hit_damage_profile = nil
-
-	return ...
-end
-
-mod:hook(DamageUtils, "add_damage_network_player", function (func, damage_profile, ...)
-	current_hit_damage_profile = damage_profile
-
-	return clear_current_hit_damage_profile(func(damage_profile, ...))
-end)
-
--- Built on first use, after weapon changes have set every action's profiles. Keyed by damage profile table.
-local shield_bash_secondary_profiles = nil
-
-local function get_shield_bash_secondary_profiles()
-	if shield_bash_secondary_profiles then
-		return shield_bash_secondary_profiles
-	end
-
-	local target_profile_names = {}
-	local secondary_profile_names = {}
-
-	for _, weapon_template in pairs(Weapons) do
-		local actions = type(weapon_template) == "table" and weapon_template.actions
-
-		if actions then
-			for _, action in pairs(actions) do
-				for _, sub_action in pairs(action) do
-					local target_profile_name = type(sub_action) == "table" and sub_action.damage_profile_target
-
-					if target_profile_name then
-						target_profile_names[target_profile_name] = true
-						secondary_profile_names[sub_action.damage_profile or false] = true
-						secondary_profile_names[sub_action.damage_profile_aoe or false] = true
-					end
-				end
-			end
-		end
-	end
-
-	shield_bash_secondary_profiles = {}
-
-	for profile_name in pairs(secondary_profile_names) do
-		local damage_profile = profile_name and not target_profile_names[profile_name] and rawget(DamageProfileTemplates, profile_name)
-
-		if damage_profile then
-			shield_bash_secondary_profiles[damage_profile] = true
-		end
-	end
-
-	return shield_bash_secondary_profiles
-end
-
--- Copy of vanilla add_buff_to_hit_enemy (buff_settings_bless.lua, only used by Shield of Faith's aftershock): the upgraded
--- smite now only goes to the first target, everyone else gets the base smite.
-mod_api.insert_proc_function("add_buff_to_hit_enemy", function (owner_unit, buff, params)
-	local hit_unit = params[1]
-	local attack_type = params[7]
-
-	if not ALIVE[owner_unit] or not ALIVE[hit_unit] or (attack_type ~= "light_attack" and attack_type ~= "heavy_attack") then
-		return
-	end
-
-	-- Shield bashes only smite their direct (center) target
-	if get_shield_bash_secondary_profiles()[current_hit_damage_profile] then
-		return
-	end
-
-	local target_buff_extension = ScriptUnit.has_extension(hit_unit, "buff_system")
-
-	if not target_buff_extension then
-		return
-	end
-
-	local template = buff.template
-	local buff_to_add = template.buff_to_add
-	if params[8] == 1 then -- first target
-		local talent_extension = ScriptUnit.has_extension(owner_unit, "talent_system")
-
-		if talent_extension and talent_extension:has_talent(SEE_MY_WRATH_TALENT) then
-			buff_to_add = template.buff_to_add_upgraded
-		end
-	end
-
-	target_buff_extension:add_buff(buff_to_add, {
-		external_optional_value = params[3],
-		attacker_unit = owner_unit,
-	})
-end)
+		return talent_extension and talent_extension:has_talent(SEE_MY_WRATH_TALENT) or false
+	end,
+}
 
 mod_api.update_talent("wh_priest", 4, 2, {
 	description_values = {}, -- plain % in the text below
 })
-mod_api.insert_text("victor_priest_4_2_desc_new", "Shield of Faith grants Victor 60% Fury. Smite now deals an additional 40 damage to the first enemy hit by an attack.")
+mod_api.insert_text("victor_priest_4_2_desc_new", "Shield of Faith grants Victor 60% Fury. Smite now deals 60% of the attack's damage and grants 40% crit power.")
 
 --[[
 	From Fury, Fortitude
