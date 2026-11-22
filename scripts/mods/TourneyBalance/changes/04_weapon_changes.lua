@@ -50,6 +50,7 @@ mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_firebal
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/bw_soulstealer")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/crossbows")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_engineer_bomb")
+mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_handgun")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_pistol")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_throwing_axes")
 mod:dofile("scripts/mods/TourneyBalance/changes/weapon_changes/ranged/dr_trollhammer")

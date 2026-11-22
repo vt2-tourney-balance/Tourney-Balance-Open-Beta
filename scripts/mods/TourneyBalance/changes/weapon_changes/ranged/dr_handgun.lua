@@ -1,0 +1,1 @@
+Weapons.handgun_template_2.spread_lerp_speed_zoom = 4.75 -- official: 3.75
