@@ -9,7 +9,7 @@ local TB_ENGINEER_AIMED_SHOT = "tb_engineer_ability_shot_aimed"
 local TB_ENGINEER_AIMED_SHOT_ARMOR_PIERCE = "tb_engineer_ability_shot_armor_pierce_aimed"
 local TB_ENGINEER_AIMED_SUB_ACTIONS = { "aimed_fire", "aimed_base_fire", "aimed_armor_pierce_fire" }
 -- Hitscan range of every shot; the crank gun has none set and falls back to ActionRangedBase's 30m, which made bullets vanish.
-local TB_ENGINEER_BULLET_RANGE = 100
+local TB_ENGINEER_BULLET_RANGE = 50
 local TB_ENGINEER_FIRE_SUB_ACTIONS = { "base_fire", "fast_fire", "armor_pierce_fire" }
 
 --[[
@@ -63,23 +63,71 @@ end
 --[[
 	Gromril Plated Shots
 ]]
--- Copied damage profile from Handgun (vanilla). Armor order is unarmored, armored, resistant, player, berserker, super armor.
+-- Armor order is unarmored, armored, resistant, player, berserker, super armor.
 -- Has to run before the aimed armor piercing profile below is cloned from it.
 local armor_pierce_profile = DamageProfileTemplates.engineer_ability_shot_armor_pierce
 
-armor_pierce_profile.critical_strike.attack_armor_power_modifer = { 1, 1.4, 1.5, 1, 0.75, 0.6 } -- { 1, 1, 1, 1, 1, 0.5 }
-armor_pierce_profile.critical_strike.impact_armor_power_modifer = { 1, 1, 1, 1, 1, 1 } -- { 1, 1, 1, 1, 1, 0.5 }
-armor_pierce_profile.armor_modifier_near.attack = { 1, 1.2, 1.5, 1, 0.75, 0.5 } -- { 1, 1, 1, 1, 0.5, 0.4 }
-armor_pierce_profile.armor_modifier_near.impact = { 1, 1, 1, 1, 1, 1 } -- { 1, 1, 1, 1, 1, 0.4 }
-armor_pierce_profile.armor_modifier_far.attack = { 1, 1, 1, 1, 0.75, 0.4 } -- { 1, 1, 1, 1, 0.5, 0.4 }
-armor_pierce_profile.armor_modifier_far.impact = { 1, 1, 1, 1, 1, 0.75 } -- { 1, 1, 1, 1, 1, 0.4 }
+-- Handgun: { 1, 1.4, 1.5, 1, 0.75, 0.6 }
+armor_pierce_profile.critical_strike.attack_armor_power_modifer = {
+	1,
+	1.4, --1
+	1,
+	1,
+	1,
+	0.6, -- 0.5
+} 
+-- Handgun: { 1, 1, 1, 1, 1, 1 }
+armor_pierce_profile.critical_strike.impact_armor_power_modifer = { 
+	1, 
+	1, 
+	1, 
+	1, 
+	1, 
+	1, -- 0.5
+}
+-- Handgun: { 1, 1.2, 1.5, 1, 0.75, 0.5 }
+armor_pierce_profile.armor_modifier_near.attack = { 
+	1, 
+	1.2, -- 1 
+	1, 
+	1, 
+	0.5, 
+	0.5, -- 0.4 
+}
+-- Handgun: { 1, 1, 1, 1, 1, 1 }
+armor_pierce_profile.armor_modifier_near.impact = { 
+	1, 
+	1, 
+	1, 
+	1, 
+	1, 
+	1, -- 0.4 
+}
+-- Handgun: { 1, 1, 1, 1, 0.75, 0.4 }
+armor_pierce_profile.armor_modifier_far.attack = { 
+	1, 
+	1, 
+	1, 
+	1, 
+	0.5, 
+	0.4 
+}
+-- Handgun: { 1, 1, 1, 1, 1, 0.75 } 
+armor_pierce_profile.armor_modifier_far.impact = { 
+	1, 
+	1, 
+	1, 
+	1, 
+	1, 
+	0.75, -- 0.4 
+}
 armor_pierce_profile.cleave_distribution.attack = 0.3 -- 0.25
 armor_pierce_profile.cleave_distribution.impact = 0.3 -- 0.25
 armor_pierce_profile.default_target.attack_template = "shot_sniper" -- "shot_repeating_handgun"
 armor_pierce_profile.default_target.boost_curve_type = "smiter_curve" -- "linesman_curve"
 armor_pierce_profile.default_target.boost_curve_coefficient = 1 -- 0.6
 armor_pierce_profile.default_target.boost_curve_coefficient_headshot = 1
-armor_pierce_profile.default_target.headshot_boost_boss = 0.5
+armor_pierce_profile.default_target.headshot_boost_boss = 0.5 -- 0.25
 armor_pierce_profile.default_target.power_distribution_near.attack = 1 -- 0.48
 armor_pierce_profile.default_target.power_distribution_near.impact = 0.5 -- 0.3
 armor_pierce_profile.default_target.power_distribution_far.attack = 0.8 -- 0.36
