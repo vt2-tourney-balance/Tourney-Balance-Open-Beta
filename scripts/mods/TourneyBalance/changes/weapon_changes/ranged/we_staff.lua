@@ -8,7 +8,7 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 --mod_api.update_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_healing_received_aura", { perks = {}, })
 
 -- Lift duration
-VortexTemplates.spirit_storm.time_of_life = { 1,1 }
+VortexTemplates.spirit_storm.time_of_life = { 2,2 }
 
 -- Heat cost per lift
 Weapons.staff_life.actions.action_one.cast_vortex.overcharge_amount = 15 --10
@@ -20,7 +20,7 @@ Weapons.staff_life.actions.action_one.cast_vortex.overcharge_amount = 15 --10
 mod_api.insert_talent_buff_template("wood_elf", "tb_kerillian_thorn_sister_vent_damage", {
 	stat_buff = "vent_damage",
 	max_stacks = 1,
-	multiplier = 2.5,
+	multiplier = 1.5,
 })
 mod_api.insert_career_passives("we_thornsister", {
 	"tb_kerillian_thorn_sister_vent_damage",
