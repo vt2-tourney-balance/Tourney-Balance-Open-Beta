@@ -22,6 +22,9 @@ local is_local = require("scripts/mods/TourneyBalance/_api/shared_utils").is_loc
 		**Strike Together**
 		- Changed to Paced Strikes activates on hitting 1 enemy.
 
+		**Stand Clear**
+		- Additionally reduces the movement slowdown from melee weapons by 50%.
+
 		**Blade Barrier**
 		- Lowered damage reduction to 15% (from 25%).
 
@@ -152,6 +155,13 @@ end)
 mod_api.update_talent_buff_template("empire_soldier", "markus_mercenary_crit_count", {
 	buff_func = "tb_add_buff_on_first_target_hit_helborg" --"add_buff_on_first_target_hit"
 })
+
+--[[
+	Stand Clear
+]]
+-- Halves the melee weapon movement slowdown (shared hook in TourneyBalance.lua)
+mod:add_melee_slowdown_reduction_talent("markus_mercenary_dodge_range", 0.5)
+mod_api.insert_text("markus_mercenary_dodge_range_desc", "Increases dodge range by 20%%. Halved melee weapon slowdown.")
 
 --[[
 	Blade Barrier

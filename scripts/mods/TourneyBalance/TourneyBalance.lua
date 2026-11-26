@@ -295,6 +295,70 @@ function mod.is_action_movement_speed_up(self, params)
     return not not (external_multiplier and external_multiplier > 1)
 end
 
+--- Melee slowdown reduction talents (apply_action_lerp_movement_buff dispatcher)
+-- Talents that shrink the melee weapon movement slowdown (01_es_mercenary.lua Stand Clear, 13_wh_captain.lua
+-- Charmed Life) register through mod:add_melee_slowdown_reduction_talent(talent_name, slowdown_multiplier) instead of
+-- hooking BuffFunctionTemplates.functions.apply_action_lerp_movement_buff themselves.
+-- Melee attacks and holding block slow through the "planted_*_decrease_movement" family. Their final multiplier
+-- (template value or the action's external_multiplier) is stored on buff.multiplier when added, and the update
+-- funcs lerp towards it every frame, so scaling it once on apply shrinks the whole slowdown. Removal returns the
+-- current lerped value, so the slowdown is still fully undone.
+-- slowdown_multiplier scales the slowdown itself (0.5 = half), so the result never goes above 1.
+-- Hooking the apply func instead of swapping apply_buff_func keeps the name Devotion (15_wh_zealot.lua) looks for.
+local MELEE_SLOWDOWN_BUFFS = {
+    "planted_decrease_movement",
+    "planted_fast_decrease_movement",
+    "planted_charging_decrease_movement",
+}
+local _melee_slowdown_sub_buffs = {}
+local _melee_slowdown_reduction_talents = {}
+
+function mod.add_melee_slowdown_reduction_talent(self, talent_name, slowdown_multiplier)
+    _melee_slowdown_reduction_talents[#_melee_slowdown_reduction_talents + 1] = {
+        talent_name = talent_name,
+        slowdown_multiplier = slowdown_multiplier,
+    }
+end
+
+-- Done after all mods load so a later rewrite of these templates is still covered
+mod:add_all_mods_loaded_function(function ()
+    for _, buff_name in ipairs(MELEE_SLOWDOWN_BUFFS) do
+        local template = BuffTemplates[buff_name]
+
+        for _, sub_buff in ipairs(template and template.buffs or {}) do
+            _melee_slowdown_sub_buffs[sub_buff] = true
+        end
+    end
+end)
+
+mod:hook_safe(BuffFunctionTemplates.functions, "apply_action_lerp_movement_buff", function (unit, buff, params)
+    local multiplier = buff.multiplier
+
+    if not (_melee_slowdown_sub_buffs[buff.template] and multiplier and multiplier < 1) then
+        return
+    end
+
+    local talent_extension = ScriptUnit.has_extension(unit, "talent_system")
+
+    if not talent_extension then
+        return
+    end
+
+    for i = 1, #_melee_slowdown_reduction_talents do
+        local entry = _melee_slowdown_reduction_talents[i]
+
+        if talent_extension:has_talent(entry.talent_name) then
+            local inventory_extension = ScriptUnit.has_extension(unit, "inventory_system")
+
+            if inventory_extension and inventory_extension:get_wielded_slot_name() == "slot_melee" then
+                buff.multiplier = 1 - (1 - multiplier) * entry.slowdown_multiplier
+            end
+
+            return
+        end
+    end
+end)
+
 --- In-game localization
 -- Replace original strings, if _quick_localize can fetch custom strings
 local localization_api = require("scripts/mods/TourneyBalance/_api/_localization_api")

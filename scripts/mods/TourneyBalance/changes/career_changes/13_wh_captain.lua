@@ -22,6 +22,12 @@ local mod_api = require("scripts/mods/TourneyBalance/_api/_mod_api")
 		- Duration increased to 15s (from 5s).
 		- Tagging applies Witch Hunt to all enemies except Lords and Monsters.
 
+		**Charmed Life**
+		- Additionally reduces the movement slowdown from melee weapons by 50%.
+
+		**Always Prepared**
+		- Increased ammo bonus to 50% (from 30%).
+
 		**I Shall Judge You All**
 		- Headshots (melee and ranged) also apply Witch Hunt (and Templar's Knowledge) to all enemies hit, including Lords and Monsters.
 
@@ -141,6 +147,28 @@ mod_api.update_talent("wh_captain", 4, 1, {
 	description_values = {},
 })
 mod_api.insert_text("victor_witchhunter_improved_damage_taken_ping_desc", "Witch Hunt causes enemies to take an additional 5.0% damage and applies to all taggable enemies except Lords and Monsters.")
+
+--[[
+	Charmed Life
+]]
+-- Halves the melee weapon movement slowdown (shared hook in TourneyBalance.lua)
+mod:add_melee_slowdown_reduction_talent("victor_witchhunter_dodge_range", 0.5)
+mod_api.insert_text("victor_witchhunter_dodge_range_desc", "Increases dodge range by 20%%. Halved melee weapon slowdown.")
+
+--[[
+	Always Prepared
+]]
+mod_api.update_talent_buff_template("witch_hunter", "victor_witchhunter_max_ammo", {
+	multiplier = 0.5, -- 0.3
+})
+mod_api.update_talent("wh_captain", 5, 3, { -- update description
+	description_values = {
+		{
+			value_type = "percent",
+			value = 0.5, -- buff_tweak_data.victor_witchhunter_max_ammo.multiplier
+		},
+	},
+})
 
 --[[
 	I Shall Judge You All
