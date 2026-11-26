@@ -30,7 +30,7 @@ mod_api.insert_career_passives("we_thornsister", {
 OverchargeData.we_thornsister.percent_health_lost = 0.8 --0.4
 
 -- Heat decay start time
-OverchargeData.we_thornsister.time_until_overcharge_decreases = 5 --0.5
+OverchargeData.we_thornsister.time_until_overcharge_decreases = 3 --0.5
 
 -- Heat decay rate
 --OverchargeData.we_thornsister.overcharge_value_decrease_rate = 1
